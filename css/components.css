@@ -24,6 +24,7 @@ main h2{ font-size:1.4rem; margin:18px 0 10px; }
   position:relative; background:var(--surface); border:1px solid var(--border); border-radius:12px;
   overflow:hidden; box-shadow:var(--shadow); display:flex; flex-direction:column;
 }
+.product-card[data-id]{ cursor:pointer; }
 .product-card img{
   width:100%; height:auto;
   object-fit:contain; background:#f5f5f5; padding:8px; border-radius:8px;
