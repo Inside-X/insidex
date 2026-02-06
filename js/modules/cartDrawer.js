@@ -1,4 +1,5 @@
 import { loadCart, saveCart, updateBadge } from './cart.js';
+import { showToast } from './toast.js';
 
 const currency = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 const IMG_BY_ID = {
@@ -52,10 +53,10 @@ function lineHTML(id, it) {
         <div class="cart-drawer__name">${it.name}</div>
         <div class="cart-drawer__price">${currency.format(it.price)}</div>
         <div class="cart-drawer__qty">
-          <button class="qty-btn" data-act="dec" data-id="${id}" aria-label="Diminuer">−</button>
+          <button class="qty-btn" data-act="dec" data-id="${id}" aria-label="Diminuer" type="button">−</button>
           <span aria-live="polite">${it.qty}</span>
-          <button class="qty-btn" data-act="inc" data-id="${id}" aria-label="Augmenter">+</button>
-          <button class="remove-btn" data-act="rm" data-id="${id}" aria-label="Supprimer">Supprimer</button>
+          <button class="qty-btn" data-act="inc" data-id="${id}" aria-label="Augmenter" type="button">+</button>
+          <button class="remove-btn" data-act="rm" data-id="${id}" aria-label="Supprimer" type="button">Supprimer</button>
         </div>
       </div>
       <div class="cart-drawer__line-total">${currency.format(lineTotal)}</div>
@@ -97,8 +98,8 @@ function renderCartPage() {
         <strong>${currency.format(total)}</strong>
       </div>
       <div class="cart-drawer__actions">
-        <button class="btn btn-outline" id="checkoutBtnPage">Passer la commande</button>
-        <button class="btn btn-link danger" id="clearCartBtnPage">Vider</button>
+        <button class="btn btn-outline" id="checkoutBtnPage" type="button">Passer la commande</button>
+        <button class="btn btn-link danger" id="clearCartBtnPage" type="button">Vider</button>
       </div>
     </div>
   `;
@@ -116,7 +117,7 @@ function renderCartPage() {
   }, { once: true });
 
   document.getElementById('checkoutBtnPage').addEventListener('click', () => {
-    alert('🧾 Le passage de commande arrive bientôt !');
+    showToast('🧾 Le passage de commande arrive bientôt !', 'info');
   }, { once: true });
   document.getElementById('clearCartBtnPage').addEventListener('click', () => {
     clearCart(); renderCartPage(); updateBadge();
@@ -162,7 +163,7 @@ export function initCartDrawer() {
     document.getElementById('panier').scrollIntoView({ behavior: 'smooth' });
   });
   checkoutBtn.addEventListener('click', () => {
-    alert('🧾 Le passage de commande arrive bientôt !');
+    showToast('🧾 Le passage de commande arrive bientôt !', 'info');
   });
 
   // Premier rendu au chargement
@@ -176,7 +177,7 @@ export function wireAddToCartButtons() {
       // réutilise la fonction métier importée (depuis main.js)
       import('./cart.js').then(({ addToCart }) => {
         addToCart(id, name, price);
-        alert(`✅ ${name} ajouté au panier (${price} €)`);
+        showToast(`✅ ${name} ajouté au panier`, 'success');
       });
     });
   });

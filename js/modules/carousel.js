@@ -1,6 +1,7 @@
 let current = 0, N = 0;
 let timer = null;
 const INTERVAL_MS = 4000;
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 let carousel, track, items, dotsWrap, dots;
 
@@ -9,7 +10,7 @@ function renderCarousel() {
   const rightIdx = (current + 1) % N;
 
   items.forEach((el, i) => {
-    el.style.transitionTimingFunction = "ease";
+    el.style.transitionTimingFunction = prefersReducedMotion ? "step-end" : "ease";
     if (i === current) {
       // centre : grand, net
       el.style.opacity = "1";
@@ -47,7 +48,10 @@ function goTo(i, reset=false) {
   if (reset) restartAuto();
 }
 function next() { goTo(current + 1); }
-function startAuto() { if (!timer) timer = setInterval(next, INTERVAL_MS); }
+function startAuto() {
+  if (prefersReducedMotion) return;
+  if (!timer) timer = setInterval(next, INTERVAL_MS);
+}
 function stopAuto() { if (timer) { clearInterval(timer); timer = null; } }
 function restartAuto(){ stopAuto(); startAuto(); }
 

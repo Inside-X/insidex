@@ -2,6 +2,7 @@ import { initHeader } from './modules/header.js';
 import { initCartDrawer } from './modules/cartDrawer.js';
 import { addToCart, updateBadge } from './modules/cart.js';
 import { PRODUCTS } from './modules/products.js';
+import { showToast } from './modules/toast.js';
 
 const currency = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 
@@ -34,7 +35,7 @@ function renderProduct(product) {
   const addBtn = document.getElementById('productAddBtn');
   addBtn.addEventListener('click', () => {
     addToCart(product.id, product.name, product.price);
-    alert(`✅ ${product.name} ajouté au panier (${product.price} €)`);
+    showToast(`✅ ${product.name} ajouté au panier`, 'success');
   });
 }
 

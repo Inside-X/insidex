@@ -19,3 +19,37 @@ html,body{
   line-height:1.5;
 }
 .container{ width:min(1200px,92%); margin-inline:auto; }
+
+a{ color:inherit; }
+
+:focus-visible{
+  outline:2px solid var(--primary);
+  outline-offset:2px;
+}
+
+.skip-link{
+  position:absolute;
+  top:8px;
+  left:8px;
+  background:var(--surface);
+  color:var(--text);
+  padding:8px 12px;
+  border-radius:8px;
+  box-shadow:var(--shadow);
+  transform:translateY(-200%);
+  transition:transform 200ms ease;
+  z-index:100;
+  text-decoration:none;
+}
+.skip-link:focus{ transform:translateY(0); }
+
+@media (prefers-reduced-motion: reduce){
+  *,
+  *::before,
+  *::after{
+    animation-duration:0.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:0.01ms !important;
+    scroll-behavior:auto !important;
+  }
+}

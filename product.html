@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Inside X - Produit</title>
+    <meta name="description" content="Détails produit Inside X : description, caractéristiques et prix des canapés compressés et fauteuils." />
 
   <!-- Police (Inter) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,6 +20,7 @@
   <link rel="stylesheet" href="css/product.css">
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Aller au contenu principal</a>
   <!-- Barre d’annonce -->
   <div class="announcement" role="note">
     <div class="container">
@@ -42,28 +44,28 @@
       </nav>
 
       <div class="header-icons">
-        <button class="icon-btn" id="searchBtn" aria-label="Rechercher" title="Rechercher">
+        <button class="icon-btn" id="searchBtn" aria-label="Rechercher" title="Rechercher" type="button">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="11" cy="11" r="7"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
         </button>
-        <button class="icon-btn" id="accountBtn" aria-label="Mon compte" title="Mon compte">
+        <button class="icon-btn" id="accountBtn" aria-label="Mon compte" title="Mon compte" type="button">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M20 21a8 8 0 0 0-16 0"></path>
             <circle cx="12" cy="7" r="4"></circle>
           </svg>
         </button>
-        <button class="icon-btn cart-btn" id="cartBtn" aria-label="Panier" title="Panier">
+        <button class="icon-btn cart-btn" id="cartBtn" aria-label="Panier" title="Panier" type="button">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="9" cy="21" r="1"></circle>
             <circle cx="20" cy="21" r="1"></circle>
             <path d="M1 1h4l2.68 12.39A2 2 0 0 0 9.62 15h8.76a2 2 0 0 0 1.97-1.61L23 6H6"></path>
           </svg>
-          <span class="cart-count" id="cartCount">0</span>
+          <span class="cart-count" id="cartCount" aria-live="polite">0</span>
         </button>
 
-        <button class="icon-btn menu-btn" id="menuBtn" aria-label="Ouvrir le menu" title="Menu">
+        <button class="icon-btn menu-btn" id="menuBtn" aria-label="Ouvrir le menu" title="Menu" type="button">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="3" y1="6" x2="21" y2="6"></line>
             <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -81,7 +83,7 @@
     </div>
   </header>
 
-  <main class="container product-page">
+  <main class="container product-page" id="main-content">
     <nav class="breadcrumbs" aria-label="Fil d’Ariane">
       <a href="index.html#produits">Produits</a>
       <span>/</span>
@@ -90,7 +92,7 @@
 
     <section class="product-detail" aria-live="polite">
       <div class="product-detail__media">
-        <img id="productImage" src="assets/images/placeholder.png" alt="Produit Inside X" />
+        <img id="productImage" src="assets/images/placeholder.png" alt="Produit Inside X" loading="lazy" decoding="async" />
       </div>
       <div class="product-detail__info">
         <h1 id="productTitle">Produit</h1>
@@ -100,7 +102,7 @@
         </p>
         <p id="productDescription" class="product-detail__description"></p>
         <ul id="productFeatures" class="product-detail__features"></ul>
-        <button class="btn" id="productAddBtn">Ajouter au panier</button>
+        <button class="btn" id="productAddBtn" type="button">Ajouter au panier</button>
         <a class="btn btn-outline" href="index.html#produits">Retour aux produits</a>
       </div>
     </section>
@@ -116,7 +118,7 @@
   <aside class="cart-drawer" id="cartDrawer" aria-hidden="true" aria-label="Mini-panier">
     <div class="cart-drawer__header">
       <h3>Panier</h3>
-      <button class="icon-btn" id="cartCloseBtn" aria-label="Fermer le panier">✕</button>
+      <button class="icon-btn" id="cartCloseBtn" aria-label="Fermer le panier" type="button">✕</button>
     </div>
     <div class="cart-drawer__content" id="cartDrawerList" role="list"></div>
     <div class="cart-drawer__footer">
@@ -125,9 +127,9 @@
         <strong id="cartDrawerTotal">0 €</strong>
       </div>
       <div class="cart-drawer__actions">
-        <button class="btn" id="goToCartBtn">Voir le panier</button>
-        <button class="btn btn-outline" id="checkoutBtn">Passer la commande</button>
-        <button class="btn btn-link danger" id="clearCartBtn">Vider</button>
+        <button class="btn" id="goToCartBtn" type="button">Voir le panier</button>
+        <button class="btn btn-outline" id="checkoutBtn" type="button">Passer la commande</button>
+        <button class="btn btn-link danger" id="clearCartBtn" type="button">Vider</button>
       </div>
     </div>
   </aside>
@@ -139,6 +141,8 @@
     <div id="cartPageContainer" class="cart-page"></div>
   </section>
 
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+    
   <script src="js/product-page.js" type="module"></script>
 </body>
 </html>
