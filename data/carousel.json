@@ -2,16 +2,25 @@
   {
     "image": "assets/images/amani.jpg",
     "productId": "amani-sofa",
-    "alt": "Canapé Amani en tissu bouclé dans un salon lumineux"
+    "alt": "Canapé Amani en tissu bouclé dans un salon lumineux",
+    "active": true,
+    "order": 1,
+    "createdAt": "2024-02-01T09:00:00Z"
   },
   {
     "image": "assets/images/neko.jpg",
     "productId": "neko-lounge",
-    "alt": "Fauteuil Neko avec piètement en métal noir"
+    "alt": "Fauteuil Neko avec piètement en métal noir",
+    "active": true,
+    "order": 2,
+    "createdAt": "2024-02-05T09:00:00Z"
   },
   {
     "image": "assets/images/sora.jpg",
     "productId": "sora-table",
-    "alt": "Table basse Sora en bois clair"
+    "alt": "Table basse Sora en bois clair",
+    "active": true,
+    "order": 3,
+    "createdAt": "2024-02-10T09:00:00Z"
   }
 ]

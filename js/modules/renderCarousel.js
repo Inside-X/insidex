@@ -2,14 +2,23 @@ const fallbackSlides = [
   {
     image: "assets/images/amani.jpg",
     alt: "Canapé Amani en tissu bouclé dans un salon lumineux",
+    active: true,
+    order: 1,
+    createdAt: "2024-02-01T09:00:00Z",
   },
   {
     image: "assets/images/neko.jpg",
     alt: "Fauteuil Neko avec piètement en métal noir",
+    active: true,
+    order: 2,
+    createdAt: "2024-02-05T09:00:00Z",
   },
   {
     image: "assets/images/sora.jpg",
     alt: "Table basse Sora en bois clair",
+    active: true,
+    order: 3,
+    createdAt: "2024-02-10T09:00:00Z",
   },
 ];
 
@@ -43,10 +52,14 @@ export async function renderCarousel() {
     slides = fallbackSlides;
   }
 
+  const orderedSlides = slides
+    .filter((slide) => slide.active)
+    .sort((a, b) => Number(a.order) - Number(b.order));
+
   track.innerHTML = "";
-  slides.forEach((slide, index) => {
+  orderedSlides.forEach((slide, index) => {
     track.appendChild(createSlide(slide, index));
   });
 
-  return slides.length;
+  return orderedSlides.length;
 }
