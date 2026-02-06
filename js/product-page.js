@@ -3,6 +3,7 @@ import { initCartDrawer } from './modules/cartDrawer.js';
 import { addToCart, updateBadge } from './modules/cart.js';
 import { PRODUCTS } from './modules/products.js';
 import { showToast } from './modules/toast.js';
+import { renderTexts } from './modules/renderTexts.js';
 
 const currency = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 
@@ -50,10 +51,11 @@ function renderNotFound() {
   document.getElementById('productAddBtn').disabled = true;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   initHeader();
   initCartDrawer();
   updateBadge();
+  await renderTexts();
 
   const productId = getProductId();
   const product = productId ? PRODUCTS[productId] : null;

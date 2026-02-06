@@ -40,6 +40,21 @@ function buildProductCard(product) {
   return card;
 }
 
+const DEFAULT_VISIBILITY_FLAGS = {
+  published: true,
+  featured: true
+};
+
+function isProductVisible(product, requiredFlags = DEFAULT_VISIBILITY_FLAGS) {
+  if (!product || typeof product !== 'object') {
+    return false;
+  }
+
+  return Object.entries(requiredFlags).every(
+    ([flag, requiredValue]) => product[flag] === requiredValue
+  );
+}
+
 export async function renderProducts({
   containerSelector = '#productsGrid',
   dataUrl = 'data/products.json'
@@ -50,15 +65,15 @@ export async function renderProducts({
   }
 
   const products = await loadJson(dataUrl);
-  const publishedProducts = products.filter((product) => product.published);
+  const visibleProducts = products.filter((product) => isProductVisible(product));
 
   container.innerHTML = '';
   const fragment = document.createDocumentFragment();
 
-  publishedProducts.forEach((product) => {
+  visibleProducts.forEach((product) => {
     fragment.appendChild(buildProductCard(product));
   });
 
   container.appendChild(fragment);
-  return publishedProducts.length;
+  return visibleProducts.length;
 }

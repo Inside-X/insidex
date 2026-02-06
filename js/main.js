@@ -5,9 +5,11 @@ import { initCartDrawer, wireAddToCartButtons } from './modules/cartDrawer.js';
 import { initProductLinks } from './modules/productLinks.js';
 import { renderCarousel } from './modules/renderCarousel.js';
 import { renderProducts } from './modules/renderProducts.js';
+import { renderTexts } from './modules/renderTexts.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   initHeader();
+  await renderTexts();
   const slideCount = await renderCarousel();
   if (slideCount > 0) {
     initCarousel();     // IMPORTANT : c'est ici que ton carrousel démarre
