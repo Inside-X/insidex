@@ -1,42 +1,42 @@
 import { initHeader } from './modules/header.js';
 import { initCartDrawer } from './modules/cartDrawer.js';
 import { addToCart, updateBadge } from './modules/cart.js';
-import { PRODUCTS } from './modules/products.js';
+import { getAllProducts, getProductBySlug } from './modules/productService.js';
 import { showToast } from './modules/toast.js';
 import { renderTexts } from './modules/renderTexts.js';
 
 const currency = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 
-function getProductId() {
+function getProductSlug() {
   const params = new URLSearchParams(window.location.search);
-  return params.get('id');
+  return {
+    slug: params.get('slug'),
+    id: params.get('id')
+  };
 }
 
 function renderProduct(product) {
-  document.getElementById('productTitle').textContent = product.name;
-  document.getElementById('productBreadcrumb').textContent = product.name;
+  document.getElementById('productTitle').textContent = product.title;
+  document.getElementById('productBreadcrumb').textContent = product.title;
   const img = document.getElementById('productImage');
-  img.src = product.image;
-  img.alt = product.name;
+  img.src = product.images?.[0] || 'assets/images/placeholder.png';
+  img.alt = product.title;
 
   document.getElementById('productPrice').textContent = currency.format(product.price);
   const oldPrice = document.getElementById('productOldPrice');
-  oldPrice.textContent = currency.format(product.oldPrice);
+  oldPrice.textContent = '';
 
-  document.getElementById('productDescription').textContent = product.description;
+  document.getElementById('productDescription').textContent =
+    product.description || product.shortDescription || '';
 
   const features = document.getElementById('productFeatures');
   features.innerHTML = '';
-  product.features.forEach((feature) => {
-    const li = document.createElement('li');
-    li.textContent = feature;
-    features.appendChild(li);
-  });
 
   const addBtn = document.getElementById('productAddBtn');
+  addBtn.disabled = false;
   addBtn.addEventListener('click', () => {
-    addToCart(product.id, product.name, product.price);
-    showToast(`✅ ${product.name} ajouté au panier`, 'success');
+    addToCart(product.id, product.title, product.price);
+    showToast(`✅ ${product.title} ajouté au panier`, 'success');
   });
 }
 
@@ -51,14 +51,25 @@ function renderNotFound() {
   document.getElementById('productAddBtn').disabled = true;
 }
 
+async function resolveProduct() {
+  const { slug, id } = getProductSlug();
+  if (slug) {
+    return getProductBySlug(slug);
+  }
+  if (id) {
+    const products = await getAllProducts();
+    return products.find((product) => product.id === id) || null;
+  }
+  return null;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   initHeader();
   initCartDrawer();
   updateBadge();
   await renderTexts();
 
-  const productId = getProductId();
-  const product = productId ? PRODUCTS[productId] : null;
+  const product = await resolveProduct();
 
   if (product) {
     renderProduct(product);

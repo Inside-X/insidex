@@ -1,4 +1,4 @@
-import { loadJson } from './dataLoader.js';
+import { getPublishedProducts } from './productService.js';
 
 const currencyFormatter = new Intl.NumberFormat('fr-FR', {
   style: 'currency',
@@ -9,6 +9,7 @@ function buildProductCard(product) {
   const card = document.createElement('article');
   card.className = 'product-card';
   card.dataset.id = product.id;
+  card.dataset.slug = product.slug;
 
   const image = document.createElement('img');
   image.src = product.images?.[0] || '';
@@ -40,32 +41,14 @@ function buildProductCard(product) {
   return card;
 }
 
-const DEFAULT_VISIBILITY_FLAGS = {
-  published: true,
-  featured: true
-};
-
-function isProductVisible(product, requiredFlags = DEFAULT_VISIBILITY_FLAGS) {
-  if (!product || typeof product !== 'object') {
-    return false;
-  }
-
-  return Object.entries(requiredFlags).every(
-    ([flag, requiredValue]) => product[flag] === requiredValue
-  );
-}
-
-export async function renderProducts({
-  containerSelector = '#productsGrid',
-  dataUrl = 'data/products.json'
-} = {}) {
+export async function renderProducts({ containerSelector = '#productsGrid' } = {}) {
   const container = document.querySelector(containerSelector);
   if (!container) {
     return 0;
   }
 
-  const products = await loadJson(dataUrl);
-  const visibleProducts = products.filter((product) => isProductVisible(product));
+  const products = await getPublishedProducts();
+  const visibleProducts = products.filter((product) => product?.featured === true);
 
   container.innerHTML = '';
   const fragment = document.createDocumentFragment();
