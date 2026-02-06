@@ -1,0 +1,76 @@
+[
+  {
+    "id": "amani-sofa",
+    "title": "Canapé Amani",
+    "price": 1890,
+    "shortDescription": "Canapé 3 places aux lignes épurées et tissu bouclé doux.",
+    "description": "Le canapé Amani apporte une élégance discrète à votre salon grâce à ses volumes généreux, sa structure en bois certifié et son tissu bouclé durable. Son assise profonde est pensée pour le confort quotidien tout en conservant une silhouette minimaliste.",
+    "images": [
+      "assets/images/amani.jpg",
+      "assets/images/amani.png"
+    ],
+    "featured": true,
+    "published": true
+  },
+  {
+    "id": "neko-lounge",
+    "title": "Fauteuil Neko",
+    "price": 790,
+    "shortDescription": "Fauteuil lounge compact avec piètement en métal noir.",
+    "description": "Le fauteuil Neko combine un dossier enveloppant et une assise ferme pour soutenir une posture relaxée. Son piètement fin en acier thermolaqué contraste avec le tissu texturé pour une touche contemporaine.",
+    "images": [
+      "assets/images/neko.jpg",
+      "assets/images/neko.png"
+    ],
+    "featured": true,
+    "published": true
+  },
+  {
+    "id": "sora-table",
+    "title": "Table basse Sora",
+    "price": 520,
+    "shortDescription": "Table basse ovale en bois clair et piètement sculptural.",
+    "description": "La table basse Sora se distingue par son plateau ovale en chêne clair et son piètement sculpté inspiré des formes organiques. Elle apporte chaleur et légèreté à tout espace de vie.",
+    "images": [
+      "assets/images/sora.jpg"
+    ],
+    "featured": false,
+    "published": true
+  },
+  {
+    "id": "kahawa-dining",
+    "title": "Table à manger Kahawa",
+    "price": 1490,
+    "shortDescription": "Table extensible pour 6 à 8 personnes en noyer.",
+    "description": "La table Kahawa est conçue pour les moments partagés. Son mécanisme d'extension fluide et son placage en noyer huilé offrent un équilibre parfait entre fonctionnalité et raffinement.",
+    "images": [
+      "assets/images/kahawa.jpg"
+    ],
+    "featured": false,
+    "published": true
+  },
+  {
+    "id": "kila-bed",
+    "title": "Lit Kila",
+    "price": 1290,
+    "shortDescription": "Lit plateforme avec tête de lit capitonnée.",
+    "description": "Le lit Kila allie minimalisme et confort grâce à sa structure plateforme en bois massif et sa tête de lit capitonnée. Il s'intègre parfaitement aux chambres épurées et lumineuses.",
+    "images": [
+      "assets/images/kila.jpg"
+    ],
+    "featured": false,
+    "published": true
+  },
+  {
+    "id": "kumi-shelf",
+    "title": "Étagère Kumi",
+    "price": 680,
+    "shortDescription": "Étagère modulaire en acier et bois.",
+    "description": "L'étagère Kumi propose une structure modulaire qui s'adapte à votre intérieur. Ses montants en acier et ses tablettes en bois clair créent un contraste graphique pour mettre en valeur vos objets.",
+    "images": [
+      "assets/images/kumi.jpg"
+    ],
+    "featured": false,
+    "published": true
+  }
+]

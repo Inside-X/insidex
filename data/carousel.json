@@ -1,0 +1,17 @@
+[
+  {
+    "image": "assets/images/amani.jpg",
+    "productId": "amani-sofa",
+    "alt": "Canapé Amani en tissu bouclé dans un salon lumineux"
+  },
+  {
+    "image": "assets/images/neko.jpg",
+    "productId": "neko-lounge",
+    "alt": "Fauteuil Neko avec piètement en métal noir"
+  },
+  {
+    "image": "assets/images/sora.jpg",
+    "productId": "sora-table",
+    "alt": "Table basse Sora en bois clair"
+  }
+]
