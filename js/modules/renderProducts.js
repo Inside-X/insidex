@@ -24,8 +24,21 @@ function buildProductCard(product) {
   title.textContent = product.title;
 
   const price = document.createElement('p');
-  price.className = 'price';
-  price.textContent = currencyFormatter.format(product.price);
+  price.className = 'price product-price';
+  if (product.oldPrice) {
+    const oldPrice = document.createElement('span');
+    oldPrice.className = 'old';
+    oldPrice.textContent = currencyFormatter.format(product.oldPrice);
+    price.appendChild(oldPrice);
+  }
+  const currentPrice = document.createElement('span');
+  currentPrice.className = 'current';
+  currentPrice.textContent = currencyFormatter.format(product.price);
+  price.appendChild(currentPrice);
+
+  const benefit = document.createElement('p');
+  benefit.className = 'product-benefit';
+  benefit.textContent = product.benefit || product.shortDescription || '';
 
   const button = document.createElement('button');
   button.className = 'btn add-to-cart';
@@ -35,7 +48,7 @@ function buildProductCard(product) {
   button.dataset.price = product.price;
   button.textContent = 'Ajouter';
 
-  info.append(title, price, button);
+  info.append(title, price, benefit, button);
   card.append(image, info);
 
   return card;

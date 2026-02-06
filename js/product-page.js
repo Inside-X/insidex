@@ -25,7 +25,7 @@ function renderProduct(product) {
 
   document.getElementById('productPrice').textContent = currency.format(product.price);
   const oldPrice = document.getElementById('productOldPrice');
-  oldPrice.textContent = '';
+  oldPrice.textContent = product.oldPrice ? currency.format(product.oldPrice) : '';
 
   document.getElementById('productDescription').textContent =
     product.description || product.shortDescription || '';

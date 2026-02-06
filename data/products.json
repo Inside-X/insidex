@@ -4,6 +4,8 @@
     "slug": "canape-amani",
     "title": "Canapé Amani",
     "price": 1890,
+    "oldPrice": 2090,
+    "benefit": "Livraison offerte + coussins inclus",
     "shortDescription": "Canapé 3 places aux lignes épurées et tissu bouclé doux.",
     "description": "Le canapé Amani apporte une élégance discrète à votre salon grâce à ses volumes généreux, sa structure en bois certifié et son tissu bouclé durable. Son assise profonde est pensée pour le confort quotidien tout en conservant une silhouette minimaliste.",
     "images": [
@@ -22,6 +24,8 @@
     "slug": "fauteuil-neko",
     "title": "Fauteuil Neko",
     "price": 790,
+    "oldPrice": 890,
+    "benefit": "Confort lounge, format compact",
     "shortDescription": "Fauteuil lounge compact avec piètement en métal noir.",
     "description": "Le fauteuil Neko combine un dossier enveloppant et une assise ferme pour soutenir une posture relaxée. Son piètement fin en acier thermolaqué contraste avec le tissu texturé pour une touche contemporaine.",
     "images": [
@@ -40,6 +44,8 @@
     "slug": "table-basse-sora",
     "title": "Table basse Sora",
     "price": 520,
+    "oldPrice": 590,
+    "benefit": "Bois clair certifié, finition mate",
     "shortDescription": "Table basse ovale en bois clair et piètement sculptural.",
     "description": "La table basse Sora se distingue par son plateau ovale en chêne clair et son piètement sculpté inspiré des formes organiques. Elle apporte chaleur et légèreté à tout espace de vie.",
     "images": [
@@ -56,6 +62,8 @@
     "id": "kahawa-dining",
     "slug": "table-a-manger-kahawa",
     "price": 1490,
+    "oldPrice": 1650,
+    "benefit": "Extension fluide, finitions premium",
     "shortDescription": "Table extensible pour 6 à 8 personnes en noyer.",
     "description": "La table Kahawa est conçue pour les moments partagés. Son mécanisme d'extension fluide et son placage en noyer huilé offrent un équilibre parfait entre fonctionnalité et raffinement.",
     "images": [
@@ -73,6 +81,8 @@
     "title": "Lit Kila",
     "slug": "lit-kila",
     "price": 1290,
+    "oldPrice": 1440,
+    "benefit": "Tête de lit capitonnée incluse",
     "shortDescription": "Lit plateforme avec tête de lit capitonnée.",
     "description": "Le lit Kila allie minimalisme et confort grâce à sa structure plateforme en bois massif et sa tête de lit capitonnée. Il s'intègre parfaitement aux chambres épurées et lumineuses.",
     "images": [
@@ -90,6 +100,8 @@
     "title": "Étagère Kumi",
     "slug": "etagere-kumi",
     "price": 680,
+    "oldPrice": 760,
+    "benefit": "Modulez selon votre espace",
     "shortDescription": "Étagère modulaire en acier et bois.",
     "description": "L'étagère Kumi propose une structure modulaire qui s'adapte à votre intérieur. Ses montants en acier et ses tablettes en bois clair créent un contraste graphique pour mettre en valeur vos objets.",
     "images": [

@@ -34,6 +34,54 @@ main h2{ font-size:1.4rem; margin:18px 0 10px; }
 .price{ display:flex; gap:8px; align-items:baseline; }
 .price .old{ color:var(--muted); text-decoration: line-through; }
 .price .current{ color:var(--primary); font-weight:700; }
+.product-benefit{ color:var(--muted); font-size:.92rem; }
+.product-price{ display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
+
+/* Sections P0 */
+.section{ padding: 24px 0 8px; }
+.section-heading{ display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
+.section-heading .btn{ align-self:flex-start; }
+.eyebrow{ text-transform:uppercase; letter-spacing:.12em; font-size:.72rem; color:var(--muted); font-weight:600; }
+.section-subtitle{ color:var(--muted); max-width:600px; }
+
+.trust-bar{ padding: 10px 0 22px; background: #fff; border-bottom:1px solid var(--border); }
+.trust-grid{ display:grid; gap:12px; }
+.trust-card{
+  background: #f8fafc;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:14px;
+}
+.trust-card h3{ font-size:1rem; margin-bottom:6px; }
+.trust-card p{ color:var(--muted); }
+
+.feature-grid,
+.offer-grid,
+.kit-grid{ display:grid; gap:12px; }
+.feature-card,
+.offer-card,
+.kit-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:16px;
+  box-shadow:var(--shadow);
+}
+.feature-card h3,
+.offer-card h3,
+.kit-card h3{ font-size:1.02rem; margin-bottom:6px; }
+.feature-card p,
+.offer-card p,
+.kit-card p{ color:var(--muted); }
+
+@media (min-width: 720px){
+  .section-heading{ flex-direction:row; align-items:center; justify-content:space-between; }
+  .section-heading .btn{ align-self:center; }
+  .trust-grid{ grid-template-columns: repeat(3, 1fr); }
+  .feature-grid,
+  .offer-grid,
+  .kit-grid{ grid-template-columns: repeat(3, 1fr); }
+}
 
 /* Badge quantité limitée */
 .limited-badge{
