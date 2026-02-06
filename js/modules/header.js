@@ -15,4 +15,3 @@ export function initHeader() {
     alert("👤 Espace compte bientôt disponible !");
   });
 }
-``
