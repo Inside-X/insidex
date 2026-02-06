@@ -4,6 +4,7 @@ import { updateBadge } from './modules/cart.js';
 import { initCartDrawer, wireAddToCartButtons } from './modules/cartDrawer.js';
 import { initProductLinks } from './modules/productLinks.js';
 import { renderCarousel } from './modules/renderCarousel.js';
+import { renderProducts } from './modules/renderProducts.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   initHeader();
@@ -12,6 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initCarousel();     // IMPORTANT : c'est ici que ton carrousel démarre
   }
   initCartDrawer();
+  await renderProducts();
   wireAddToCartButtons();
   initProductLinks();
   updateBadge();
