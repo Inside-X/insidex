@@ -1,0 +1,178 @@
+/* RESET & tokens */
+*{ box-sizing:border-box; margin:0; padding:0; }
+:root{
+  --bg:#f7f7f7;
+  --surface:#ffffff;
+  --text:#111827;
+  --muted:#6b7280;
+  --primary:#2563eb;
+  --primary-contrast:#ffffff;
+  --border:#e5e7eb;
+  --shadow:0 1px 2px rgba(0,0,0,.05);
+  --danger:#ef4444;
+  --accent:#f59e0b;
+}
+html,body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  line-height:1.5;
+}
+.container{ width:min(1200px,92%); margin-inline:auto; }
+
+/* Announcement */
+.announcement{ background:#0f172a; color:#e5e7eb; font-size:.92rem; }
+.announcement .container{ padding:8px 0; text-align:center; }
+
+/* Header façon Respire */
+.site-header{
+  position:sticky; top:0; z-index:50;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  box-shadow:var(--shadow);
+}
+.header-row{
+  display:grid; grid-template-columns:auto 1fr auto;
+  align-items:center; gap:12px; padding:12px 0;
+}
+.brand{ display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit; }
+.logo-img{ height:44px; width:auto; display:block; }
+.brand-name{ font-weight:700; font-size:1.05rem; letter-spacing:.2px; }
+
+/* Nav centrée */
+.nav{
+  display:flex; justify-content:center; align-items:center; gap:22px;
+}
+.nav a{
+  text-decoration:none; color:var(--text); font-weight:500;
+  padding:6px 2px; border-radius:6px;
+}
+.nav a:hover{ color:var(--primary); }
+.badge-link{ position:relative; }
+.badge-link::after{
+  content:"-10%"; position:absolute; top:-8px; right:-16px;
+  background:var(--accent); color:#111; border-radius:999px;
+  padding:2px 6px; font-size:.7rem; font-weight:700;
+}
+
+/* Icons (droite) */
+.header-icons{ display:flex; align-items:center; gap:10px; justify-self:end; }
+.icon-btn{
+  background:transparent; border:1px solid transparent; cursor:pointer;
+  padding:8px; border-radius:8px; color:#1f2937;
+}
+.icon-btn:hover{ background:#f3f4f6; }
+.cart-btn{ position:relative; }
+.cart-count{
+  position:absolute; top:2px; right:2px;
+  min-width:18px; height:18px; padding:0 5px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:.75rem; font-weight:700;
+  background:var(--danger); color:#fff; border-radius:999px;
+}
+
+/* Mobile nav */
+.menu-btn{ display:none; }
+.mobile-nav{
+  display:none; flex-direction:column; gap:4px;
+  padding:8px 0 12px; border-bottom:1px solid var(--border);
+}
+.mobile-nav a{ padding:10px 4px; text-decoration:none; color:var(--text); }
+.mobile-nav a:hover{ color:var(--primary); }
+.mobile-nav.open{ display:flex; }
+
+/* HERO */
+.hero{ background:linear-gradient(135deg,#eef2ff,#eff6ff); padding:26px 0 32px; }
+.hero-grid{ display:grid; gap:18px; align-items:center; }
+.hero-text h1{ font-size:clamp(1.6rem, 2vw + 1rem, 2.3rem); margin-bottom:8px; }
+.hero-text p{ color:var(--muted); margin-bottom:14px; }
+.btn{
+  display:inline-block; background:var(--primary); color:var(--primary-contrast);
+  border:none; padding:10px 16px; border-radius:8px; cursor:pointer;
+  text-decoration:none; font-weight:600;
+}
+.btn:hover{ filter:brightness(.95); }
+
+@media (min-width:900px){
+  .hero-grid{ grid-template-columns: 1.05fr 1fr; }
+}
+
+/* CARROUSEL PERSPECTIVE (taille moyenne) */
+.hero-media{ width:100%; }
+.carousel{
+  position:relative; width:100%; height:260px;       /* taille moyenne */
+  perspective:1000px; border:1px solid var(--border);
+  border-radius:14px; background:#fff; box-shadow:var(--shadow);
+  overflow:hidden; /* masque les débords */
+}
+.carousel-track{
+  position:relative; width:100%; height:100%;
+}
+.carousel-item{
+  position:absolute; top:50%; left:50%;
+  transform: translate(-50%,-50%);
+  max-width:80%; max-height:90%;
+  width:auto; height:auto;
+  object-fit:contain; background:#ffffff;
+  border-radius:10px; padding:8px;
+  box-shadow:0 6px 16px rgba(17,24,39,.08);
+  transition: transform 900ms ease, filter 900ms ease, opacity 900ms ease, z-index 0ms step-end;
+  opacity:0; z-index:1;
+}
+
+/* état calculé par JS :
+   - centre : scale(1) rotateY(0) opacity:1 z-index:3
+   - gauche/droite : translateX(-/+40%) scale(.85) rotateY(+/-12deg) opacity:.8 filter:blur(1px) saturate(.95)
+   - autres : opacity:0 scale(.7) (hors champ) */
+
+/* Dots */
+.carousel-dots{
+  position:absolute; left:50%; bottom:10px; transform:translateX(-50%);
+  display:flex; gap:6px;
+}
+.carousel-dots button{
+  width:8px; height:8px; border-radius:999px; border:none; cursor:pointer;
+  background:rgba(0,0,0,.25);
+}
+.carousel-dots button.active{ background:#111; }
+
+/* PRODUITS */
+main h2{ font-size:1.4rem; margin:18px 0 10px; }
+.products-grid{
+  display:grid; grid-template-columns: repeat(1,1fr); gap:14px;
+  margin:12px 0 30px;
+}
+@media (min-width:640px){ .products-grid{ grid-template-columns: repeat(2,1fr); } }
+@media (min-width:980px){ .products-grid{ grid-template-columns: repeat(3,1fr); } }
+
+.product-card{
+  position:relative; background:var(--surface); border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; box-shadow:var(--shadow); display:flex; flex-direction:column;
+}
+.product-card img{
+  width:100%; height:auto;
+  object-fit:contain; background:#f5f5f5; padding:8px; border-radius:8px;
+}
+.product-info{ padding:12px; display:grid; gap:8px; }
+.product-info h3{ font-size:1rem; line-height:1.3; }
+.price{ display:flex; gap:8px; align-items:baseline; }
+.price .old{ color:var(--muted); text-decoration: line-through; }
+.price .current{ color:var(--primary); font-weight:700; }
+
+/* Badge quantité limitée */
+.limited-badge{
+  position:absolute; top:10px; left:10px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color:#fff; font-size:.78rem; font-weight:700;
+  padding:6px 10px; border-radius:999px; box-shadow: var(--shadow);
+}
+
+/* Footer */
+.footer{ background:var(--surface); border-top:1px solid var(--border); padding:16px 0; color:var(--muted); text-align:center; }
+
+/* Responsive header */
+@media (max-width: 920px){
+  .nav{ display:none; }
+  .menu-btn{ display:inline-flex; justify-self:end; }
+  .brand-name{ display:none; }
+}

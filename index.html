@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Inside X - site officiel</title>
+
+  <!-- Police (Inter) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <!-- CSS scindé -->
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/carousel.css">
+</head>
+<body id="accueil">
+  <!-- Barre d’annonce -->
+  <div class="announcement" role="note">
+    <div class="container">
+      Livraison offerte partout à Mayotte • installation en quelques minutes • Payez en plusieurs fois sans frais
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="container header-row">
+      <!-- Logo + texte -->
+      <a href="#accueil" class="brand">
+        <img class="logo-img" src="assets/images/logo-inside-home.png" alt="Inside X - logo" />
+        <span class="brand-name">Inside X</span>
+      </a>
+
+      <!-- Menu principal -->
+      <nav class="nav" aria-label="Navigation principale">
+        <a href="#nouveautes">Nouveautés</a>
+        <a href="#produits">Produits</a>
+        <a class="badge-link" href="#offres">Offres</a>
+        <a href="#kits">Kits Salon</a>
+      </nav>
+
+      <!-- Icônes -->
+      <div class="header-icons">
+        <button class="icon-btn" id="searchBtn" aria-label="Rechercher" title="Rechercher">
+          <!-- loupe -->
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="7"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </button>
+        <button class="icon-btn" id="accountBtn" aria-label="Mon compte" title="Mon compte">
+          <!-- user -->
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21a8 8 0 0 0-16 0"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </button>
+        <button class="icon-btn cart-btn" id="cartBtn" aria-label="Panier" title="Panier">
+          <!-- cart -->
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="9" cy="21" r="1"></circle>
+            <circle cx="20" cy="21" r="1"></circle>
+            <path d="M1 1h4l2.68 12.39A2 2 0 0 0 9.62 15h8.76a2 2 0 0 0 1.97-1.61L23 6H6"></path>
+          </svg>
+          <span class="cart-count" id="cartCount">0</span>
+        </button>
+
+        <!-- Menu mobile -->
+        <button class="icon-btn menu-btn" id="menuBtn" aria-label="Ouvrir le menu" title="Menu">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Nav mobile -->
+    <div class="mobile-nav" id="mobileNav" aria-hidden="true">
+      <a href="#nouveautes">Nouveautés</a>
+      <a href="#produits">Produits</a>
+      <a href="#offres">Offres</a>
+      <a href="#kits">Kits Salon</a>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-text">
+        <h1>Le luxe, plus proche que jamais</h1>
+        <p>Qualité, Confort et Luxury — Le bien‑être, juste pour vous.</p>
+        <a class="btn" href="#produits">Voir les produits</a>
+      </div>
+
+      <!-- Carrousel -->
+      <div class="hero-media">
+<div class="carousel" id="heroCarousel" aria-label="Carrousel produits">
+  <div class="carousel-track" id="carouselTrack">
+    <img class="carousel-item" src="assets/images/sora.jpg" alt="Sora — canapé gris" />
+    <img class="carousel-item" src="assets/images/kahawa.jpg" alt="Kahawa — canapé marron" />
+    <img class="carousel-item" src="assets/images/amani.jpg" alt="Amani — canapé beige" />
+    <img class="carousel-item" src="assets/images/kila.jpg" alt="Kila — fauteuil rond" />
+    <img class="carousel-item" src="assets/images/neko.jpg" alt="Neko — canapé compact" />
+    <img class="carousel-item" src="assets/images/kumi.jpg" alt="Kumi — canapé modulable" />
+  </div>
+
+  <div class="carousel-dots" id="carouselDots" aria-label="Navigation du carrousel"></div>
+</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ANCRE Nouveautés (placeholder) -->
+  <section class="container" id="nouveautes" aria-label="Nouveautés" style="padding: 8px 0 0;"></section>
+
+  <!-- PRODUITS -->
+  <main class="container" id="produits">
+    <h2>Produits populaires</h2>
+    <div class="products-grid">
+      <!-- 6 produits (fallback statique) -->
+      <!-- SORA -->
+      <article class="product-card">
+        <div class="limited-badge">Quantité limitée</div>
+        <img src="assets/images/sora.jpg" alt="Sora — Canapé compressé (3,3 m)" />
+        <div class="product-info">
+          <h3>Sora — Canapé compressé (3,3 m)</h3>
+          <p class="price"><span class="old">1 989 €</span><span class="current">1 759 €</span></p>
+          <button class="btn add-to-cart" data-id="sora" data-product="Sora — Canapé compressé (3,3 m)" data-price="1759">Ajouter</button>
+        </div>
+      </article>
+      <!-- KAHAWA -->
+      <article class="product-card">
+        <div class="limited-badge">Quantité limitée</div>
+        <img src="assets/images/kahawa.jpg" alt="Kahawa — Canapé compressé (2,4 m)" />
+        <div class="product-info">
+          <h3>Kahawa — Canapé compressé (2,4 m)</h3>
+          <p class="price"><span class="old">1 689 €</span><span class="current">1 569 €</span></p>
+          <button class="btn add-to-cart" data-id="kahawa" data-product="Kahawa — Canapé compressé (2,4 m)" data-price="1569">Ajouter</button>
+        </div>
+      </article>
+      <!-- AMANI -->
+      <article class="product-card">
+        <div class="limited-badge">Quantité limitée</div>
+        <img src="assets/images/amani.jpg" alt="Amani — Canapé compressé (3,16 m)" />
+        <div class="product-info">
+          <h3>Amani — Canapé compressé (3,16 m)</h3>
+          <p class="price"><span class="old">1 789 €</span><span class="current">1 629 €</span></p>
+          <button class="btn add-to-cart" data-id="amani" data-product="Amani — Canapé compressé (3,16 m)" data-price="1629">Ajouter</button>
+        </div>
+      </article>
+      <!-- KILA -->
+      <article class="product-card">
+        <div class="limited-badge">Quantité limitée</div>
+        <img src="assets/images/kila.jpg" alt="Kila — Fauteuil compressé (rond)" />
+        <div class="product-info">
+          <h3>Kila — Fauteuil compressé (rond)</h3>
+          <p class="price"><span class="old">679 €</span><span class="current">599 €</span></p>
+          <button class="btn add-to-cart" data-id="kila" data-product="Kila — Fauteuil compressé (rond)" data-price="599">Ajouter</button>
+        </div>
+      </article>
+      <!-- NEKO -->
+      <article class="product-card">
+        <div class="limited-badge">Quantité limitée</div>
+        <img src="assets/images/neko.jpg" alt="Neko — Canapé compressé (1,55 m)" />
+        <div class="product-info">
+          <h3>Neko — Canapé compressé (1,55 m)</h3>
+          <p class="price"><span class="old">775 €</span><span class="current">659 €</span></p>
+          <button class="btn add-to-cart" data-id="neko" data-product="Neko — Canapé compressé (1,55 m)" data-price="659">Ajouter</button>
+        </div>
+      </article>
+      <!-- KUMI -->
+      <article class="product-card">
+        <div class="limited-badge">Quantité limitée</div>
+        <img src="assets/images/kumi.jpg" alt="Kumi — Canapé modulable" />
+        <div class="product-info">
+          <h3>Kumi — Canapé modulable</h3>
+          <p class="price"><span class="old">1 329 €</span><span class="current">1 199 €</span></p>
+          <button class="btn add-to-cart" data-id="kumi" data-product="Kumi — Canapé modulable" data-price="1199">Ajouter</button>
+        </div>
+      </article>
+    </div>
+  </main>
+
+  <!-- OFFRES / KITS (ancres placeholders) -->
+  <section class="container" id="offres" aria-label="Offres" style="padding: 8px 0 0;"></section>
+  <section class="container" id="kits" aria-label="Kits Salon" style="padding: 8px 0 24px;"></section>
+
+  <!-- FOOTER -->
+  <footer class="footer" id="contact">
+    <div class="container">
+      <p>© <span id="year"></span> Inside X — Tous droits réservés.</p>
+    </div>
+  </footer>
+
+  <!-- MINI-PANIER (drawer) -->
+  <aside class="cart-drawer" id="cartDrawer" aria-hidden="true" aria-label="Mini-panier">
+    <div class="cart-drawer__header">
+      <h3>Panier</h3>
+      <button class="icon-btn" id="cartCloseBtn" aria-label="Fermer le panier">✕</button>
+    </div>
+    <div class="cart-drawer__content" id="cartDrawerList" role="list"></div>
+    <div class="cart-drawer__footer">
+      <div class="cart-drawer__total">
+        <span>Total</span>
+        <strong id="cartDrawerTotal">0 €</strong>
+      </div>
+      <div class="cart-drawer__actions">
+        <button class="btn" id="goToCartBtn">Voir le panier</button>
+        <button class="btn btn-outline" id="checkoutBtn">Passer la commande</button>
+        <button class="btn btn-link danger" id="clearCartBtn">Vider</button>
+      </div>
+    </div>
+  </aside>
+  <div class="cart-drawer-backdrop" id="cartBackdrop" hidden></div>
+
+  <!-- SECTION PANIER (vue complète) -->
+  <section class="container" id="panier" aria-label="Panier" style="padding: 8px 0 32px; display:none;">
+    <h2>Votre panier</h2>
+    <div id="cartPageContainer" class="cart-page"></div>
+  </section>
+
+  <!-- JS en modules -->
+<script src="js/main.js" type="module"></script>
+</body>
+</html>

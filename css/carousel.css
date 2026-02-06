@@ -1,0 +1,47 @@
+/* HERO */
+.hero{ background:linear-gradient(135deg,#eef2ff,#eff6ff); padding:26px 0 32px; }
+.hero-grid{ display:grid; gap:18px; align-items:center; }
+.hero-text h1{ font-size:clamp(1.6rem, 2vw + 1rem, 2.3rem); margin-bottom:8px; }
+.hero-text p{ color:var(--muted); margin-bottom:14px; }
+@media (min-width:900px){
+  .hero-grid{ grid-template-columns: 1.05fr 1fr; }
+}
+
+/* CARROUSEL PERSPECTIVE (taille moyenne) */
+.hero-media{ width:100%; }
+.carousel{
+  position:relative; width:100%; height:260px; /* taille moyenne */
+  perspective:1000px; border:1px solid var(--border);
+  border-radius:14px; background:#fff; box-shadow:var(--shadow);
+  overflow:hidden; /* masque les débords */
+}
+.carousel-track{
+  position:relative; width:100%; height:100%;
+}
+.carousel-item{
+  position:absolute; top:50%; left:50%;
+  transform: translate(-50%,-50%);
+  max-width:80%; max-height:90%;
+  width:auto; height:auto;
+  object-fit:contain; background:#ffffff;
+  border-radius:10px; padding:8px;
+  box-shadow:0 6px 16px rgba(17,24,39,.08);
+  transition: transform 900ms ease, filter 900ms ease, opacity 900ms ease, z-index 0ms step-end;
+  opacity:0; z-index:1;
+}
+/* états calculés par JS :
+ - centre : scale(1) rotateY(0) opacity:1 z-index:3
+ - gauche/droite : translateX(-/+40%) scale(.85) rotateY(+/-12deg) opacity:.8 filter:blur(1px) saturate(.95)
+ - autres : opacity:0 scale(.7) (hors champ)
+*/
+
+/* Dots */
+.carousel-dots{
+  position:absolute; left:50%; bottom:10px; transform:translateX(-50%);
+  display:flex; gap:6px;
+}
+.carousel-dots button{
+  width:8px; height:8px; border-radius:999px; border:none; cursor:pointer;
+  background:rgba(0,0,0,.25);
+}
+.carousel-dots button.active{ background:#111; }
