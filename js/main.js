@@ -6,8 +6,10 @@ import { initProductLinks } from './modules/productLinks.js';
 import { renderCarousel } from './modules/renderCarousel.js';
 import { renderProducts } from './modules/renderProducts.js';
 import { renderTexts } from './modules/renderTexts.js';
+import { initRoleSimulation } from './modules/role.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
+  initRoleSimulation();
   initHeader();
   await renderTexts();
   const slideCount = await renderCarousel();

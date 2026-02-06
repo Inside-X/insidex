@@ -4,6 +4,7 @@ import { addToCart, updateBadge } from './modules/cart.js';
 import { getAllProducts, getProductBySlug } from './modules/productService.js';
 import { showToast } from './modules/toast.js';
 import { renderTexts } from './modules/renderTexts.js';
+import { initRoleSimulation } from './modules/role.js';
 
 const currency = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 
@@ -64,6 +65,7 @@ async function resolveProduct() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  initRoleSimulation();
   initHeader();
   initCartDrawer();
   updateBadge();
