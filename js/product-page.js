@@ -5,6 +5,7 @@ import { getAllProducts, getProductBySlug } from './modules/productService.js';
 import { showToast } from './modules/toast.js';
 import { renderTexts } from './modules/renderTexts.js';
 import { initRoleSimulation } from './modules/role.js';
+import { initLeadCapture } from './modules/leadCapture.js';
 
 const currency = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 
@@ -70,6 +71,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initCartDrawer();
   updateBadge();
   await renderTexts();
+  initLeadCapture();
 
   const product = await resolveProduct();
 

@@ -108,6 +108,26 @@
     </section>
   </main>
 
+  <section class="lead-section" id="lead" aria-label="Demande de devis ou rappel">
+    <div class="container lead-grid">
+      <div>
+        <p class="eyebrow">Accompagnement</p>
+        <h2>Besoin d’un devis ou d’un rappel ?</h2>
+        <p class="section-subtitle">
+          Nos conseillers reviennent vers vous sous 24h pour finaliser votre projet.
+        </p>
+      </div>
+      <form class="lead-form" id="leadForm">
+        <label class="lead-label" for="leadEmail">Email professionnel</label>
+        <div class="lead-field">
+          <input id="leadEmail" name="email" type="email" required placeholder="vous@entreprise.com" />
+          <button class="btn" type="submit">Être rappelé</button>
+        </div>
+        <p class="lead-note">Paiement en ligne bientôt disponible — recevez une estimation personnalisée.</p>
+      </form>
+    </div>
+  </section>  
+
   <footer class="footer" id="contact">
     <div class="container">
       <p>© <span id="year"></span> Inside X — Tous droits réservés.</p>
@@ -128,7 +148,7 @@
       </div>
       <div class="cart-drawer__actions">
         <button class="btn" id="goToCartBtn" type="button">Voir le panier</button>
-        <button class="btn btn-outline" id="checkoutBtn" type="button">Passer la commande</button>
+        <button class="btn btn-outline" id="checkoutBtn" type="button">Demander un devis</button>
         <button class="btn btn-link danger" id="clearCartBtn" type="button">Vider</button>
       </div>
     </div>
@@ -141,7 +161,7 @@
     <div id="cartPageContainer" class="cart-page"></div>
   </section>
 
-    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+  <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
 
   <script src="js/product-page.js" type="module"></script>
 </body>

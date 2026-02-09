@@ -98,7 +98,7 @@ function renderCartPage() {
         <strong>${currency.format(total)}</strong>
       </div>
       <div class="cart-drawer__actions">
-        <button class="btn btn-outline" id="checkoutBtnPage" type="button">Passer la commande</button>
+        <button class="btn btn-outline" id="checkoutBtnPage" type="button">Demander un devis</button>
         <button class="btn btn-link danger" id="clearCartBtnPage" type="button">Vider</button>
       </div>
     </div>
@@ -117,7 +117,7 @@ function renderCartPage() {
   }, { once: true });
 
   document.getElementById('checkoutBtnPage').addEventListener('click', () => {
-    showToast('🧾 Le passage de commande arrive bientôt !', 'info');
+    scrollToLeadSection();
   }, { once: true });
   document.getElementById('clearCartBtnPage').addEventListener('click', () => {
     clearCart(); renderCartPage(); updateBadge();
@@ -163,11 +163,21 @@ export function initCartDrawer() {
     document.getElementById('panier').scrollIntoView({ behavior: 'smooth' });
   });
   checkoutBtn.addEventListener('click', () => {
-    showToast('🧾 Le passage de commande arrive bientôt !', 'info');
+    closeCart();
+    scrollToLeadSection();
   });
 
   // Premier rendu au chargement
   renderCart();
+}
+
+function scrollToLeadSection() {
+  const leadSection = document.getElementById('lead');
+  if (leadSection) {
+    leadSection.scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+  showToast('🧾 Paiement bientôt disponible. Laissez votre email pour être rappelé.', 'info');
 }
 
 export function wireAddToCartButtons() {
