@@ -1,33 +1,39 @@
 import { loadJson } from './dataLoader.js';
 
-const PRODUCT_DATA_URL = 'data/products.json';
+const PRODUCT_DATA_URL = '/api/products';
 let cachedProducts = null;
 
-async function fetchProducts() {
-  if (Array.isArray(cachedProducts)) {
-    return cachedProducts;
-  }
-
-  const data = await loadJson(PRODUCT_DATA_URL, { cache: 'no-store' });
-  cachedProducts = Array.isArray(data) ? data : [];
-  return cachedProducts;
+async function fetchProducts(params = {}) {
+  const query = new URLSearchParams(params);
+  const url = query.toString()
+    ? `${PRODUCT_DATA_URL}?${query.toString()}`
+    : PRODUCT_DATA_URL;
+  const data = await loadJson(url, { cache: 'no-store' });
+  return Array.isArray(data) ? data : [];
 }
 
 export async function getAllProducts() {
-  return fetchProducts();
+  if (!Array.isArray(cachedProducts)) {
+    cachedProducts = await fetchProducts();
+  }
+  return cachedProducts;
 }
 
 export async function getPublishedProducts() {
-  const products = await fetchProducts();
-  return products
-    .filter((product) => product?.published === true)
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const products = await fetchProducts({ published: 'true' });
+  return products.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
 export async function getProductBySlug(slug) {
   if (!slug) {
     return null;
   }
-  const products = await fetchProducts();
-  return products.find((product) => product.slug === slug) || null;
+  return loadJson(`${PRODUCT_DATA_URL}?slug=${encodeURIComponent(slug)}`, { cache: 'no-store' });
+}
+
+export async function getProductById(id) {
+  if (!id) {
+    return null;
+  }
+  return loadJson(`${PRODUCT_DATA_URL}/${encodeURIComponent(id)}`, { cache: 'no-store' });
 }

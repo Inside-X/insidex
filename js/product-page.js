@@ -1,7 +1,7 @@
 import { initHeader } from './modules/header.js';
 import { initCartDrawer } from './modules/cartDrawer.js';
 import { addToCart, updateBadge } from './modules/cart.js';
-import { getAllProducts, getProductBySlug } from './modules/productService.js';
+import { getProductById, getProductBySlug } from './modules/productService.js';
 import { showToast } from './modules/toast.js';
 import { renderTexts } from './modules/renderTexts.js';
 import { initRoleSimulation } from './modules/role.js';
@@ -59,8 +59,7 @@ async function resolveProduct() {
     return getProductBySlug(slug);
   }
   if (id) {
-    const products = await getAllProducts();
-    return products.find((product) => product.id === id) || null;
+    return getProductById(id);
   }
   return null;
 }
