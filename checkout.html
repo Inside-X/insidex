@@ -179,6 +179,63 @@
           <textarea id="orderNote" name="orderNote" rows="3" placeholder="Informations additionnelles pour la livraison."></textarea>
         </section>
 
+        <section class="checkout__section checkout__section--payment">
+          <h2>Paiement en ligne</h2>
+          <p class="checkout__section-intro">Choisissez votre moyen de paiement (Stripe, PayPal ou CB).</p>
+          <div class="checkout__payment-options" role="radiogroup" aria-label="Moyens de paiement">
+            <label class="checkout__payment-option">
+              <input type="radio" name="paymentMethod" value="stripe" checked required />
+              <span>
+                <strong>Stripe</strong>
+                <span class="checkout__payment-hint">Paiement sécurisé instantané</span>
+              </span>
+            </label>
+            <label class="checkout__payment-option">
+              <input type="radio" name="paymentMethod" value="paypal" />
+              <span>
+                <strong>PayPal</strong>
+                <span class="checkout__payment-hint">Connexion à votre compte PayPal</span>
+              </span>
+            </label>
+            <label class="checkout__payment-option">
+              <input type="radio" name="paymentMethod" value="card" />
+              <span>
+                <strong>Carte bancaire (CB)</strong>
+                <span class="checkout__payment-hint">Visa, Mastercard, Amex</span>
+              </span>
+            </label>
+          </div>
+
+          <div class="checkout__fields checkout__fields--payment" id="cardFields">
+            <label>
+              Numéro de carte
+              <input type="text" id="cardNumber" name="cardNumber" inputmode="numeric" placeholder="0000 0000 0000 0000" />
+            </label>
+            <label>
+              Date d’expiration
+              <input type="text" id="cardExpiry" name="cardExpiry" placeholder="MM/AA" />
+            </label>
+            <label>
+              CVC
+              <input type="text" id="cardCvc" name="cardCvc" inputmode="numeric" placeholder="123" />
+            </label>
+          </div>
+
+          <div class="checkout__fields checkout__fields--payment">
+            <label>
+              Mode de test paiement
+              <select id="paymentOutcome" name="paymentOutcome">
+                <option value="success">Succès</option>
+                <option value="failure">Échec</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="checkout__payment-status" id="paymentStatus" aria-live="polite">
+            Aucun paiement initié pour le moment.
+          </div>
+        </section>
+        
         <div class="checkout__actions">
           <button class="btn" id="placeOrderBtn" type="submit">Finaliser la commande</button>
           <p class="checkout__helper" id="checkoutHelper">Un conseiller confirme votre créneau sous 24h.</p>

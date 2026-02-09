@@ -27,8 +27,49 @@ const selectors = {
   deliveryInsurance: document.getElementById('deliveryInsurance'),
   country: document.getElementById('country'),
   taxExempt: document.getElementById('taxExempt'),
-  form: document.getElementById('checkoutForm')
+  form: document.getElementById('checkoutForm'),
+  paymentStatus: document.getElementById('paymentStatus'),
+  paymentOutcome: document.getElementById('paymentOutcome'),
+  cardFields: document.getElementById('cardFields'),
+  paymentMethods: Array.from(document.querySelectorAll('input[name="paymentMethod"]'))
 };
+
+function getSelectedPaymentMethod() {
+  return selectors.paymentMethods.find((input) => input.checked)?.value ?? 'stripe';
+}
+
+function updatePaymentFields() {
+  const method = getSelectedPaymentMethod();
+  const showCard = method === 'card' || method === 'stripe';
+  selectors.cardFields.style.display = showCard ? 'grid' : 'none';
+  document.getElementById('cardNumber').required = showCard;
+  document.getElementById('cardExpiry').required = showCard;
+  document.getElementById('cardCvc').required = showCard;
+}
+
+function setPaymentStatus(message, status = '') {
+  selectors.paymentStatus.textContent = message;
+  selectors.paymentStatus.classList.remove('is-success', 'is-error', 'is-processing');
+  if (status) {
+    selectors.paymentStatus.classList.add(`is-${status}`);
+  }
+}
+
+async function processPayment() {
+  const method = getSelectedPaymentMethod();
+  const outcome = selectors.paymentOutcome.value;
+  setPaymentStatus(`Traitement du paiement via ${method.toUpperCase()}...`, 'processing');
+
+  await new Promise((resolve) => setTimeout(resolve, 900));
+
+  if (outcome === 'success') {
+    setPaymentStatus('Paiement accepté ✅ Votre commande est confirmée.', 'success');
+    return true;
+  }
+
+  setPaymentStatus('Paiement refusé ❌ Merci de vérifier vos informations ou réessayer.', 'error');
+  return false;
+}
 
 function getZoneMultiplier(zone) {
   switch (zone) {
@@ -134,11 +175,20 @@ async function handleSubmit(event) {
     return;
   }
 
+    const paymentSuccess = await processPayment();
+  if (!paymentSuccess) {
+    showToast('Le paiement a échoué. Votre panier reste disponible.', 'error');
+    return;
+  }
+
   await clearCart();
   await updateBadge();
   await renderCartSummary();
   showToast('✅ Commande finalisée ! Un conseiller vous recontacte rapidement.', 'success');
   selectors.form.reset();
+  selectors.paymentOutcome.value = 'success';
+  selectors.paymentMethods[0].checked = true;
+  updatePaymentFields();
   updateTotals();
 }
 
@@ -160,5 +210,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     input.addEventListener('change', handleInputChange);
   });
 
+  selectors.paymentMethods.forEach((input) => {
+    input.addEventListener('change', updatePaymentFields);
+  });
+
   selectors.form.addEventListener('submit', handleSubmit);
+  updatePaymentFields();
+  setPaymentStatus('Prêt à initier un paiement sécurisé.');
 });
