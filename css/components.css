@@ -196,3 +196,105 @@ main h2{ font-size:1.4rem; margin:18px 0 10px; }
 .toast--success{ background:#16a34a; }
 .toast--info{ background:#0f172a; }
 .toast--warning{ background:#f59e0b; color:#111; }
+
+/* Admin */
+.admin-section{ margin-top:20px; }
+.admin-grid{
+  display:grid;
+  gap:18px;
+}
+.admin-form,
+.admin-list{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:18px;
+  box-shadow:var(--shadow-soft);
+}
+.admin-form__header{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-bottom:14px;
+}
+.admin-status{
+  font-size:.9rem;
+  color:var(--muted);
+}
+.admin-status[data-tone="success"]{ color:#15803d; }
+.admin-status[data-tone="warning"]{ color:#b45309; }
+.admin-status[data-tone="info"]{ color:#0f172a; }
+
+.admin-form__section{
+  display:grid;
+  gap:10px;
+  margin-bottom:16px;
+}
+.admin-form__section h4{ font-size:1rem; }
+.admin-fields{
+  display:grid;
+  gap:12px;
+}
+.admin-form label{
+  display:grid;
+  gap:6px;
+  font-weight:600;
+  font-size:.9rem;
+}
+.admin-form input,
+.admin-form textarea{
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px 12px;
+  font-size:.95rem;
+  font-family:inherit;
+  background:#fff;
+  box-shadow:var(--shadow-soft);
+}
+.admin-form textarea{ resize:vertical; min-height:84px; }
+.admin-form__footer{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  border-top:1px solid var(--border);
+  padding-top:12px;
+}
+.admin-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.admin-toggle{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  font-weight:600;
+  font-size:.9rem;
+}
+.admin-product-list{
+  display:grid;
+  gap:12px;
+  margin-top:12px;
+}
+.admin-product-item{
+  display:grid;
+  gap:10px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:12px;
+  background:#fff;
+}
+.admin-product-info h4{ margin:0; font-size:1rem; }
+.admin-product-meta{ margin:4px 0 0; color:var(--muted); font-size:.85rem; }
+.admin-product-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+.admin-empty{ color:var(--muted); }
+
+@media (min-width: 900px){
+  .admin-grid{ grid-template-columns: 1.1fr .9fr; align-items:start; }
+  .admin-fields{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

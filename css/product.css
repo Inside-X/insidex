@@ -39,9 +39,34 @@
   color:#111827;
 }
 
+.product-sections{
+  margin-top:24px;
+  display:grid;
+  gap:14px;
+}
+.product-section{
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:16px;
+  background:var(--surface);
+  box-shadow:var(--shadow-soft);
+}
+.product-section h3{
+  margin-bottom:6px;
+  font-size:1rem;
+}
+.product-section p{
+  color:var(--muted);
+  line-height:1.6;
+  white-space:pre-line;
+}
+
 @media (min-width: 900px){
   .product-detail{
     grid-template-columns: 1.05fr 1fr;
     align-items:center;
+  }
+  .product-sections{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

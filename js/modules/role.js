@@ -1,4 +1,4 @@
-const isAdmin = false;
+const isAdmin = true;
 
 const ROLE_ADMIN = 'admin';
 const ROLE_PUBLIC = 'public';

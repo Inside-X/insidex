@@ -8,6 +8,7 @@ import { renderProducts } from './modules/renderProducts.js';
 import { renderTexts } from './modules/renderTexts.js';
 import { initRoleSimulation } from './modules/role.js';
 import { initLeadCapture } from './modules/leadCapture.js';
+import { initAdminProducts } from './modules/adminProducts.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   initRoleSimulation();
@@ -23,4 +24,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   initProductLinks();
   updateBadge();
   initLeadCapture();
+  initAdminProducts();
+
+  document.addEventListener('products:updated', async () => {
+    await renderProducts();
+    wireAddToCartButtons();
+    initProductLinks();
+    updateBadge();
+  });
 });

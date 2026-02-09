@@ -163,6 +163,148 @@
     <div class="products-grid" id="productsGrid"></div>
   </main>
 
+  <!-- ADMIN -->
+  <section class="container section admin-section" id="admin" data-role="admin" hidden>
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Admin</p>
+        <h2>Gestion des produits</h2>
+        <p class="section-subtitle">Ajoutez, modifiez ou supprimez les produits publiés instantanément.</p>
+      </div>
+    </div>
+    <div class="admin-grid">
+      <form class="admin-form" id="adminProductForm">
+        <input type="hidden" id="productId" name="id" />
+        <div class="admin-form__header">
+          <h3>Fiche produit</h3>
+          <p id="adminProductStatus" class="admin-status" data-tone="info"></p>
+        </div>
+
+        <div class="admin-form__section">
+          <h4>Informations principales</h4>
+          <div class="admin-fields">
+            <label>
+              Désignation
+              <input id="productTitle" name="title" type="text" required placeholder="Canapé Amani" />
+            </label>
+            <label>
+              Slug
+              <input id="productSlug" name="slug" type="text" placeholder="canape-amani" />
+            </label>
+            <label>
+              Prix (€)
+              <input id="productPrice" name="price" type="number" min="0" step="1" required />
+            </label>
+            <label>
+              Ancien prix (€)
+              <input id="productOldPrice" name="oldPrice" type="number" min="0" step="1" />
+            </label>
+            <label>
+              Catégorie
+              <input id="productCategory" name="category" type="text" placeholder="canapes" />
+            </label>
+            <label>
+              Images (URLs séparées par des virgules)
+              <input id="productImages" name="images" type="text" placeholder="assets/images/amani.jpg, assets/images/amani.png" />
+            </label>
+            <label>
+              Bénéfice clé
+              <input id="productBenefit" name="benefit" type="text" placeholder="Livraison offerte + coussins inclus" />
+            </label>
+            <label>
+              Résumé court
+              <input id="productShortDescription" name="shortDescription" type="text" placeholder="Canapé 3 places..." />
+            </label>
+            <label>
+              Stock
+              <input id="productStock" name="stock" type="number" min="0" step="1" />
+            </label>
+            <label>
+              Ordre d’affichage
+              <input id="productOrder" name="order" type="number" min="0" step="1" />
+            </label>
+          </div>
+        </div>
+
+        <div class="admin-form__section">
+          <h4>Description du produit</h4>
+          <label>
+            Description du produit
+            <textarea id="productDescription" name="description" rows="4"></textarea>
+          </label>
+        </div>
+
+        <div class="admin-form__section">
+          <h4>Dimensions</h4>
+          <label>
+            Dimensions
+            <textarea id="productDimensions" name="dimensions" rows="2"></textarea>
+          </label>
+        </div>
+
+        <div class="admin-form__section">
+          <h4>Caractéristiques générales</h4>
+          <label>
+            Caractéristiques générales
+            <textarea id="productGeneralFeatures" name="generalFeatures" rows="3"></textarea>
+          </label>
+        </div>
+
+        <div class="admin-form__section">
+          <h4>Matériaux et fabrication</h4>
+          <label>
+            Matériaux et fabrication
+            <textarea id="productMaterials" name="materials" rows="3"></textarea>
+          </label>
+        </div>
+
+        <div class="admin-form__section">
+          <h4>Confort et ergonomie</h4>
+          <label>
+            Confort et ergonomie
+            <textarea id="productComfort" name="comfort" rows="3"></textarea>
+          </label>
+        </div>
+
+        <div class="admin-form__section">
+          <h4>Avantages produit</h4>
+          <label>
+            Avantages produit
+            <textarea id="productAdvantages" name="advantages" rows="3"></textarea>
+          </label>
+        </div>
+
+        <div class="admin-form__section">
+          <h4>Conditionnement et installation</h4>
+          <label>
+            Conditionnement et installation
+            <textarea id="productPackaging" name="packaging" rows="3"></textarea>
+          </label>
+        </div>
+
+        <div class="admin-form__footer">
+          <label class="admin-toggle">
+            <input id="productFeatured" name="featured" type="checkbox" />
+            <span>Mis en avant</span>
+          </label>
+          <label class="admin-toggle">
+            <input id="productPublished" name="published" type="checkbox" checked />
+            <span>Publié</span>
+          </label>
+          <div class="admin-actions">
+            <button class="btn" type="submit">Enregistrer</button>
+            <button class="btn btn-outline" id="adminProductReset" type="button">Réinitialiser</button>
+          </div>
+        </div>
+      </form>
+
+      <div class="admin-list">
+        <h3>Produits enregistrés</h3>
+        <div id="adminProductList" class="admin-product-list"></div>
+      </div>
+    </div>
+  </section>
+  
   <!-- OFFRES -->
   <section class="container section" id="offres" aria-label="Offres">
     <div class="section-heading">
