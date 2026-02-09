@@ -1,4 +1,10 @@
-import { loadCart, saveCart, updateBadge } from './cart.js';
+import {
+  loadCart,
+  updateBadge,
+  setQty as setRemoteQty,
+  removeItem as removeRemoteItem,
+  clearCart as clearRemoteCart
+} from './cart.js';
 import { showToast } from './toast.js';
 
 const currency = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
@@ -14,11 +20,11 @@ const IMG_BY_ID = {
 let cartBtn, cartDrawer, cartBackdrop, cartCloseBtn, cartList, cartTotalEl, goToCartBtn, clearCartBtn, checkoutBtn;
 let cartPageContainer;
 
-function openCart() {
+async function openCart() {
   cartDrawer.classList.add('open');
   cartBackdrop.hidden = false;
   cartDrawer.setAttribute('aria-hidden', 'false');
-  renderCart();
+  await renderCart();
 }
 function closeCart() {
   cartDrawer.classList.remove('open');
@@ -26,22 +32,14 @@ function closeCart() {
   cartDrawer.setAttribute('aria-hidden', 'true');
 }
 
-function setQty(id, qty) {
-  const cart = loadCart();
-  if (!cart.items[id]) return;
-  cart.items[id].qty = Math.max(1, qty);
-  saveCart(cart);
-  updateBadge();
+async function setQty(id, qty) {
+  await setRemoteQty(id, qty);
 }
-function removeItem(id) {
-  const cart = loadCart();
-  delete cart.items[id];
-  saveCart(cart);
-  updateBadge();
+async function removeItem(id) {
+  await removeRemoteItem(id);
 }
-function clearCart() {
-  saveCart({ items: {} });
-  updateBadge();
+async function clearCart() {
+  await clearRemoteCart();
 }
 
 function lineHTML(id, it) {
@@ -64,8 +62,8 @@ function lineHTML(id, it) {
   `;
 }
 
-function renderCart() {
-  const cart = loadCart();
+async function renderCart() {
+  const cart = await loadCart();
   const entries = Object.entries(cart.items);
   cartList.innerHTML = '';
   let total = 0;
@@ -77,8 +75,8 @@ function renderCart() {
   cartBackdrop.hidden = !cartDrawer.classList.contains('open');
 }
 
-function renderCartPage() {
-  const cart = loadCart();
+async function renderCartPage() {
+  const cart = await loadCart();
   const entries = Object.entries(cart.items);
   if (entries.length === 0) {
     cartPageContainer.innerHTML = `<p>Votre panier est vide.</p>`;
@@ -105,22 +103,32 @@ function renderCartPage() {
   `;
 
   // Délégation événements sur la page panier
-  cartPageContainer.addEventListener('click', (e) => {
+  cartPageContainer.addEventListener('click', async (e) => {
     const btn = e.target.closest('button');
     if (!btn) return;
     const id = btn.dataset.id;
     const act = btn.dataset.act;
-    if (act === 'inc') setQty(id, loadCart().items[id].qty + 1);
-    if (act === 'dec') setQty(id, loadCart().items[id].qty - 1);
-    if (act === 'rm') removeItem(id);
-    renderCartPage();
+    if (act === 'inc') {
+      const current = await loadCart();
+      await setQty(id, current.items[id].qty + 1);
+    }
+    if (act === 'dec') {
+      const current = await loadCart();
+      await setQty(id, current.items[id].qty - 1);
+    }
+    if (act === 'rm') {
+      await removeItem(id);
+    }
+    await renderCartPage();
   }, { once: true });
 
   document.getElementById('checkoutBtnPage').addEventListener('click', () => {
     scrollToLeadSection();
   }, { once: true });
-  document.getElementById('clearCartBtnPage').addEventListener('click', () => {
-    clearCart(); renderCartPage(); updateBadge();
+  document.getElementById('clearCartBtnPage').addEventListener('click', async () => {
+    await clearCart();
+    await renderCartPage();
+    await updateBadge();
   }, { once: true });
 }
 
@@ -138,24 +146,37 @@ export function initCartDrawer() {
   cartPageContainer = document.getElementById('cartPageContainer');
 
   // Ouvrir / fermer
-  cartBtn.addEventListener('click', openCart);
+  cartBtn.addEventListener('click', () => {
+    openCart();
+  });
   cartCloseBtn.addEventListener('click', closeCart);
   cartBackdrop.addEventListener('click', closeCart);
 
   // Liste drawer (délégation)
-  cartList.addEventListener('click', (e) => {
+  cartList.addEventListener('click', async (e) => {
     const btn = e.target.closest('button');
     if (!btn) return;
     const id = btn.dataset.id;
     const act = btn.dataset.act;
-    if (act === 'inc') setQty(id, loadCart().items[id].qty + 1);
-    if (act === 'dec') setQty(id, loadCart().items[id].qty - 1);
-    if (act === 'rm') removeItem(id);
-    renderCart();
+    if (act === 'inc') {
+      const current = await loadCart();
+      await setQty(id, current.items[id].qty + 1);
+    }
+    if (act === 'dec') {
+      const current = await loadCart();
+      await setQty(id, current.items[id].qty - 1);
+    }
+    if (act === 'rm') {
+      await removeItem(id);
+    }
+    await renderCart();
   });
 
   // Footer drawer
-  clearCartBtn.addEventListener('click', () => { clearCart(); renderCart(); });
+  clearCartBtn.addEventListener('click', async () => {
+    await clearCart();
+    await renderCart();
+  });
   goToCartBtn.addEventListener('click', () => {
     document.getElementById('panier').style.display = 'block';
     closeCart();
@@ -185,8 +206,8 @@ export function wireAddToCartButtons() {
     btn.addEventListener("click", () => {
       const id = btn.dataset.id, name = btn.dataset.product, price = btn.dataset.price;
       // réutilise la fonction métier importée (depuis main.js)
-      import('./cart.js').then(({ addToCart }) => {
-        addToCart(id, name, price);
+      import('./cart.js').then(async ({ addToCart }) => {
+        await addToCart(id, name, price);
         showToast(`✅ ${name} ajouté au panier`, 'success');
       });
     });

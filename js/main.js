@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await renderProducts();
   wireAddToCartButtons();
   initProductLinks();
-  updateBadge();
+  await updateBadge();
   initLeadCapture();
   initAdminProducts();
 
@@ -30,6 +30,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     await renderProducts();
     wireAddToCartButtons();
     initProductLinks();
-    updateBadge();
+    await updateBadge();
   });
 });

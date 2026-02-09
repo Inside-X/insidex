@@ -36,8 +36,8 @@ function renderProduct(product) {
 
   const addBtn = document.getElementById('productAddBtn');
   addBtn.disabled = false;
-  addBtn.addEventListener('click', () => {
-    addToCart(product.id, product.title, product.price);
+  addBtn.addEventListener('click', async () => {
+    await addToCart(product.id, product.title, product.price);
     showToast(`✅ ${product.title} ajouté au panier`, 'success');
   });
   
@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initRoleSimulation();
   initHeader();
   initCartDrawer();
-  updateBadge();
+  await updateBadge();
   await renderTexts();
   initLeadCapture();
 

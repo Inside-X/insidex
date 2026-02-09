@@ -1,4 +1,5 @@
 import { showToast } from './toast.js';
+import { getUserId, setUserId, syncCartToUser, updateBadge } from './cart.js';
 
 export function initHeader() {
   // Menu mobile
@@ -27,7 +28,31 @@ export function initHeader() {
   const accountBtn = document.getElementById('accountBtn');
   if (accountBtn) {
     accountBtn.addEventListener('click', () => {
-      showToast('👤 Espace compte bientôt disponible !', 'info');
+      const currentUser = getUserId();
+      const promptLabel = currentUser
+        ? `Connecté en tant que ${currentUser}. Changer d'email ?`
+        : 'Entrez votre email pour synchroniser le panier :';
+      const input = window.prompt(promptLabel);
+      if (!input) {
+        if (currentUser) {
+          showToast(`👤 Connecté en tant que ${currentUser}.`, 'info');
+        }
+        return;
+      }
+      const userId = input.trim();
+      if (!userId) {
+        showToast('⚠️ Email invalide.', 'warning');
+        return;
+      }
+      setUserId(userId);
+      syncCartToUser(userId)
+        .then(() => updateBadge())
+        .then(() => {
+          showToast(`✅ Panier synchronisé pour ${userId}.`, 'success');
+        })
+        .catch(() => {
+          showToast('❌ Synchronisation impossible.', 'error');
+        });
     });
   }
 }
