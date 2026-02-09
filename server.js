@@ -22,11 +22,15 @@ async function loadProducts() {
 const CARTS_PATH = path.join(__dirname, 'data', 'carts.json');
 const USERS_PATH = path.join(__dirname, 'data', 'users.json');
 const LEADS_PATH = path.join(__dirname, 'data', 'leads.json');
+const ABANDONED_PATH = path.join(__dirname, 'data', 'abandoned.json');
 const JWT_SECRET = process.env.JWT_SECRET || 'insidex-demo-secret';
 const ACCESS_TOKEN_TTL = 60 * 15;
 const REFRESH_TOKEN_TTL = 60 * 60 * 24 * 7;
 const RESET_TOKEN_TTL = 60 * 30;
 
+const ABANDONED_CART_DELAY_MS = Number(process.env.ABANDONED_CART_DELAY_MS) || 1000 * 60 * 30;
+
+const abandonedTimers = new Map();
 function base64UrlEncode(value) {
   return Buffer.from(value)
     .toString('base64')
@@ -164,6 +168,28 @@ async function saveLeads(data) {
   await writeFile(LEADS_PATH, JSON.stringify(data, null, 2), 'utf-8');
 }
 
+async function loadAbandoned() {
+  try {
+    const content = await readFile(ABANDONED_PATH, 'utf-8');
+    const data = JSON.parse(content);
+    return {
+      reminders: Array.isArray(data?.reminders) ? data.reminders : [],
+      notifications: Array.isArray(data?.notifications) ? data.notifications : []
+    };
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      const empty = { reminders: [], notifications: [] };
+      await writeFile(ABANDONED_PATH, JSON.stringify(empty, null, 2), 'utf-8');
+      return empty;
+    }
+    throw error;
+  }
+}
+
+async function saveAbandoned(data) {
+  await writeFile(ABANDONED_PATH, JSON.stringify(data, null, 2), 'utf-8');
+}
+
 function recordLeadNotification({ notifications, lead }) {
   const notification = {
     id: crypto.randomUUID(),
@@ -176,6 +202,117 @@ function recordLeadNotification({ notifications, lead }) {
   notifications.push(notification);
   console.log('Notification lead envoyée:', notification);
   return notification;
+}
+
+function cartHasItems(cart) {
+  return cart && Object.keys(cart.items || {}).length > 0;
+}
+
+function buildCartSnapshot(cart) {
+  return Object.entries(cart.items || {}).map(([id, item]) => ({
+    id,
+    name: item.name,
+    qty: item.qty,
+    price: item.price
+  }));
+}
+
+function clearAbandonedTimer(key) {
+  const timer = abandonedTimers.get(key);
+  if (timer) {
+    clearTimeout(timer);
+    abandonedTimers.delete(key);
+  }
+}
+
+function scheduleAbandonedTimer(key, delayMs, callback) {
+  clearAbandonedTimer(key);
+  const timer = setTimeout(callback, delayMs);
+  abandonedTimers.set(key, timer);
+}
+
+async function sendAbandonedEmail(userId) {
+  const data = await loadAbandoned();
+  const reminder = data.reminders.find((entry) => entry.userId === userId && entry.status === 'pending');
+  if (!reminder) {
+    clearAbandonedTimer(`user:${userId}`);
+    return;
+  }
+  const reminderAt = new Date(reminder.reminderAt).getTime();
+  if (Number.isNaN(reminderAt) || reminderAt > Date.now()) {
+    scheduleAbandonedTimer(`user:${userId}`, Math.max(reminderAt - Date.now(), 1000), () => {
+      void sendAbandonedEmail(userId);
+    });
+    return;
+  }
+  reminder.status = 'sent';
+  reminder.sentAt = new Date().toISOString();
+  const notification = {
+    id: crypto.randomUUID(),
+    reminderId: reminder.id,
+    userId,
+    email: userId,
+    channel: 'email',
+    status: 'sent',
+    createdAt: reminder.createdAt,
+    sentAt: reminder.sentAt,
+    items: reminder.items
+  };
+  data.notifications.push(notification);
+  await saveAbandoned(data);
+  console.log('Email panier abandonné envoyé:', notification);
+  clearAbandonedTimer(`user:${userId}`);
+}
+
+async function updateAbandonedReminder({ userId, cart }) {
+  if (!userId) {
+    return;
+  }
+  const key = `user:${userId}`;
+  const data = await loadAbandoned();
+  const reminder = data.reminders.find((entry) => entry.userId === userId && entry.status === 'pending');
+  if (!cartHasItems(cart)) {
+    if (reminder) {
+      reminder.status = 'cancelled';
+      reminder.cancelledAt = new Date().toISOString();
+      await saveAbandoned(data);
+    }
+    clearAbandonedTimer(key);
+    return;
+  }
+  const reminderAt = new Date(Date.now() + ABANDONED_CART_DELAY_MS).toISOString();
+  if (reminder) {
+    reminder.items = buildCartSnapshot(cart);
+    reminder.reminderAt = reminderAt;
+    reminder.updatedAt = new Date().toISOString();
+  } else {
+    data.reminders.push({
+      id: crypto.randomUUID(),
+      userId,
+      email: userId,
+      status: 'pending',
+      items: buildCartSnapshot(cart),
+      createdAt: new Date().toISOString(),
+      reminderAt
+    });
+  }
+  await saveAbandoned(data);
+  const delayMs = Math.max(new Date(reminderAt).getTime() - Date.now(), 1000);
+  scheduleAbandonedTimer(key, delayMs, () => {
+    void sendAbandonedEmail(userId);
+  });
+}
+
+async function primeAbandonedReminders() {
+  const data = await loadAbandoned();
+  data.reminders
+    .filter((reminder) => reminder.status === 'pending')
+    .forEach((reminder) => {
+      const delayMs = Math.max(new Date(reminder.reminderAt).getTime() - Date.now(), 1000);
+      scheduleAbandonedTimer(`user:${reminder.userId}`, delayMs, () => {
+        void sendAbandonedEmail(reminder.userId);
+      });
+    });
 }
 
 function normalizeCart(cart) {
@@ -236,6 +373,7 @@ app.post('/api/cart/items', async (req, res) => {
     cart.items[id].qty += Math.max(1, Number(qty));
     bucketInfo.bucket[bucketInfo.key] = cart;
     await saveCarts(carts);
+    await updateAbandonedReminder({ userId, cart });
     return res.json(cart);
   } catch (error) {
     console.error('Erreur ajout panier:', error);
@@ -258,6 +396,7 @@ app.patch('/api/cart/items/:id', async (req, res) => {
     cart.items[req.params.id].qty = Math.max(1, Number(qty));
     bucketInfo.bucket[bucketInfo.key] = cart;
     await saveCarts(carts);
+    await updateAbandonedReminder({ userId, cart });
     return res.json(cart);
   } catch (error) {
     console.error('Erreur mise à jour panier:', error);
@@ -277,6 +416,7 @@ app.delete('/api/cart/items/:id', async (req, res) => {
     delete cart.items[req.params.id];
     bucketInfo.bucket[bucketInfo.key] = cart;
     await saveCarts(carts);
+    await updateAbandonedReminder({ userId, cart });
     return res.json(cart);
   } catch (error) {
     console.error('Erreur suppression panier:', error);
@@ -294,6 +434,7 @@ app.delete('/api/cart', async (req, res) => {
     }
     bucketInfo.bucket[bucketInfo.key] = normalizeCart();
     await saveCarts(carts);
+    await updateAbandonedReminder({ userId, cart: bucketInfo.bucket[bucketInfo.key] });
     return res.json(bucketInfo.bucket[bucketInfo.key]);
   } catch (error) {
     console.error('Erreur vidage panier:', error);
@@ -320,6 +461,7 @@ app.post('/api/cart/sync', async (req, res) => {
     carts.users[userId] = userCart;
     delete carts.anonymous[anonId];
     await saveCarts(carts);
+    await updateAbandonedReminder({ userId, cart: userCart });
     return res.json(userCart);
   } catch (error) {
     console.error('Erreur sync panier:', error);
@@ -614,3 +756,5 @@ app.get('/api/products/:id', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`InsideX server running on http://localhost:${PORT}`);
 });
+
+void primeAbandonedReminders();
