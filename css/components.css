@@ -364,6 +364,38 @@ main h2{ font-size:1.4rem; margin:18px 0 10px; }
   gap:10px;
   flex-wrap:wrap;
 }
+.admin-leads{
+  margin-top:32px;
+  display:grid;
+  gap:16px;
+}
+.admin-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:.95rem;
+}
+.admin-table th,
+.admin-table td{
+  padding:12px 10px;
+  border-bottom:1px solid rgba(15, 23, 42, .08);
+  text-align:left;
+}
+.admin-table thead th{
+  font-size:.85rem;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  color:var(--muted);
+}
+.admin-pill{
+  display:inline-flex;
+  align-items:center;
+  padding:4px 10px;
+  border-radius:999px;
+  background:rgba(37, 99, 235, .08);
+  color:#1d4ed8;
+  font-size:.8rem;
+  font-weight:600;
+}
 .admin-toggle{
   display:inline-flex;
   align-items:center;

@@ -10,6 +10,7 @@ import { renderTexts } from './modules/renderTexts.js';
 import { initRoleSimulation } from './modules/role.js';
 import { initLeadCapture } from './modules/leadCapture.js';
 import { initAdminProducts } from './modules/adminProducts.js';
+import { initAdminLeads } from './modules/adminLeads.js';
 import { initCatalogSearch } from './modules/catalogSearch.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -29,6 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await updateBadge();
   initLeadCapture();
   initAdminProducts();
+  await initAdminLeads();
 
   document.addEventListener('products:updated', async () => {
     await renderProducts();

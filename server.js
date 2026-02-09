@@ -21,6 +21,7 @@ async function loadProducts() {
 
 const CARTS_PATH = path.join(__dirname, 'data', 'carts.json');
 const USERS_PATH = path.join(__dirname, 'data', 'users.json');
+const LEADS_PATH = path.join(__dirname, 'data', 'leads.json');
 const JWT_SECRET = process.env.JWT_SECRET || 'insidex-demo-secret';
 const ACCESS_TOKEN_TTL = 60 * 15;
 const REFRESH_TOKEN_TTL = 60 * 60 * 24 * 7;
@@ -139,6 +140,42 @@ async function loadCarts() {
 
 async function saveCarts(carts) {
   await writeFile(CARTS_PATH, JSON.stringify(carts, null, 2), 'utf-8');
+}
+
+async function loadLeads() {
+  try {
+    const content = await readFile(LEADS_PATH, 'utf-8');
+    const data = JSON.parse(content);
+    return {
+      leads: Array.isArray(data?.leads) ? data.leads : [],
+      notifications: Array.isArray(data?.notifications) ? data.notifications : []
+    };
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      const empty = { leads: [], notifications: [] };
+      await writeFile(LEADS_PATH, JSON.stringify(empty, null, 2), 'utf-8');
+      return empty;
+    }
+    throw error;
+  }
+}
+
+async function saveLeads(data) {
+  await writeFile(LEADS_PATH, JSON.stringify(data, null, 2), 'utf-8');
+}
+
+function recordLeadNotification({ notifications, lead }) {
+  const notification = {
+    id: crypto.randomUUID(),
+    leadId: lead.id,
+    email: lead.email,
+    channel: 'email',
+    status: 'queued',
+    createdAt: new Date().toISOString()
+  };
+  notifications.push(notification);
+  console.log('Notification lead envoyée:', notification);
+  return notification;
 }
 
 function normalizeCart(cart) {
@@ -463,6 +500,45 @@ app.post('/api/auth/reset', async (req, res) => {
     return res.json({ message: 'Mot de passe mis à jour.' });
   } catch (error) {
     console.error('Erreur reset:', error);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+app.get('/api/leads', async (req, res) => {
+  try {
+    const { leads } = await loadLeads();
+    const sorted = [...leads].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    return res.json(sorted);
+  } catch (error) {
+    console.error('Erreur chargement leads:', error);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+app.post('/api/leads', async (req, res) => {
+  try {
+    const { email, source } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email requis.' });
+    }
+    const normalizedEmail = String(email).trim().toLowerCase();
+    if (!normalizedEmail.includes('@')) {
+      return res.status(400).json({ error: 'Email invalide.' });
+    }
+    const data = await loadLeads();
+    const lead = {
+      id: crypto.randomUUID(),
+      email: normalizedEmail,
+      source: source ? String(source).trim() : 'web',
+      status: 'new',
+      createdAt: new Date().toISOString()
+    };
+    data.leads.push(lead);
+    const notification = recordLeadNotification({ notifications: data.notifications, lead });
+    await saveLeads(data);
+    return res.status(201).json({ lead, notification });
+  } catch (error) {
+    console.error('Erreur création lead:', error);
     return res.status(500).json({ error: 'Erreur serveur.' });
   }
 });
