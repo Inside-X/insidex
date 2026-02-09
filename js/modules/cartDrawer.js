@@ -96,7 +96,7 @@ async function renderCartPage() {
         <strong>${currency.format(total)}</strong>
       </div>
       <div class="cart-drawer__actions">
-        <button class="btn btn-outline" id="checkoutBtnPage" type="button">Demander un devis</button>
+        <button class="btn btn-outline" id="checkoutBtnPage" type="button">Finaliser la commande</button>
         <button class="btn btn-link danger" id="clearCartBtnPage" type="button">Vider</button>
       </div>
     </div>
@@ -123,7 +123,7 @@ async function renderCartPage() {
   }, { once: true });
 
   document.getElementById('checkoutBtnPage').addEventListener('click', () => {
-    scrollToLeadSection();
+    goToCheckout();
   }, { once: true });
   document.getElementById('clearCartBtnPage').addEventListener('click', async () => {
     await clearCart();
@@ -185,20 +185,19 @@ export function initCartDrawer() {
   });
   checkoutBtn.addEventListener('click', () => {
     closeCart();
-    scrollToLeadSection();
+    goToCheckout();
   });
 
   // Premier rendu au chargement
   renderCart();
 }
 
-function scrollToLeadSection() {
-  const leadSection = document.getElementById('lead');
-  if (leadSection) {
-    leadSection.scrollIntoView({ behavior: 'smooth' });
+function goToCheckout() {
+  if (window.location.pathname.endsWith('checkout.html')) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
-  showToast('🧾 Paiement bientôt disponible. Laissez votre email pour être rappelé.', 'info');
+  window.location.href = 'checkout.html';
 }
 
 export function wireAddToCartButtons() {

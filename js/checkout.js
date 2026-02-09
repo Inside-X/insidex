@@ -1,0 +1,164 @@
+import { initHeader } from './modules/header.js';
+import { initCartDrawer } from './modules/cartDrawer.js';
+import { clearCart, loadCart, updateBadge } from './modules/cart.js';
+import { showToast } from './modules/toast.js';
+import { renderTexts } from './modules/renderTexts.js';
+import { initRoleSimulation } from './modules/role.js';
+
+const currency = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
+
+const state = {
+  subtotal: 0,
+  shipping: 0,
+  tax: 0,
+  total: 0
+};
+
+const selectors = {
+  items: document.getElementById('checkoutItems'),
+  subtotal: document.getElementById('subtotalAmount'),
+  shipping: document.getElementById('shippingAmount'),
+  tax: document.getElementById('taxAmount'),
+  total: document.getElementById('totalAmount'),
+  shippingNotice: document.getElementById('shippingNotice'),
+  taxNotice: document.getElementById('taxNotice'),
+  deliveryMethod: document.getElementById('deliveryMethod'),
+  deliveryZone: document.getElementById('deliveryZone'),
+  deliveryInsurance: document.getElementById('deliveryInsurance'),
+  country: document.getElementById('country'),
+  taxExempt: document.getElementById('taxExempt'),
+  form: document.getElementById('checkoutForm')
+};
+
+function getZoneMultiplier(zone) {
+  switch (zone) {
+    case 'nord':
+      return 1.1;
+    case 'sud':
+      return 1.05;
+    case 'hors-zone':
+      return 1.4;
+    default:
+      return 1;
+  }
+}
+
+function calculateShipping(subtotal) {
+  const method = selectors.deliveryMethod.value;
+  const zone = selectors.deliveryZone.value;
+  const multiplier = getZoneMultiplier(zone);
+
+  let base = 0;
+  if (method === 'standard') {
+    base = subtotal >= 700 ? 0 : 25;
+  } else if (method === 'express') {
+    base = 35 + subtotal * 0.03;
+  } else if (method === 'pickup') {
+    base = 0;
+  }
+
+  const insurance = selectors.deliveryInsurance.checked ? subtotal * 0.02 : 0;
+  return (base + insurance) * multiplier;
+}
+
+function calculateTax(subtotal, shipping) {
+  const country = selectors.country.value;
+  const isExempt = selectors.taxExempt.checked;
+  const rate = country === 'Mayotte' || isExempt ? 0 : 0.2;
+  return (subtotal + shipping) * rate;
+}
+
+function updateTotals() {
+  state.shipping = calculateShipping(state.subtotal);
+  state.tax = calculateTax(state.subtotal, state.shipping);
+  state.total = state.subtotal + state.shipping + state.tax;
+
+  selectors.subtotal.textContent = currency.format(state.subtotal);
+  selectors.shipping.textContent = currency.format(state.shipping);
+  selectors.tax.textContent = currency.format(state.tax);
+  selectors.total.textContent = currency.format(state.total);
+
+  selectors.taxNotice.textContent =
+    state.tax === 0
+      ? 'TVA non applicable à Mayotte ou exonération activée.'
+      : 'TVA appliquée selon le pays de livraison.';
+
+  selectors.shippingNotice.textContent =
+    selectors.deliveryMethod.value === 'pickup'
+      ? 'Retrait gratuit au showroom (Mamoudzou).'
+      : 'Frais calculés selon la zone et le mode de livraison.';
+}
+
+async function renderCartSummary() {
+  const cart = await loadCart();
+  const entries = Object.entries(cart.items);
+  selectors.items.innerHTML = '';
+  state.subtotal = 0;
+
+  if (entries.length === 0) {
+    selectors.items.innerHTML = '<p>Votre panier est vide pour le moment.</p>';
+    updateTotals();
+    return;
+  }
+
+  entries.forEach(([id, item]) => {
+    const lineTotal = item.price * item.qty;
+    state.subtotal += lineTotal;
+    selectors.items.insertAdjacentHTML('beforeend', `
+      <div class="checkout__item" data-id="${id}">
+        <div>
+          <div class="checkout__item-title">${item.name}</div>
+          <div class="checkout__item-meta">Quantité : ${item.qty}</div>
+        </div>
+        <strong>${currency.format(lineTotal)}</strong>
+      </div>
+    `);
+  });
+
+  updateTotals();
+}
+
+function handleInputChange() {
+  updateTotals();
+}
+
+async function handleSubmit(event) {
+  event.preventDefault();
+  if (state.subtotal === 0) {
+    showToast('Votre panier est vide. Ajoutez un produit pour finaliser.', 'warning');
+    return;
+  }
+
+  if (!selectors.form.checkValidity()) {
+    selectors.form.reportValidity();
+    return;
+  }
+
+  await clearCart();
+  await updateBadge();
+  await renderCartSummary();
+  showToast('✅ Commande finalisée ! Un conseiller vous recontacte rapidement.', 'success');
+  selectors.form.reset();
+  updateTotals();
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  initRoleSimulation();
+  initHeader();
+  initCartDrawer();
+  await renderTexts();
+  await updateBadge();
+  await renderCartSummary();
+
+  [
+    selectors.deliveryMethod,
+    selectors.deliveryZone,
+    selectors.deliveryInsurance,
+    selectors.country,
+    selectors.taxExempt
+  ].forEach((input) => {
+    input.addEventListener('change', handleInputChange);
+  });
+
+  selectors.form.addEventListener('submit', handleSubmit);
+});
