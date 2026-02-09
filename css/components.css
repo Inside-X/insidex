@@ -23,6 +23,76 @@
 
 /* Grille produits */
 main h2{ font-size:1.4rem; margin:18px 0 10px; }
+.products-header{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  align-items:flex-start;
+}
+.catalog-search{
+  width:100%;
+  max-width:420px;
+  position:relative;
+  display:grid;
+  gap:8px;
+}
+.catalog-search__field{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.catalog-search input{
+  flex:1;
+  border:1px solid var(--border);
+  border-radius:999px;
+  padding:12px 16px;
+  font-size:1rem;
+  background:#fff;
+  box-shadow:var(--shadow-soft);
+}
+.catalog-search__clear{
+  padding:10px 16px;
+  box-shadow:none;
+}
+.search-suggestions{
+  position:absolute;
+  top:100%;
+  left:0;
+  right:0;
+  margin-top:6px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;
+  box-shadow:var(--shadow);
+  padding:6px;
+  display:grid;
+  gap:4px;
+  z-index:12;
+}
+.search-suggestions button{
+  border:none;
+  background:transparent;
+  text-align:left;
+  padding:10px 12px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:600;
+  display:grid;
+  gap:2px;
+}
+.search-suggestions button span{
+  font-weight:500;
+  color:var(--muted);
+  font-size:.85rem;
+}
+.search-suggestions button:hover,
+.search-suggestions button:focus-visible{
+  background:rgba(15,118,110,.08);
+}
+.search-status{
+  color:var(--muted);
+  font-size:.92rem;
+}
 .products-grid{
   display:grid; grid-template-columns: repeat(1,1fr); gap:14px;
   margin:12px 0 30px;
@@ -135,6 +205,7 @@ main h2{ font-size:1.4rem; margin:18px 0 10px; }
   .lead-grid{ grid-template-columns: 1.1fr 1fr; align-items:center; }
   .lead-field{ flex-direction:row; align-items:center; }
   .lead-field input{ flex:1; }
+  .products-header{ flex-direction:row; justify-content:space-between; align-items:center; }
 }
 
 /* Badge quantité limitée */

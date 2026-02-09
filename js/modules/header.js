@@ -21,7 +21,13 @@ export function initHeader() {
   const searchBtn = document.getElementById('searchBtn');
   if (searchBtn) {
     searchBtn.addEventListener('click', () => {
-      showToast('🔎 La recherche arrive bientôt !', 'info');
+      const searchInput = document.getElementById('catalogSearch');
+      if (searchInput) {
+        searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        searchInput.focus({ preventScroll: true });
+      } else {
+        showToast('🔎 La recherche arrive bientôt !', 'info');
+      }
     });
   }
   const accountBtn = document.getElementById('accountBtn');

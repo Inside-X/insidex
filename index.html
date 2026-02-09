@@ -161,7 +161,21 @@
 
   <!-- PRODUITS -->
   <main class="container section" id="produits">
-    <h2>Produits populaires</h2>
+    <div class="products-header">
+      <div>
+        <h2>Produits populaires</h2>
+        <p class="section-subtitle">Recherchez par nom, matière ou catégorie pour retrouver vos essentiels.</p>
+      </div>
+      <div class="catalog-search" role="search" aria-label="Recherche catalogue">
+        <label class="visually-hidden" for="catalogSearch">Rechercher un produit</label>
+        <div class="catalog-search__field">
+          <input id="catalogSearch" type="search" placeholder="Rechercher un canapé, fauteuil, table..." autocomplete="off" />
+          <button class="btn btn-outline catalog-search__clear" id="catalogClear" type="button" hidden>Effacer</button>
+        </div>
+        <div class="search-suggestions" id="catalogSuggestions" role="listbox" aria-label="Suggestions rapides" hidden></div>
+        <p class="search-status" id="catalogStatus" aria-live="polite"></p>
+      </div>
+    </div>
     <div class="products-grid" id="productsGrid"></div>
   </main>
 

@@ -54,15 +54,20 @@ function buildProductCard(product) {
   return card;
 }
 
-export async function renderProducts({ containerSelector = '#productsGrid' } = {}) {
+export async function renderProducts({
+  containerSelector = '#productsGrid',
+  products = null,
+  showFeaturedOnly = true
+} = {}) {
   const container = document.querySelector(containerSelector);
   if (!container) {
     return 0;
   }
 
-  const products = await getPublishedProducts();
-  const visibleProducts = products.filter((product) => product?.featured === true);
-
+  let visibleProducts = Array.isArray(products) ? products : await getPublishedProducts();
+  if (!Array.isArray(products) && showFeaturedOnly) {
+    visibleProducts = visibleProducts.filter((product) => product?.featured === true);
+  }
   container.innerHTML = '';
   const fragment = document.createDocumentFragment();
 

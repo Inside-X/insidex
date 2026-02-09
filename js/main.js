@@ -10,6 +10,7 @@ import { renderTexts } from './modules/renderTexts.js';
 import { initRoleSimulation } from './modules/role.js';
 import { initLeadCapture } from './modules/leadCapture.js';
 import { initAdminProducts } from './modules/adminProducts.js';
+import { initCatalogSearch } from './modules/catalogSearch.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   initRoleSimulation();
@@ -22,6 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   initCartDrawer();
   await renderProducts();
+  await initCatalogSearch();
   wireAddToCartButtons();
   initProductLinks();
   await updateBadge();
