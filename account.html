@@ -3,32 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Inside X - Produit</title>
-    <meta name="description" content="Détails produit Inside X : description, caractéristiques et prix des canapés compressés et fauteuils." />
+  <title>Inside X - Espace client</title>
+  <meta name="description" content="Gérez votre profil, vos adresses de livraison et l’historique de vos commandes Inside X." />
 
-  <!-- Police (Inter) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
     rel="stylesheet">
 
-  <!-- CSS scindé -->
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/product.css">
+  <link rel="stylesheet" href="css/account.css">
 </head>
 <body>
-  <a class="skip-link" href="#main-content">Aller au contenu principal</a>
-  <!-- Barre d’annonce -->
+  <a class="skip-link" href="#account-main">Aller directement à l’espace client</a>
+
   <div class="announcement" role="note">
     <div class="container">
       Livraison offerte partout à Mayotte • installation en quelques minutes • Payez en plusieurs fois sans frais
     </div>
   </div>
 
-  <!-- HEADER -->
   <header class="site-header">
     <div class="container header-row">
       <a href="index.html#accueil" class="brand">
@@ -65,7 +62,6 @@
           </svg>
           <span class="cart-count" id="cartCount" aria-live="polite">0</span>
         </button>
-
         <button class="icon-btn menu-btn" id="menuBtn" aria-label="Ouvrir le menu" title="Menu" type="button">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -85,85 +81,107 @@
     </div>
   </header>
 
-  <main class="container product-page" id="main-content">
-    <nav class="breadcrumbs" aria-label="Fil d’Ariane">
-      <a href="index.html#produits">Produits</a>
-      <span>/</span>
-      <span id="productBreadcrumb">Détails</span>
-    </nav>
-
-    <section class="product-detail" aria-live="polite">
-      <div class="product-detail__media">
-        <img id="productImage" src="assets/images/placeholder.png" alt="Produit Inside X" loading="lazy" decoding="async" />
-      </div>
-      <div class="product-detail__info">
-        <h1 id="productTitle">Produit</h1>
-        <p class="price">
-          <span class="old" id="productOldPrice"></span>
-          <span class="current" id="productPrice"></span>
-        </p>
-        <p id="productDescription" class="product-detail__description"></p>
-        <ul id="productFeatures" class="product-detail__features"></ul>
-        <button class="btn" id="productAddBtn" type="button">Ajouter au panier</button>
-        <a class="btn btn-outline" href="index.html#produits">Retour aux produits</a>
-      </div>
-    </section>
-    
-    <section class="product-sections" aria-label="Détails du produit">
-      <div class="product-section">
-        <h3>Désignation</h3>
-        <p id="productDesignation"></p>
-      </div>
-      <div class="product-section">
-        <h3>Description du produit</h3>
-        <p id="productLongDescription"></p>
-      </div>
-      <div class="product-section">
-        <h3>Dimensions</h3>
-        <p id="productDimensions"></p>
-      </div>
-      <div class="product-section">
-        <h3>Caractéristiques générales</h3>
-        <p id="productGeneralFeatures"></p>
-      </div>
-      <div class="product-section">
-        <h3>Matériaux et fabrication</h3>
-        <p id="productMaterials"></p>
-      </div>
-      <div class="product-section">
-        <h3>Confort et ergonomie</h3>
-        <p id="productComfort"></p>
-      </div>
-      <div class="product-section">
-        <h3>Avantages produit</h3>
-        <p id="productAdvantages"></p>
-      </div>
-      <div class="product-section">
-        <h3>Conditionnement et installation</h3>
-        <p id="productPackaging"></p>
-      </div>
-    </section>
-  </main>
-
-  <section class="lead-section" id="lead" aria-label="Demande de devis ou rappel">
-    <div class="container lead-grid">
+  <main class="container account" id="account-main">
+    <div class="account__header">
       <div>
-        <p class="eyebrow">Accompagnement</p>
-        <h2>Besoin d’un devis ou d’un rappel ?</h2>
-        <p class="section-subtitle">
-          Nos conseillers reviennent vers vous sous 24h pour finaliser votre projet.
-        </p>
+        <p class="eyebrow">Espace client</p>
+        <h1>Gérez votre profil et vos commandes</h1>
+        <p class="section-subtitle">Retrouvez vos informations personnelles, vos adresses de livraison et votre historique.</p>
       </div>
-      <form class="lead-form" id="leadForm">
-        <label class="lead-label" for="leadEmail">Email professionnel</label>
-        <div class="lead-field">
-          <input id="leadEmail" name="email" type="email" required placeholder="vous@entreprise.com" />
-          <button class="btn" type="submit">Être rappelé</button>
-        </div>
-        <p class="lead-note">Paiement en ligne bientôt disponible — recevez une estimation personnalisée.</p>
-      </form>
+      <div class="account__actions">
+        <p class="account__status" id="accountStatus" data-tone="info"></p>
+        <form class="account__lookup" id="accountLookupForm">
+          <label>
+            Rechercher par email
+            <div class="account__lookup-row">
+              <input id="accountLookupEmail" type="email" name="lookupEmail" placeholder="vous@email.com" />
+              <button class="btn btn-outline" type="submit">Rechercher</button>
+            </div>
+          </label>
+        </form>
+        <p class="account__active" id="accountActiveEmail">Aucun compte sélectionné</p>
+      </div>
     </div>
-  </section>  
+
+    <div class="account__grid">
+      <section class="account-card" aria-labelledby="profileTitle">
+        <div class="account-card__header">
+          <div>
+            <p class="eyebrow">Profil</p>
+            <h2 id="profileTitle">Informations personnelles</h2>
+          </div>
+        </div>
+        <form id="profileForm" class="account-form">
+          <label>
+            Nom complet
+            <input id="profileName" name="name" type="text" placeholder="Samia Ali" />
+          </label>
+          <label>
+            Email
+            <input id="profileEmail" name="email" type="email" required placeholder="vous@email.com" />
+          </label>
+          <label>
+            Téléphone
+            <input id="profilePhone" name="phone" type="tel" placeholder="+262 639 00 00 00" />
+          </label>
+          <button class="btn" type="submit">Enregistrer le profil</button>
+        </form>
+      </section>
+
+      <section class="account-card" aria-labelledby="addressTitle">
+        <div class="account-card__header">
+          <div>
+            <p class="eyebrow">Adresses</p>
+            <h2 id="addressTitle">Adresses de livraison</h2>
+          </div>
+        </div>
+        <div id="addressesList" class="account-list"></div>
+        <form id="addressForm" class="account-form account-form--compact">
+          <label>
+            Libellé
+            <input name="label" type="text" placeholder="Adresse principale" />
+          </label>
+          <label>
+            Nom complet
+            <input name="fullName" type="text" required placeholder="Samia Ali" />
+          </label>
+          <label>
+            Adresse
+            <input name="line" type="text" required placeholder="Rue du port, Résidence 4" />
+          </label>
+          <div class="account-form__row">
+            <label>
+              Code postal
+              <input name="postalCode" type="text" required placeholder="97600" />
+            </label>
+            <label>
+              Ville
+              <input name="city" type="text" required placeholder="Mamoudzou" />
+            </label>
+          </div>
+          <label>
+            Pays
+            <input name="country" type="text" required placeholder="Mayotte" />
+          </label>
+          <label>
+            Téléphone
+            <input name="phone" type="tel" placeholder="+262 639 00 00 00" />
+          </label>
+          <button class="btn btn-outline" type="submit">Ajouter l’adresse</button>
+        </form>
+      </section>
+
+      <section class="account-card account-card--full" aria-labelledby="ordersTitle">
+        <div class="account-card__header">
+          <div>
+            <p class="eyebrow">Historique</p>
+            <h2 id="ordersTitle">Historique de commandes</h2>
+          </div>
+        </div>
+        <div id="ordersList" class="account-list"></div>
+      </section>
+    </div>
+  </main>
 
   <footer class="footer" id="contact">
     <div class="container">
@@ -171,7 +189,6 @@
     </div>
   </footer>
 
-  <!-- MINI-PANIER (drawer) -->
   <aside class="cart-drawer" id="cartDrawer" aria-hidden="true" aria-label="Mini-panier">
     <div class="cart-drawer__header">
       <h3>Panier</h3>
@@ -192,13 +209,11 @@
   </aside>
   <div class="cart-drawer-backdrop" id="cartBackdrop" hidden></div>
 
-  <!-- SECTION PANIER (vue complète) -->
   <section class="container" id="panier" aria-label="Panier" style="padding: 8px 0 32px; display:none;">
     <h2>Votre panier</h2>
     <div id="cartPageContainer" class="cart-page"></div>
   </section>
 
-  <!-- AUTH MODAL -->
   <div class="auth-modal" id="authModal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="authTitle">
     <div class="auth-modal__backdrop" aria-hidden="true"></div>
     <div class="auth-modal__panel">
@@ -293,9 +308,9 @@
       </div>
     </div>
   </div>
-  
+
   <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
 
-  <script src="js/product-page.js" type="module"></script>
+  <script src="js/account.js" type="module"></script>
 </body>
 </html>

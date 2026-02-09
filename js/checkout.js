@@ -5,6 +5,7 @@ import { clearCart, loadCart, updateBadge } from './modules/cart.js';
 import { showToast } from './modules/toast.js';
 import { renderTexts } from './modules/renderTexts.js';
 import { initRoleSimulation } from './modules/role.js';
+import { addAddress, addOrder, setActiveEmail, upsertProfile } from './modules/accountData.js';
 
 const currency = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 
@@ -176,12 +177,61 @@ async function handleSubmit(event) {
     return;
   }
 
-    const paymentSuccess = await processPayment();
+  const paymentSuccess = await processPayment();
   if (!paymentSuccess) {
     showToast('Le paiement a échoué. Votre panier reste disponible.', 'error');
     return;
   }
 
+    const formData = new FormData(selectors.form);
+  const email = formData.get('email')?.toString().trim();
+  const fullName = formData.get('fullName')?.toString().trim();
+  const phone = formData.get('phone')?.toString().trim();
+  const cart = await loadCart();
+  const items = Object.entries(cart.items).map(([id, item]) => ({
+    id,
+    name: item.name,
+    qty: item.qty,
+    price: item.price
+  }));
+  const address = {
+    label: 'Livraison principale',
+    fullName,
+    line: formData.get('addressLine')?.toString().trim(),
+    postalCode: formData.get('postalCode')?.toString().trim(),
+    city: formData.get('city')?.toString().trim(),
+    country: formData.get('country')?.toString().trim(),
+    phone,
+    lastUsed: 'Utilisée pour la dernière commande'
+  };
+  const order = {
+    id: `CMD-${Date.now().toString(36).toUpperCase()}`,
+    date: new Date().toISOString(),
+    status: 'Confirmée',
+    items,
+    totals: {
+      subtotal: state.subtotal,
+      shipping: state.shipping,
+      tax: state.tax,
+      total: state.total
+    },
+    delivery: {
+      method: selectors.deliveryMethod.value,
+      methodLabel: selectors.deliveryMethod.options[selectors.deliveryMethod.selectedIndex]?.textContent || '',
+      zone: selectors.deliveryZone.value,
+      insurance: selectors.deliveryInsurance.checked
+    },
+    note: formData.get('orderNote')?.toString().trim(),
+    address
+  };
+
+  if (email) {
+    upsertProfile(email, { name: fullName, email, phone });
+    addAddress(email, address);
+    addOrder(email, order);
+    setActiveEmail(email);
+  }
+  
   await clearCart();
   await updateBadge();
   await renderCartSummary();
