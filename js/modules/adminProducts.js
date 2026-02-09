@@ -54,6 +54,8 @@ function mapProductToForm(form, product) {
   form.elements.price.value = product?.price ?? '';
   form.elements.oldPrice.value = product?.oldPrice ?? '';
   form.elements.category.value = product?.category ?? '';
+  form.elements.material.value = product?.material ?? '';
+  form.elements.color.value = product?.color ?? ''; 
   form.elements.images.value = Array.isArray(product?.images) ? product.images.join(', ') : '';
   form.elements.benefit.value = product?.benefit ?? '';
   form.elements.shortDescription.value = product?.shortDescription ?? '';
@@ -228,6 +230,8 @@ export async function initAdminProducts() {
       price: parseNumber(formData.get('price')),
       oldPrice: parseNumber(formData.get('oldPrice'), null),
       category: normalizeText(formData.get('category')),
+      material: normalizeText(formData.get('material')),
+      color: normalizeText(formData.get('color')),
       images,
       benefit: normalizeText(formData.get('benefit')),
       shortDescription: normalizeText(formData.get('shortDescription')),

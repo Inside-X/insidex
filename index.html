@@ -175,6 +175,37 @@
         <div class="search-suggestions" id="catalogSuggestions" role="listbox" aria-label="Suggestions rapides" hidden></div>
         <p class="search-status" id="catalogStatus" aria-live="polite"></p>
       </div>
+      <div class="catalog-filters" id="catalogFilters" aria-label="Filtres produits">
+        <div class="filter-group">
+          <label for="filterCategory">Catégorie</label>
+          <select id="filterCategory" name="filterCategory">
+            <option value="all">Toutes les catégories</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filterPrice">Prix</label>
+          <select id="filterPrice" name="filterPrice">
+            <option value="all">Tous les prix</option>
+            <option value="lt-700">Moins de 700 €</option>
+            <option value="700-1200">700 - 1 200 €</option>
+            <option value="1200-1600">1 200 - 1 600 €</option>
+            <option value="gt-1600">Plus de 1 600 €</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filterMaterial">Matière</label>
+          <select id="filterMaterial" name="filterMaterial">
+            <option value="all">Toutes matières</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filterColor">Couleur</label>
+          <select id="filterColor" name="filterColor">
+            <option value="all">Toutes les couleurs</option>
+          </select>
+        </div>
+        <button class="btn btn-outline filter-reset" id="filterReset" type="button">Réinitialiser</button>
+      </div>
     </div>
     <div class="products-grid" id="productsGrid"></div>
   </main>
@@ -218,6 +249,14 @@
             <label>
               Catégorie
               <input id="productCategory" name="category" type="text" placeholder="canapes" />
+            </label>
+            <label>
+              Matière (tag court)
+              <input id="productMaterial" name="material" type="text" placeholder="tissu, bois, acier" />
+            </label>
+            <label>
+              Couleur (tag court)
+              <input id="productColor" name="color" type="text" placeholder="beige, noir, noyer..." />
             </label>
             <label>
               Images (URLs séparées par des virgules)

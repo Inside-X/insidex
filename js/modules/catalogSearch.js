@@ -12,10 +12,52 @@ const buildHaystack = (product) => normalizeText([
   product.title,
   product.designation,
   product.category,
+  product.material,
+  product.color,
   product.shortDescription,
   product.benefit,
   product.description
 ].filter(Boolean).join(' '));
+
+const PRICE_FILTERS = {
+  'lt-700': { min: 0, max: 699 },
+  '700-1200': { min: 700, max: 1200 },
+  '1200-1600': { min: 1200, max: 1600 },
+  'gt-1600': { min: 1601, max: Number.POSITIVE_INFINITY }
+};
+
+const buildOptions = (values, fallbackLabel) => {
+  const sorted = [...new Set(values.filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b, 'fr', { sensitivity: 'base' })
+  );
+  if (sorted.length === 0) {
+    return [{ value: 'all', label: fallbackLabel }];
+  }
+  return [
+    { value: 'all', label: fallbackLabel },
+    ...sorted.map((value) => ({
+      value: normalizeText(value),
+      label: value
+    }))
+  ];
+};
+
+const applySelectOptions = (select, options) => {
+  if (!select) {
+    return;
+  }
+  const currentValue = select.value;
+  select.innerHTML = '';
+  options.forEach((option) => {
+    const entry = document.createElement('option');
+    entry.value = option.value;
+    entry.textContent = option.label;
+    select.appendChild(entry);
+  });
+  if ([...select.options].some((option) => option.value === currentValue)) {
+    select.value = currentValue;
+  }
+};
 
 function buildSuggestionButton(product) {
   const button = document.createElement('button');
@@ -39,6 +81,11 @@ export async function initCatalogSearch() {
   const suggestionsEl = document.getElementById('catalogSuggestions');
   const statusEl = document.getElementById('catalogStatus');
   const clearBtn = document.getElementById('catalogClear');
+  const categoryFilter = document.getElementById('filterCategory');
+  const priceFilter = document.getElementById('filterPrice');
+  const materialFilter = document.getElementById('filterMaterial');
+  const colorFilter = document.getElementById('filterColor');
+  const filterReset = document.getElementById('filterReset');
 
   const products = await getPublishedProducts();
   const searchIndex = products.map((product) => ({
@@ -46,6 +93,37 @@ export async function initCatalogSearch() {
     haystack: buildHaystack(product)
   }));
 
+  applySelectOptions(
+    categoryFilter,
+    buildOptions(
+      products.map((product) => product.category),
+      'Toutes les catégories'
+    )
+  );
+  applySelectOptions(
+    materialFilter,
+    buildOptions(
+      products.map((product) => product.material),
+      'Toutes matières'
+    )
+  );
+  applySelectOptions(
+    colorFilter,
+    buildOptions(
+      products.map((product) => product.color),
+      'Toutes les couleurs'
+    )
+  );
+
+  const filters = {
+    category: categoryFilter?.value ?? 'all',
+    price: priceFilter?.value ?? 'all',
+    material: materialFilter?.value ?? 'all',
+    color: colorFilter?.value ?? 'all'
+  };
+
+  const hasActiveFilters = () => Object.values(filters).some((value) => value !== 'all');
+  
   const setStatus = (message = '') => {
     if (statusEl) {
       statusEl.textContent = message;
@@ -89,7 +167,7 @@ export async function initCatalogSearch() {
     const normalizedQuery = normalizeText(trimmed);
     clearBtn.hidden = trimmed.length === 0;
 
-    if (!normalizedQuery) {
+    if (!normalizedQuery && !hasActiveFilters()) {
       await renderProducts();
       setStatus('Affichage des produits populaires.');
       if (suggestionsEl) {
@@ -99,14 +177,46 @@ export async function initCatalogSearch() {
     }
 
     const matches = searchIndex
-      .filter(({ haystack }) => haystack.includes(normalizedQuery))
+      .filter(({ haystack, product }) => {
+        if (normalizedQuery && !haystack.includes(normalizedQuery)) {
+          return false;
+        }
+        if (filters.category !== 'all' && normalizeText(product.category) !== filters.category) {
+          return false;
+        }
+        if (filters.material !== 'all' && normalizeText(product.material) !== filters.material) {
+          return false;
+        }
+        if (filters.color !== 'all' && normalizeText(product.color) !== filters.color) {
+          return false;
+        }
+        if (filters.price !== 'all') {
+          const range = PRICE_FILTERS[filters.price];
+          if (!range) {
+            return true;
+          }
+          const price = Number(product.price) || 0;
+          if (price < range.min || price > range.max) {
+            return false;
+          }
+        }
+        return true;
+      })
       .map(({ product }) => product);
 
     await renderProducts({ products: matches, showFeaturedOnly: false });
     if (matches.length === 0) {
-      setStatus(`Aucun produit ne correspond à “${trimmed}”.`);
+      if (normalizedQuery) {
+        setStatus(`Aucun produit ne correspond à “${trimmed}”.`);
+      } else {
+        setStatus('Aucun produit ne correspond à ces filtres.');
+      }
     } else {
-      setStatus(`${matches.length} produit${matches.length > 1 ? 's' : ''} trouvé${matches.length > 1 ? 's' : ''} pour “${trimmed}”.`);
+      if (normalizedQuery) {
+        setStatus(`${matches.length} produit${matches.length > 1 ? 's' : ''} trouvé${matches.length > 1 ? 's' : ''} pour “${trimmed}”.`);
+      } else {
+        setStatus(`${matches.length} produit${matches.length > 1 ? 's' : ''} affiché${matches.length > 1 ? 's' : ''} selon vos filtres.`);
+      }
     }
   };
 
@@ -154,5 +264,46 @@ export async function initCatalogSearch() {
     });
   }
 
+  const handleFilterChange = () => {
+    if (categoryFilter) {
+      filters.category = categoryFilter.value;
+    }
+    if (priceFilter) {
+      filters.price = priceFilter.value;
+    }
+    if (materialFilter) {
+      filters.material = materialFilter.value;
+    }
+    if (colorFilter) {
+      filters.color = colorFilter.value;
+    }
+    applySearch(input.value);
+  };
+
+  [categoryFilter, priceFilter, materialFilter, colorFilter].forEach((select) => {
+    if (!select) {
+      return;
+    }
+    select.addEventListener('change', handleFilterChange);
+  });
+
+  if (filterReset) {
+    filterReset.addEventListener('click', () => {
+      if (categoryFilter) {
+        categoryFilter.value = 'all';
+      }
+      if (priceFilter) {
+        priceFilter.value = 'all';
+      }
+      if (materialFilter) {
+        materialFilter.value = 'all';
+      }
+      if (colorFilter) {
+        colorFilter.value = 'all';
+      }
+      handleFilterChange();
+    });
+  }
+  
   setStatus('Affichage des produits populaires.');
 }

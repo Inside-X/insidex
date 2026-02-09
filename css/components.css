@@ -54,6 +54,35 @@ main h2{ font-size:1.4rem; margin:18px 0 10px; }
   padding:10px 16px;
   box-shadow:none;
 }
+.catalog-filters{
+  width:100%;
+  display:grid;
+  gap:12px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  align-items:end;
+}
+.filter-group{
+  display:grid;
+  gap:6px;
+}
+.filter-group label{
+  font-size:.85rem;
+  color:var(--muted);
+  font-weight:600;
+}
+.filter-group select{
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px 12px;
+  font-size:.95rem;
+  background:#fff;
+  box-shadow:var(--shadow-soft);
+}
+.filter-reset{
+  justify-self:start;
+  align-self:end;
+  padding:10px 16px;
+}
 .search-suggestions{
   position:absolute;
   top:100%;
