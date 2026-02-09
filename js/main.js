@@ -7,6 +7,7 @@ import { renderCarousel } from './modules/renderCarousel.js';
 import { renderProducts } from './modules/renderProducts.js';
 import { renderTexts } from './modules/renderTexts.js';
 import { initRoleSimulation } from './modules/role.js';
+import { initLeadCapture } from './modules/leadCapture.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   initRoleSimulation();
@@ -21,4 +22,5 @@ document.addEventListener('DOMContentLoaded', async () => {
   wireAddToCartButtons();
   initProductLinks();
   updateBadge();
+  initLeadCapture();
 });

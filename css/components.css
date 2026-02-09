@@ -74,6 +74,23 @@ main h2{ font-size:1.4rem; margin:18px 0 10px; }
 .offer-card p,
 .kit-card p{ color:var(--muted); }
 
+.lead-section{ padding: 32px 0; background: #fff; border-top:1px solid var(--border); }
+.lead-grid{ display:grid; gap:18px; }
+.lead-form{ display:grid; gap:10px; }
+.lead-label{ font-weight:600; font-size:.9rem; }
+.lead-field{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.lead-field input{
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:12px 14px;
+  font-size:1rem;
+}
+.lead-note{ color:var(--muted); font-size:.9rem; }
+
 @media (min-width: 720px){
   .section-heading{ flex-direction:row; align-items:center; justify-content:space-between; }
   .section-heading .btn{ align-self:center; }
@@ -81,6 +98,9 @@ main h2{ font-size:1.4rem; margin:18px 0 10px; }
   .feature-grid,
   .offer-grid,
   .kit-grid{ grid-template-columns: repeat(3, 1fr); }
+  .lead-grid{ grid-template-columns: 1.1fr 1fr; align-items:center; }
+  .lead-field{ flex-direction:row; align-items:center; }
+  .lead-field input{ flex:1; }
 }
 
 /* Badge quantité limitée */
