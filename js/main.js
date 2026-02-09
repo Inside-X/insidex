@@ -1,4 +1,5 @@
 import { initHeader } from './modules/header.js';
+import { initAuth } from './modules/auth.js';
 import { initCarousel } from './modules/carousel.js';
 import { updateBadge } from './modules/cart.js';
 import { initCartDrawer, wireAddToCartButtons } from './modules/cartDrawer.js';
@@ -13,6 +14,7 @@ import { initAdminProducts } from './modules/adminProducts.js';
 document.addEventListener('DOMContentLoaded', async () => {
   initRoleSimulation();
   initHeader();
+  initAuth();
   await renderTexts();
   const slideCount = await renderCarousel();
   if (slideCount > 0) {

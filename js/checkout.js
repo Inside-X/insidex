@@ -1,4 +1,5 @@
 import { initHeader } from './modules/header.js';
+import { initAuth } from './modules/auth.js';
 import { initCartDrawer } from './modules/cartDrawer.js';
 import { clearCart, loadCart, updateBadge } from './modules/cart.js';
 import { showToast } from './modules/toast.js';
@@ -195,6 +196,7 @@ async function handleSubmit(event) {
 document.addEventListener('DOMContentLoaded', async () => {
   initRoleSimulation();
   initHeader();
+  initAuth();
   initCartDrawer();
   await renderTexts();
   await updateBadge();

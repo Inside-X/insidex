@@ -1,4 +1,5 @@
 import { initHeader } from './modules/header.js';
+import { initAuth } from './modules/auth.js';
 import { initCartDrawer } from './modules/cartDrawer.js';
 import { addToCart, updateBadge } from './modules/cart.js';
 import { getProductById, getProductBySlug } from './modules/productService.js';
@@ -112,6 +113,7 @@ async function resolveProduct() {
 document.addEventListener('DOMContentLoaded', async () => {
   initRoleSimulation();
   initHeader();
+  initAuth();
   initCartDrawer();
   await updateBadge();
   await renderTexts();

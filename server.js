@@ -1,5 +1,6 @@
 import express from 'express';
 import { readFile, writeFile } from 'fs/promises';
+import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -19,6 +20,104 @@ async function loadProducts() {
 }
 
 const CARTS_PATH = path.join(__dirname, 'data', 'carts.json');
+const USERS_PATH = path.join(__dirname, 'data', 'users.json');
+const JWT_SECRET = process.env.JWT_SECRET || 'insidex-demo-secret';
+const ACCESS_TOKEN_TTL = 60 * 15;
+const REFRESH_TOKEN_TTL = 60 * 60 * 24 * 7;
+const RESET_TOKEN_TTL = 60 * 30;
+
+function base64UrlEncode(value) {
+  return Buffer.from(value)
+    .toString('base64')
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+}
+
+function base64UrlDecode(value) {
+  const padded = value.replace(/-/g, '+').replace(/_/g, '/');
+  const padLength = (4 - (padded.length % 4)) % 4;
+  return Buffer.from(padded + '='.repeat(padLength), 'base64').toString('utf-8');
+}
+
+function signToken(payload, expiresInSeconds) {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const exp = Math.floor(Date.now() / 1000) + expiresInSeconds;
+  const body = { ...payload, exp };
+  const headerPart = base64UrlEncode(JSON.stringify(header));
+  const payloadPart = base64UrlEncode(JSON.stringify(body));
+  const data = `${headerPart}.${payloadPart}`;
+  const signature = crypto
+    .createHmac('sha256', JWT_SECRET)
+    .update(data)
+    .digest('base64')
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+  return `${data}.${signature}`;
+}
+
+function verifyToken(token) {
+  if (!token) return null;
+  const [headerPart, payloadPart, signature] = token.split('.');
+  if (!headerPart || !payloadPart || !signature) return null;
+  const data = `${headerPart}.${payloadPart}`;
+  const expected = crypto
+    .createHmac('sha256', JWT_SECRET)
+    .update(data)
+    .digest('base64')
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+  if (expected.length !== signature.length) {
+    return null;
+  }
+  if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature))) {
+    return null;
+  }
+  const payload = JSON.parse(base64UrlDecode(payloadPart));
+  if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+    return null;
+  }
+  return payload;
+}
+
+function hashToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function hashPassword(password, salt) {
+  return crypto.pbkdf2Sync(password, salt, 120000, 64, 'sha512').toString('hex');
+}
+
+async function loadUsers() {
+  try {
+    const content = await readFile(USERS_PATH, 'utf-8');
+    const data = JSON.parse(content);
+    return {
+      users: data?.users ?? {}
+    };
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      const empty = { users: {} };
+      await writeFile(USERS_PATH, JSON.stringify(empty, null, 2), 'utf-8');
+      return empty;
+    }
+    throw error;
+  }
+}
+
+async function saveUsers(data) {
+  await writeFile(USERS_PATH, JSON.stringify(data, null, 2), 'utf-8');
+}
+
+function sanitizeUser(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name
+  };
+}
 
 async function loadCarts() {
   try {
@@ -187,6 +286,183 @@ app.post('/api/cart/sync', async (req, res) => {
     return res.json(userCart);
   } catch (error) {
     console.error('Erreur sync panier:', error);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email et mot de passe requis.' });
+    }
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const usersData = await loadUsers();
+    if (usersData.users[normalizedEmail]) {
+      return res.status(409).json({ error: 'Un compte existe déjà.' });
+    }
+    const salt = crypto.randomBytes(16).toString('hex');
+    const passwordHash = hashPassword(password, salt);
+    const user = {
+      id: crypto.randomUUID(),
+      email: normalizedEmail,
+      name: name ? String(name).trim() : normalizedEmail.split('@')[0],
+      salt,
+      passwordHash,
+      refreshTokenHash: null,
+      resetToken: null,
+      resetTokenExpires: null
+    };
+    const accessToken = signToken({ sub: user.id, email: user.email, type: 'access' }, ACCESS_TOKEN_TTL);
+    const refreshToken = signToken({ sub: user.id, email: user.email, type: 'refresh' }, REFRESH_TOKEN_TTL);
+    user.refreshTokenHash = hashToken(refreshToken);
+    usersData.users[normalizedEmail] = user;
+    await saveUsers(usersData);
+    return res.status(201).json({
+      user: sanitizeUser(user),
+      accessToken,
+      refreshToken,
+      expiresIn: ACCESS_TOKEN_TTL
+    });
+  } catch (error) {
+    console.error('Erreur inscription:', error);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email et mot de passe requis.' });
+    }
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const usersData = await loadUsers();
+    const user = usersData.users[normalizedEmail];
+    if (!user) {
+      return res.status(401).json({ error: 'Identifiants invalides.' });
+    }
+    const candidateHash = hashPassword(password, user.salt);
+    if (candidateHash !== user.passwordHash) {
+      return res.status(401).json({ error: 'Identifiants invalides.' });
+    }
+    const accessToken = signToken({ sub: user.id, email: user.email, type: 'access' }, ACCESS_TOKEN_TTL);
+    const refreshToken = signToken({ sub: user.id, email: user.email, type: 'refresh' }, REFRESH_TOKEN_TTL);
+    user.refreshTokenHash = hashToken(refreshToken);
+    usersData.users[normalizedEmail] = user;
+    await saveUsers(usersData);
+    return res.json({
+      user: sanitizeUser(user),
+      accessToken,
+      refreshToken,
+      expiresIn: ACCESS_TOKEN_TTL
+    });
+  } catch (error) {
+    console.error('Erreur login:', error);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+app.post('/api/auth/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    const payload = verifyToken(refreshToken);
+    if (!payload || payload.type !== 'refresh') {
+      return res.status(401).json({ error: 'Token invalide.' });
+    }
+    const usersData = await loadUsers();
+    const user = usersData.users[payload.email];
+    if (!user || !user.refreshTokenHash) {
+      return res.status(401).json({ error: 'Session expirée.' });
+    }
+    if (hashToken(refreshToken) !== user.refreshTokenHash) {
+      return res.status(401).json({ error: 'Session expirée.' });
+    }
+    const accessToken = signToken({ sub: user.id, email: user.email, type: 'access' }, ACCESS_TOKEN_TTL);
+    return res.json({
+      user: sanitizeUser(user),
+      accessToken,
+      expiresIn: ACCESS_TOKEN_TTL
+    });
+  } catch (error) {
+    console.error('Erreur refresh:', error);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+app.post('/api/auth/logout', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    const payload = verifyToken(refreshToken);
+    if (!payload) {
+      return res.json({ ok: true });
+    }
+    const usersData = await loadUsers();
+    const user = usersData.users[payload.email];
+    if (user) {
+      user.refreshTokenHash = null;
+      usersData.users[payload.email] = user;
+      await saveUsers(usersData);
+    }
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('Erreur logout:', error);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+app.post('/api/auth/forgot', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email requis.' });
+    }
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const usersData = await loadUsers();
+    const user = usersData.users[normalizedEmail];
+    if (!user) {
+      return res.status(404).json({ error: 'Compte introuvable.' });
+    }
+    const resetToken = crypto.randomBytes(16).toString('hex');
+    user.resetToken = resetToken;
+    user.resetTokenExpires = Date.now() + RESET_TOKEN_TTL * 1000;
+    usersData.users[normalizedEmail] = user;
+    await saveUsers(usersData);
+    return res.json({
+      message: 'Un lien de réinitialisation a été généré.',
+      resetToken
+    });
+  } catch (error) {
+    console.error('Erreur forgot:', error);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+app.post('/api/auth/reset', async (req, res) => {
+  try {
+    const { email, resetToken, newPassword } = req.body;
+    if (!email || !resetToken || !newPassword) {
+      return res.status(400).json({ error: 'Informations manquantes.' });
+    }
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const usersData = await loadUsers();
+    const user = usersData.users[normalizedEmail];
+    if (!user || !user.resetToken) {
+      return res.status(400).json({ error: 'Token invalide.' });
+    }
+    if (user.resetToken !== resetToken || Date.now() > user.resetTokenExpires) {
+      return res.status(400).json({ error: 'Token expiré.' });
+    }
+    const salt = crypto.randomBytes(16).toString('hex');
+    user.salt = salt;
+    user.passwordHash = hashPassword(newPassword, salt);
+    user.resetToken = null;
+    user.resetTokenExpires = null;
+    usersData.users[normalizedEmail] = user;
+    await saveUsers(usersData);
+    return res.json({ message: 'Mot de passe mis à jour.' });
+  } catch (error) {
+    console.error('Erreur reset:', error);
     return res.status(500).json({ error: 'Erreur serveur.' });
   }
 });

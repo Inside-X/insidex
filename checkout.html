@@ -235,7 +235,7 @@
             Aucun paiement initié pour le moment.
           </div>
         </section>
-        
+
         <div class="checkout__actions">
           <button class="btn" id="placeOrderBtn" type="submit">Finaliser la commande</button>
           <p class="checkout__helper" id="checkoutHelper">Un conseiller confirme votre créneau sous 24h.</p>
@@ -302,6 +302,101 @@
     <div id="cartPageContainer" class="cart-page"></div>
   </section>
 
+  <!-- AUTH MODAL -->
+  <div class="auth-modal" id="authModal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="authTitle">
+    <div class="auth-modal__backdrop" aria-hidden="true"></div>
+    <div class="auth-modal__panel">
+      <button class="icon-btn auth-modal__close" data-auth-close type="button" aria-label="Fermer">✕</button>
+      <div class="auth-modal__header">
+        <p class="eyebrow">Compte Inside X</p>
+        <h2 id="authTitle">Connexion &amp; inscription</h2>
+        <p class="auth-modal__status" data-auth-status data-tone="info"></p>
+      </div>
+      <div class="auth-modal__tabs">
+        <button class="auth-tab is-active" data-auth-tab="login" type="button">Connexion</button>
+        <button class="auth-tab" data-auth-tab="register" type="button">Inscription</button>
+        <button class="auth-tab" data-auth-tab="profile" type="button">Mon compte</button>
+      </div>
+      <div class="auth-modal__body">
+        <div class="auth-panel" data-auth-panel="login">
+          <form data-auth-form="login">
+            <label>
+              Email
+              <input name="email" type="email" required placeholder="vous@email.com" />
+            </label>
+            <label>
+              Mot de passe
+              <input name="password" type="password" required placeholder="••••••••" />
+            </label>
+            <button class="btn" type="submit">Se connecter</button>
+            <button class="btn btn-link" data-auth-forgot-link type="button">Mot de passe oublié ?</button>
+          </form>
+        </div>
+        <div class="auth-panel" data-auth-panel="register" hidden>
+          <form data-auth-form="register">
+            <label>
+              Nom complet
+              <input name="name" type="text" placeholder="Samia Ali" />
+            </label>
+            <label>
+              Email
+              <input name="email" type="email" required placeholder="vous@email.com" />
+            </label>
+            <label>
+              Mot de passe
+              <input name="password" type="password" required placeholder="Créez un mot de passe" />
+            </label>
+            <button class="btn" type="submit">Créer un compte</button>
+          </form>
+        </div>
+        <div class="auth-panel" data-auth-panel="profile" hidden>
+          <div class="auth-profile">
+            <div>
+              <p class="auth-profile__label">Nom</p>
+              <p class="auth-profile__value" data-auth-profile-name>Invité</p>
+            </div>
+            <div>
+              <p class="auth-profile__label">Email</p>
+              <p class="auth-profile__value" data-auth-profile-email>—</p>
+            </div>
+          </div>
+          <button class="btn btn-outline" data-auth-logout type="button">Se déconnecter</button>
+        </div>
+        <div class="auth-panel" data-auth-panel="forgot" hidden>
+          <form data-auth-form="forgot">
+            <label>
+              Email
+              <input name="email" type="email" required placeholder="vous@email.com" />
+            </label>
+            <button class="btn" type="submit">Générer un token</button>
+            <p class="auth-helper">Un token sera affiché pour la démo.</p>
+          </form>
+        </div>
+        <div class="auth-panel" data-auth-panel="reset" hidden>
+          <div class="auth-reset">
+            <p class="auth-helper">Token généré :</p>
+            <code class="auth-reset__token" data-auth-reset-token>—</code>
+          </div>
+          <form data-auth-form="reset">
+            <label>
+              Email
+              <input name="email" type="email" required placeholder="vous@email.com" />
+            </label>
+            <label>
+              Token de réinitialisation
+              <input name="resetToken" type="text" required placeholder="Copiez le token reçu" />
+            </label>
+            <label>
+              Nouveau mot de passe
+              <input name="newPassword" type="password" required placeholder="••••••••" />
+            </label>
+            <button class="btn" type="submit">Mettre à jour</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  
   <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
 
   <script src="js/checkout.js" type="module"></script>

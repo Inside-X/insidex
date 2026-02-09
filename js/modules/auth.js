@@ -1,0 +1,305 @@
+import { showToast } from './toast.js';
+import { clearUserId, getUserId, setUserId, syncCartToUser, updateBadge } from './cart.js';
+
+const ACCESS_TOKEN_KEY = 'insidex_access_token';
+const REFRESH_TOKEN_KEY = 'insidex_refresh_token';
+const USER_KEY = 'insidex_auth_user';
+
+const state = {
+  user: null,
+  accessToken: null,
+  refreshToken: null
+};
+
+function setStoredTokens({ accessToken, refreshToken, user }) {
+  if (accessToken) {
+    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+    state.accessToken = accessToken;
+  }
+  if (refreshToken) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+    state.refreshToken = refreshToken;
+  }
+  if (user) {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    state.user = user;
+  }
+}
+
+function clearStoredTokens() {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+  state.accessToken = null;
+  state.refreshToken = null;
+  state.user = null;
+}
+
+function loadStoredSession() {
+  const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  const userRaw = localStorage.getItem(USER_KEY);
+  state.accessToken = accessToken;
+  state.refreshToken = refreshToken;
+  state.user = userRaw ? JSON.parse(userRaw) : null;
+}
+
+async function authRequest(url, payload) {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || 'Erreur authentification.');
+  }
+  return data;
+}
+
+function updateAccountButton(accountBtn) {
+  if (!accountBtn) return;
+  if (state.user) {
+    accountBtn.classList.add('is-authenticated');
+    accountBtn.setAttribute('title', `Connecté : ${state.user.email}`);
+    accountBtn.setAttribute('aria-label', `Connecté : ${state.user.email}`);
+  } else {
+    accountBtn.classList.remove('is-authenticated');
+    accountBtn.setAttribute('title', 'Mon compte');
+    accountBtn.setAttribute('aria-label', 'Mon compte');
+  }
+}
+
+function updateProfilePanel(modal) {
+  if (!modal) return;
+  const nameEl = modal.querySelector('[data-auth-profile-name]');
+  const emailEl = modal.querySelector('[data-auth-profile-email]');
+  if (state.user) {
+    if (nameEl) nameEl.textContent = state.user.name || state.user.email;
+    if (emailEl) emailEl.textContent = state.user.email;
+  } else {
+    if (nameEl) nameEl.textContent = 'Invité';
+    if (emailEl) emailEl.textContent = '—';
+  }
+}
+
+function showPanel(panelId, modal) {
+  modal.querySelectorAll('[data-auth-panel]').forEach((panel) => {
+    panel.hidden = panel.dataset.authPanel !== panelId;
+  });
+  modal.querySelectorAll('[data-auth-tab]').forEach((tab) => {
+    tab.classList.toggle('is-active', tab.dataset.authTab === panelId);
+  });
+}
+
+function setStatus(modal, message, tone = 'info') {
+  const status = modal.querySelector('[data-auth-status]');
+  if (!status) return;
+  status.textContent = message;
+  status.dataset.tone = tone;
+}
+
+async function handleLogin(form, modal) {
+  const formData = new FormData(form);
+  const payload = Object.fromEntries(formData.entries());
+  const data = await authRequest('/api/auth/login', payload);
+  setStoredTokens(data);
+  setUserId(data.user.email);
+  await syncCartToUser(data.user.email);
+  await updateBadge();
+  setStatus(modal, `Bienvenue ${data.user.name} !`, 'success');
+  showToast('✅ Connexion réussie.', 'success');
+  updateAccountButton(document.getElementById('accountBtn'));
+  updateProfilePanel(modal);
+  showPanel('profile', modal);
+}
+
+async function handleRegister(form, modal) {
+  const formData = new FormData(form);
+  const payload = Object.fromEntries(formData.entries());
+  const data = await authRequest('/api/auth/register', payload);
+  setStoredTokens(data);
+  setUserId(data.user.email);
+  await syncCartToUser(data.user.email);
+  await updateBadge();
+  setStatus(modal, `Compte créé pour ${data.user.email}.`, 'success');
+  showToast('✅ Inscription terminée.', 'success');
+  updateAccountButton(document.getElementById('accountBtn'));
+  updateProfilePanel(modal);
+  showPanel('profile', modal);
+}
+
+async function handleForgot(form, modal) {
+  const formData = new FormData(form);
+  const payload = Object.fromEntries(formData.entries());
+  const data = await authRequest('/api/auth/forgot', payload);
+  const output = modal.querySelector('[data-auth-reset-token]');
+  if (output) {
+    output.textContent = data.resetToken;
+  }
+  setStatus(modal, 'Token de réinitialisation généré.', 'success');
+  showPanel('reset', modal);
+}
+
+async function handleReset(form, modal) {
+  const formData = new FormData(form);
+  const payload = Object.fromEntries(formData.entries());
+  await authRequest('/api/auth/reset', payload);
+  setStatus(modal, 'Mot de passe mis à jour. Vous pouvez vous reconnecter.', 'success');
+  showPanel('login', modal);
+}
+
+async function handleLogout(modal) {
+  if (state.refreshToken) {
+    try {
+      await authRequest('/api/auth/logout', { refreshToken: state.refreshToken });
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  clearStoredTokens();
+  clearUserId();
+  await updateBadge();
+  setStatus(modal, 'Déconnexion effectuée.', 'info');
+  showToast('👋 Déconnecté.', 'info');
+  updateAccountButton(document.getElementById('accountBtn'));
+  updateProfilePanel(modal);
+  showPanel('login', modal);
+}
+
+async function refreshSession(modal) {
+  if (!state.refreshToken) return;
+  try {
+    const data = await authRequest('/api/auth/refresh', { refreshToken: state.refreshToken });
+    setStoredTokens({ accessToken: data.accessToken, user: data.user });
+    setUserId(data.user.email);
+    updateAccountButton(document.getElementById('accountBtn'));
+    if (modal) {
+      setStatus(modal, `Connecté en tant que ${data.user.email}.`, 'info');
+      updateProfilePanel(modal);
+      showPanel('profile', modal);
+    }
+  } catch (error) {
+    clearStoredTokens();
+    clearUserId();
+    updateAccountButton(document.getElementById('accountBtn'));
+  }
+}
+
+function bindModal(modal) {
+  const openTriggers = document.querySelectorAll('[data-auth-open]');
+  const closeBtn = modal.querySelector('[data-auth-close]');
+  const backdrop = modal.querySelector('.auth-modal__backdrop');
+
+  openTriggers.forEach((trigger) => {
+    trigger.addEventListener('click', () => {
+      modal.classList.add('is-open');
+      modal.setAttribute('aria-hidden', 'false');
+      const activePanel = state.user ? 'profile' : 'login';
+      showPanel(activePanel, modal);
+      setStatus(
+        modal,
+        state.user ? `Connecté en tant que ${state.user.email}.` : 'Connectez-vous pour synchroniser votre panier.',
+        'info'
+      );
+      updateProfilePanel(modal);
+    });
+  });
+
+  const closeModal = () => {
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+  };
+
+  [closeBtn, backdrop].forEach((el) => {
+    if (el) {
+      el.addEventListener('click', closeModal);
+    }
+  });
+
+  modal.querySelectorAll('[data-auth-tab]').forEach((tab) => {
+    tab.addEventListener('click', () => showPanel(tab.dataset.authTab, modal));
+  });
+
+  const loginForm = modal.querySelector('[data-auth-form="login"]');
+  const registerForm = modal.querySelector('[data-auth-form="register"]');
+  const forgotForm = modal.querySelector('[data-auth-form="forgot"]');
+  const resetForm = modal.querySelector('[data-auth-form="reset"]');
+  const logoutBtn = modal.querySelector('[data-auth-logout]');
+
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      setStatus(modal, 'Connexion en cours...', 'info');
+      try {
+        await handleLogin(loginForm, modal);
+      } catch (error) {
+        setStatus(modal, error.message, 'error');
+        showToast(error.message, 'error');
+      }
+    });
+  }
+
+  if (registerForm) {
+    registerForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      setStatus(modal, 'Création du compte...', 'info');
+      try {
+        await handleRegister(registerForm, modal);
+      } catch (error) {
+        setStatus(modal, error.message, 'error');
+        showToast(error.message, 'error');
+      }
+    });
+  }
+
+  if (forgotForm) {
+    forgotForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      setStatus(modal, 'Génération du token...', 'info');
+      try {
+        await handleForgot(forgotForm, modal);
+      } catch (error) {
+        setStatus(modal, error.message, 'error');
+        showToast(error.message, 'error');
+      }
+    });
+  }
+
+  if (resetForm) {
+    resetForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      setStatus(modal, 'Mise à jour du mot de passe...', 'info');
+      try {
+        await handleReset(resetForm, modal);
+      } catch (error) {
+        setStatus(modal, error.message, 'error');
+        showToast(error.message, 'error');
+      }
+    });
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+      await handleLogout(modal);
+    });
+  }
+
+  const forgotLink = modal.querySelector('[data-auth-forgot-link]');
+  if (forgotLink) {
+    forgotLink.addEventListener('click', (event) => {
+      event.preventDefault();
+      showPanel('forgot', modal);
+    });
+  }
+}
+
+export function initAuth() {
+  const modal = document.getElementById('authModal');
+  if (!modal) return;
+  loadStoredSession();
+  updateAccountButton(document.getElementById('accountBtn'));
+  updateProfilePanel(modal);
+  bindModal(modal);
+  refreshSession(modal);
+}

@@ -298,3 +298,58 @@ main h2{ font-size:1.4rem; margin:18px 0 10px; }
   .admin-grid{ grid-template-columns: 1.1fr .9fr; align-items:start; }
   .admin-fields{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Auth modal */
+.auth-modal{
+  position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+  z-index:40;
+}
+.auth-modal.is-open{ display:flex; }
+.auth-modal__backdrop{
+  position:absolute; inset:0; background:rgba(15,22,31,.55); backdrop-filter:blur(4px);
+}
+.auth-modal__panel{
+  position:relative; background:var(--surface); border-radius:20px; padding:28px;
+  width:min(92vw, 560px); box-shadow:0 24px 60px rgba(15,22,31,.25);
+  border:1px solid var(--border); z-index:1;
+}
+.auth-modal__close{
+  position:absolute; top:16px; right:16px;
+}
+.auth-modal__header h2{ margin:4px 0 6px; }
+.auth-modal__status{
+  margin:8px 0 0; font-size:.92rem; color:var(--muted);
+}
+.auth-modal__status[data-tone="success"]{ color:var(--primary); }
+.auth-modal__status[data-tone="error"]{ color:var(--danger); }
+.auth-modal__tabs{
+  margin:18px 0 16px; display:flex; gap:8px; flex-wrap:wrap;
+}
+.auth-tab{
+  border:1px solid var(--border); background:transparent; padding:8px 14px; border-radius:999px;
+  cursor:pointer; font-weight:600; color:var(--muted);
+}
+.auth-tab.is-active{
+  background:rgba(15,118,110,.12); color:var(--primary); border-color:rgba(15,118,110,.25);
+}
+.auth-modal__body label{
+  display:flex; flex-direction:column; gap:6px; margin-bottom:12px; font-weight:500;
+}
+.auth-modal__body input{
+  border:1px solid var(--border); border-radius:12px; padding:10px 12px; font-size:.95rem;
+}
+.auth-modal__body form{ display:grid; gap:8px; }
+.auth-modal__body .btn{ justify-self:start; }
+.auth-profile{
+  display:grid; gap:16px; padding:8px 0 20px;
+}
+.auth-profile__label{ color:var(--muted); font-size:.85rem; }
+.auth-profile__value{ font-weight:600; }
+.auth-helper{ color:var(--muted); font-size:.85rem; margin-top:4px; }
+.auth-reset__token{
+  display:inline-flex; padding:8px 12px; background:rgba(15,118,110,.08); border-radius:10px;
+  font-size:.9rem; color:var(--primary); margin-bottom:12px;
+}
+.icon-btn.is-authenticated{
+  color:var(--primary);
+}
