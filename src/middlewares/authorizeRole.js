@@ -19,6 +19,10 @@ function forbidden(res) {
 /**
  * authorizeRole('admin')
  * authorizeRole(['admin', 'ops'])
+ *
+ * Role policy:
+ * - trims surrounding whitespace
+ * - compares case-insensitively (lowercase normalization)
  */
 export function authorizeRole(roleOrArray) {
   const allowedRoles = Array.isArray(roleOrArray) ? roleOrArray : [roleOrArray];
@@ -27,7 +31,8 @@ export function authorizeRole(roleOrArray) {
     throw new Error('authorizeRole expects a non-empty role string or array of non-empty role strings');
   }
 
-  const normalizedAllowedRoles = new Set(allowedRoles.map((role) => role.trim()));
+  const normalizeRole = (role) => role.trim().toLowerCase();
+  const normalizedAllowedRoles = new Set(allowedRoles.map(normalizeRole));
 
   return function authorizeRoleMiddleware(req, res, next) {
     const auth = req.auth;
@@ -37,7 +42,9 @@ export function authorizeRole(roleOrArray) {
     }
 
     const currentRole = auth.role;
-    if (typeof currentRole !== 'string' || !normalizedAllowedRoles.has(currentRole)) {
+    const normalizedCurrentRole = typeof currentRole === 'string' ? normalizeRole(currentRole) : null;
+
+    if (!normalizedCurrentRole || !normalizedAllowedRoles.has(normalizedCurrentRole)) {
       return forbidden(res);
     }
 

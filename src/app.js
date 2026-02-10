@@ -15,7 +15,10 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Toutes les routes /api/admin/* héritent des middlewares déclarés dans adminRouter.use(...)
+// Routes RBAC d'exemple explicites (admin + multi-rôles)
+app.use('/api', adminExampleRouter);
+
+// Toutes les routes /api/admin/* restantes héritent des middlewares déclarés dans adminRouter.use(...)
 app.use('/api/admin', adminRouter);
 
 export default app;
