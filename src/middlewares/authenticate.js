@@ -16,7 +16,7 @@ function unauthorized(res, message) {
  *
  * Expected token payload:
  * - sub: user id (string or number)
- * - role: user role (ex: "admin" | "customer")
+ * - role: optional, used by authorizeRole middleware
  */
 export function authenticate(req, res, next) {
   const authorizationHeader = req.get('authorization');
@@ -46,17 +46,26 @@ export function authenticate(req, res, next) {
   }
 
   try {
-    const decoded = jwt.verify(token, secret);
-    const id = decoded?.sub ?? decoded?.id;
-    const { role } = decoded ?? {};
+    const decoded = jwt.verify(token, secret, {
+      algorithms: ['HS256'],
+    });
 
-    if (!id || !role) {
+    const id = decoded?.sub ?? decoded?.id;
+    if (!id) {
       return unauthorized(res, 'Invalid token payload');
     }
 
+    req.auth = {
+      sub: id,
+      role: decoded?.role,
+      iat: decoded?.iat,
+      exp: decoded?.exp,
+    };
+
+    // Backward compatibility for existing handlers.
     req.user = {
       id,
-      role,
+      role: decoded?.role,
     };
 
     return next();

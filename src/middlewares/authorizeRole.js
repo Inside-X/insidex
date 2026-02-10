@@ -1,3 +1,12 @@
+function unauthorized(res) {
+  return res.status(401).json({
+    error: {
+      code: 'UNAUTHORIZED',
+      message: 'Authentication required',
+    },
+  });
+}
+
 function forbidden(res) {
   return res.status(403).json({
     error: {
@@ -18,10 +27,17 @@ export function authorizeRole(roleOrArray) {
     throw new Error('authorizeRole expects a non-empty role string or array of non-empty role strings');
   }
 
-  return function authorizeRoleMiddleware(req, res, next) {
-    const currentRole = req.user?.role;
+  const normalizedAllowedRoles = new Set(allowedRoles.map((role) => role.trim()));
 
-    if (!currentRole || !allowedRoles.includes(currentRole)) {
+  return function authorizeRoleMiddleware(req, res, next) {
+    const auth = req.auth;
+
+    if (!auth?.sub) {
+      return unauthorized(res);
+    }
+
+    const currentRole = auth.role;
+    if (typeof currentRole !== 'string' || !normalizedAllowedRoles.has(currentRole)) {
       return forbidden(res);
     }
 

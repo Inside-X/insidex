@@ -6,12 +6,13 @@ export function buildTestToken({
   expiresIn = '15m',
   secret = process.env.JWT_ACCESS_SECRET,
 } = {}) {
-  return jwt.sign(
-    {
-      sub: id,
-      role,
-    },
-    secret,
-    { expiresIn },
-  );
+  const payload = {
+    sub: id,
+  };
+
+  if (role !== undefined) {
+    payload.role = role;
+  }
+
+  return jwt.sign(payload, secret, { expiresIn, algorithm: 'HS256' });
 }

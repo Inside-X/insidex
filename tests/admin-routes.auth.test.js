@@ -16,7 +16,35 @@ describe('Admin routes protection (/api/admin)', () => {
     });
   });
 
-  test('2) token valide non-admin -> 403', async () => {
+  test('2) header Authorization mal formé -> 401', async () => {
+    const response = await request(app)
+      .get('/api/admin/health')
+      .set('Authorization', 'Token abc123')
+      .expect(401);
+
+    expect(response.body).toEqual({
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Authorization header must be in the format: Bearer <token>',
+      },
+    });
+  });
+
+  test('3) token invalide -> 401', async () => {
+    const response = await request(app)
+      .get('/api/admin/health')
+      .set('Authorization', 'Bearer invalid.token.value')
+      .expect(401);
+
+    expect(response.body).toEqual({
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Invalid token',
+      },
+    });
+  });
+
+  test('4) token valide non-admin -> 403', async () => {
     const customerToken = buildTestToken({ role: 'customer', id: 'cust-1' });
 
     const response = await request(app)
@@ -32,7 +60,7 @@ describe('Admin routes protection (/api/admin)', () => {
     });
   });
 
-  test('3) token admin valide -> 200', async () => {
+  test('5) token admin valide -> 200', async () => {
     const adminToken = buildTestToken({ role: 'admin', id: 'admin-1' });
 
     const response = await request(app)
@@ -50,6 +78,22 @@ describe('Admin routes protection (/api/admin)', () => {
     });
   });
 
+  test('6) token sans rôle -> 403', async () => {
+    const tokenWithoutRole = buildTestToken({ role: undefined, id: 'user-no-role' });
+
+    const response = await request(app)
+      .get('/api/admin/health')
+      .set('Authorization', `Bearer ${tokenWithoutRole}`)
+      .expect(403);
+
+    expect(response.body).toEqual({
+      error: {
+        code: 'FORBIDDEN',
+        message: 'Insufficient permissions',
+      },
+    });
+  });
+  
   test('route publique de démo reste accessible sans token -> 200', async () => {
     const response = await request(app)
       .get('/api/health')
