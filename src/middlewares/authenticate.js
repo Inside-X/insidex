@@ -1,0 +1,72 @@
+import jwt from 'jsonwebtoken';
+
+const BEARER_REGEX = /^Bearer\s+(.+)$/i;
+
+function unauthorized(res, message) {
+  return res.status(401).json({
+    error: {
+      code: 'UNAUTHORIZED',
+      message,
+    },
+  });
+}
+
+/**
+ * Authenticate a user from Authorization: Bearer <token> header.
+ *
+ * Expected token payload:
+ * - sub: user id (string or number)
+ * - role: user role (ex: "admin" | "customer")
+ */
+export function authenticate(req, res, next) {
+  const authorizationHeader = req.get('authorization');
+
+  if (!authorizationHeader) {
+    return unauthorized(res, 'Authentication required');
+  }
+
+  const bearerMatch = authorizationHeader.match(BEARER_REGEX);
+  if (!bearerMatch || !bearerMatch[1]) {
+    return unauthorized(res, 'Authorization header must be in the format: Bearer <token>');
+  }
+
+  const token = bearerMatch[1].trim();
+  if (!token) {
+    return unauthorized(res, 'Authentication required');
+  }
+
+  const secret = process.env.JWT_ACCESS_SECRET;
+  if (!secret) {
+    return res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Authentication service misconfigured',
+      },
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(token, secret);
+    const id = decoded?.sub ?? decoded?.id;
+    const { role } = decoded ?? {};
+
+    if (!id || !role) {
+      return unauthorized(res, 'Invalid token payload');
+    }
+
+    req.user = {
+      id,
+      role,
+    };
+
+    return next();
+  } catch (error) {
+    if (error?.name === 'TokenExpiredError') {
+      return unauthorized(res, 'Token expired');
+    }
+
+    return unauthorized(res, 'Invalid token');
+  }
+}
+
+export default authenticate;

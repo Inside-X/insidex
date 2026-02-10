@@ -12,7 +12,7 @@
     "dotenv": "^17.2.4",
     "experss": "^0.0.1-security",
     "express": "^4.19.2",
-    "jsonwebtoken": "^9.0.3"
+    "jsonwebtoken": "^9.0.2"
   },
   "main": "script.js",
   "repository": {
