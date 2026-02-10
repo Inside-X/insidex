@@ -9,7 +9,7 @@ router.get('/admin/reports', authenticate, authorizeRole('admin'), (req, res) =>
   return res.status(200).json({
     data: {
       message: 'Admin report data',
-      user: req.user,
+      auth: req.auth,
     },
   });
 });
@@ -19,7 +19,7 @@ router.get('/admin/audit-log', authenticate, authorizeRole(['admin', 'ops']), (r
   return res.status(200).json({
     data: {
       message: 'Audit log data',
-      user: req.user,
+      auth: req.auth,
     },
   });
 });

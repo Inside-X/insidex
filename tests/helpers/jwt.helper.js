@@ -5,6 +5,8 @@ export function buildTestToken({
   role = 'customer',
   expiresIn = '15m',
   secret = process.env.JWT_ACCESS_SECRET,
+  issuer = process.env.JWT_ACCESS_ISSUER,
+  audience = process.env.JWT_ACCESS_AUDIENCE,
 } = {}) {
   const payload = {
     sub: id,
@@ -14,5 +16,12 @@ export function buildTestToken({
     payload.role = role;
   }
 
-  return jwt.sign(payload, secret, { expiresIn, algorithm: 'HS256' });
+  const signOptions = { expiresIn, algorithm: 'HS256' };
+
+  if (issuer && audience) {
+    signOptions.issuer = issuer;
+    signOptions.audience = audience;
+  }
+
+  return jwt.sign(payload, secret, signOptions);
 }

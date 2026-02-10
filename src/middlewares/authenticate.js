@@ -36,6 +36,9 @@ export function authenticate(req, res, next) {
   }
 
   const secret = process.env.JWT_ACCESS_SECRET;
+  const issuer = process.env.JWT_ACCESS_ISSUER;
+  const audience = process.env.JWT_ACCESS_AUDIENCE;
+
   if (!secret) {
     return res.status(500).json({
       error: {
@@ -45,10 +48,26 @@ export function authenticate(req, res, next) {
     });
   }
 
-  try {
-    const decoded = jwt.verify(token, secret, {
-      algorithms: ['HS256'],
+  if ((issuer && !audience) || (!issuer && audience)) {
+    return res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Authentication service misconfigured',
+      },
     });
+  }
+  
+  try {
+    const verifyOptions = {
+      algorithms: ['HS256'],
+    };
+
+    if (issuer && audience) {
+      verifyOptions.issuer = issuer;
+      verifyOptions.audience = audience;
+    }
+
+    const decoded = jwt.verify(token, secret, verifyOptions);
 
     const id = decoded?.sub ?? decoded?.id;
     if (!id) {

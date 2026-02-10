@@ -71,8 +71,8 @@ describe('Admin routes protection (/api/admin)', () => {
     expect(response.body.data).toMatchObject({
       status: 'ok',
       scope: 'admin',
-      user: {
-        id: 'admin-1',
+      auth: {
+        sub: 'admin-1',
         role: 'admin',
       },
     });
@@ -90,6 +90,47 @@ describe('Admin routes protection (/api/admin)', () => {
       error: {
         code: 'FORBIDDEN',
         message: 'Insufficient permissions',
+      },
+    });
+  });
+
+
+  test('7) token expiré -> 401', async () => {
+    const expiredToken = buildTestToken({
+      role: 'admin',
+      id: 'admin-expired',
+      expiresIn: '-10s',
+    });
+
+    const response = await request(app)
+      .get('/api/admin/health')
+      .set('Authorization', `Bearer ${expiredToken}`)
+      .expect(401);
+
+    expect(response.body).toEqual({
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Token expired',
+      },
+    });
+  });
+
+  test('8) token avec mauvaise audience -> 401', async () => {
+    const tokenWrongAudience = buildTestToken({
+      role: 'admin',
+      id: 'admin-wrong-aud',
+      audience: 'external-api',
+    });
+
+    const response = await request(app)
+      .get('/api/admin/health')
+      .set('Authorization', `Bearer ${tokenWrongAudience}`)
+      .expect(401);
+
+    expect(response.body).toEqual({
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Invalid token',
       },
     });
   });
