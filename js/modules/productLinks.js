@@ -1,7 +1,7 @@
 function getProductTarget(card) {
   const { slug, id } = card.dataset;
   if (slug) {
-    return `product.html?slug=${encodeURIComponent(slug)}`;
+    return `/produits/${encodeURIComponent(slug)}`;
   }
   if (id) {
     return `product.html?id=${encodeURIComponent(id)}`;

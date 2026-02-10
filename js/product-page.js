@@ -12,13 +12,60 @@ const currency = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: '
 
 function getProductSlug() {
   const params = new URLSearchParams(window.location.search);
+  const pathMatch = window.location.pathname.match(/^\/produits\/([^/]+)$/);
+  const pathSlug = pathMatch ? decodeURIComponent(pathMatch[1]) : null;
+  
   return {
-    slug: params.get('slug'),
+    slug: params.get('slug') || pathSlug,
     id: params.get('id')
   };
 }
 
+
+function getSiteOrigin() {
+  return window.location.origin || 'https://insidex.example';
+}
+
+function updateSeoMeta(product) {
+  const origin = getSiteOrigin();
+  const canonicalPath = product.slug
+    ? `/produits/${encodeURIComponent(product.slug)}`
+    : `/product.html?id=${encodeURIComponent(product.id)}`;
+  const canonicalUrl = `${origin}${canonicalPath}`;
+  const title = `${product.title} | Inside X`;
+  const description = (product.shortDescription || product.description || '').trim()
+    || `Découvrez ${product.title} sur Inside X.`;
+  const imagePath = product.images?.[0] || 'assets/images/logo-inside-home.png';
+  const imageUrl = imagePath.startsWith('http') ? imagePath : `${origin}/${imagePath.replace(/^\//, '')}`;
+
+  document.title = title;
+
+  const updateMeta = (selector, attr, value) => {
+    const element = document.querySelector(selector);
+    if (element) {
+      element.setAttribute(attr, value);
+    }
+  };
+
+  updateMeta('meta[name="description"]', 'content', description);
+  updateMeta('meta[name="robots"]', 'content', 'index,follow');
+  updateMeta('meta[property="og:title"]', 'content', title);
+  updateMeta('meta[property="og:description"]', 'content', description);
+  updateMeta('meta[property="og:image"]', 'content', imageUrl);
+  updateMeta('meta[property="og:url"]', 'content', canonicalUrl);
+  updateMeta('link[rel="canonical"]', 'href', canonicalUrl);
+}
+
+function updateSeoNotFound() {
+  document.title = 'Produit introuvable | Inside X';
+  const noIndex = document.querySelector('meta[name="robots"]');
+  if (noIndex) {
+    noIndex.setAttribute('content', 'noindex,nofollow');
+  }
+}
+
 function renderProduct(product) {
+  updateSeoMeta(product);
   document.getElementById('productTitle').textContent = product.title;
   document.getElementById('productBreadcrumb').textContent = product.title;
   const img = document.getElementById('productImage');
@@ -68,6 +115,7 @@ function renderProduct(product) {
 }
 
 function renderNotFound() {
+  updateSeoNotFound();
   document.getElementById('productTitle').textContent = 'Produit introuvable';
   document.getElementById('productBreadcrumb').textContent = 'Introuvable';
   document.getElementById('productDescription').textContent =

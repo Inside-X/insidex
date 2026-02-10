@@ -8,6 +8,7 @@ const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 3000;
+const SITE_BASE_URL = (process.env.SITE_BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 
 app.use(express.static(__dirname));
 app.use(express.json());
@@ -31,6 +32,47 @@ const RESET_TOKEN_TTL = 60 * 30;
 const ABANDONED_CART_DELAY_MS = Number(process.env.ABANDONED_CART_DELAY_MS) || 1000 * 60 * 30;
 
 const abandonedTimers = new Map();
+
+function escapeXml(value = '') {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function escapeHtml(value = '') {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function buildProductPageHtml({ product, html }) {
+  const canonicalPath = product.slug
+    ? `/produits/${encodeURIComponent(product.slug)}`
+    : `/product.html?id=${encodeURIComponent(product.id)}`;
+  const canonicalUrl = `${SITE_BASE_URL}${canonicalPath}`;
+  const title = `${product.title} | Inside X`;
+  const description = (product.shortDescription || product.description || `Découvrez ${product.title} sur Inside X.`).trim();
+  const image = product.images?.[0]
+    ? `${SITE_BASE_URL}/${String(product.images[0]).replace(/^\//, '')}`
+    : `${SITE_BASE_URL}/assets/images/logo-inside-home.png`;
+
+  return html
+    .replace(/<title>[\s\S]*?<\/title>/, `<title>${escapeHtml(title)}</title>`)
+    .replace(/<meta name="description" content="[\s\S]*?"\s*\/>/, `<meta name="description" content="${escapeHtml(description)}" />`)
+    .replace(/<meta name="robots" content="[\s\S]*?"\s*\/>/, '<meta name="robots" content="index,follow" />')
+    .replace(/<link rel="canonical" href="[\s\S]*?"\s*\/>/, `<link rel="canonical" href="${escapeHtml(canonicalUrl)}" />`)
+    .replace(/<meta property="og:title" content="[\s\S]*?"\s*\/>/, `<meta property="og:title" content="${escapeHtml(title)}" />`)
+    .replace(/<meta property="og:description" content="[\s\S]*?"\s*\/>/, `<meta property="og:description" content="${escapeHtml(description)}" />`)
+    .replace(/<meta property="og:image" content="[\s\S]*?"\s*\/>/, `<meta property="og:image" content="${escapeHtml(image)}" />`)
+    .replace(/<meta property="og:url" content="[\s\S]*?"\s*\/>/, `<meta property="og:url" content="${escapeHtml(canonicalUrl)}" />`);
+}
+
 function base64UrlEncode(value) {
   return Buffer.from(value)
     .toString('base64')
@@ -750,6 +792,61 @@ app.get('/api/products/:id', async (req, res) => {
   } catch (error) {
     console.error('Erreur chargement produit:', error);
     return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+
+app.get('/produits/:slug', async (req, res) => {
+  try {
+    const products = await loadProducts();
+    const product = products.find((item) => item.slug === req.params.slug && item.published !== false);
+    if (!product) {
+      return res.status(404).sendFile(path.join(__dirname, 'product.html'));
+    }
+
+    const html = await readFile(path.join(__dirname, 'product.html'), 'utf-8');
+    const seoHtml = buildProductPageHtml({ product, html });
+    return res.status(200).type('html').send(seoHtml);
+  } catch (error) {
+    console.error('Erreur rendu page produit SEO:', error);
+    return res.status(500).send('Erreur serveur.');
+  }
+});
+
+app.get('/robots.txt', (req, res) => {
+  const robots = [
+    'User-agent: *',
+    'Allow: /',
+    `Sitemap: ${SITE_BASE_URL}/sitemap.xml`
+  ].join('\n');
+  return res.type('text/plain').send(`${robots}\n`);
+});
+
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    const products = await loadProducts();
+    const now = new Date().toISOString();
+    const urls = [
+      { loc: `${SITE_BASE_URL}/`, lastmod: now },
+      { loc: `${SITE_BASE_URL}/index.html`, lastmod: now },
+      { loc: `${SITE_BASE_URL}/product.html`, lastmod: now },
+      ...products
+        .filter((product) => product.published !== false && product.slug)
+        .map((product) => ({
+          loc: `${SITE_BASE_URL}/produits/${encodeURIComponent(product.slug)}`,
+          lastmod: product.updatedAt || product.createdAt || now
+        }))
+    ];
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n`
+      + `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`
+      + urls.map((entry) => `  <url><loc>${escapeXml(entry.loc)}</loc><lastmod>${escapeXml(entry.lastmod)}</lastmod></url>`).join('\n')
+      + `\n</urlset>`;
+
+    return res.type('application/xml').send(xml);
+  } catch (error) {
+    console.error('Erreur génération sitemap:', error);
+    return res.status(500).send('Erreur serveur.');
   }
 });
 
