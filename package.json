@@ -4,9 +4,30 @@
   "description": "InsideX storefront",
   "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test" : "jtest"
   },
+  
   "dependencies": {
-    "express": "^4.19.2"
+    "dotenv": "^17.2.4",
+    "experss": "^0.0.1-security",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.3"
+  },
+  "main": "script.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Inside-X/insidex.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Inside-X/insidex/issues"
+  },
+  "homepage": "https://github.com/Inside-X/insidex#readme",
+  "devDependencies": {
+    "jest": "^30.2.0",
+    "supertest": "^7.2.2"
   }
 }
