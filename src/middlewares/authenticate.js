@@ -11,6 +11,11 @@ function unauthorized(res, message) {
   });
 }
 
+function logAuthenticationFailure(reason, error) {
+  const detail = error?.message ? ` (${error.message})` : '';
+  console.warn(`[auth] Authentication failed: ${reason}${detail}`);
+}
+
 /**
  * Authenticate a user from Authorization: Bearer <token> header.
  *
@@ -71,7 +76,8 @@ export function authenticate(req, res, next) {
 
     const id = decoded?.sub ?? decoded?.id;
     if (!id) {
-      return unauthorized(res, 'Invalid token payload');
+      logAuthenticationFailure('token payload missing subject');
+      return unauthorized(res, 'Authentication failed');
     }
 
     req.auth = {
@@ -89,6 +95,7 @@ export function authenticate(req, res, next) {
 
     return next();
   } catch (error) {
+    logAuthenticationFailure('token verification error', error);
     return unauthorized(res, 'Authentication failed');
   }
 }

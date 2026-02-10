@@ -1,4 +1,5 @@
 import request from 'supertest';
+import jwt from 'jsonwebtoken';
 import app from '../src/app.js';
 import { buildTestToken } from './helpers/jwt.helper.js';
 
@@ -131,6 +132,31 @@ describe('Admin routes protection (/api/admin)', () => {
     });
   });
 
+  test('8b) token avec payload invalide (sans sub/id) -> 401 uniforme', async () => {
+    const tokenWithoutSubject = jwt.sign(
+      { role: 'admin' },
+      process.env.JWT_ACCESS_SECRET,
+      {
+        algorithm: 'HS256',
+        issuer: process.env.JWT_ACCESS_ISSUER,
+        audience: process.env.JWT_ACCESS_AUDIENCE,
+        expiresIn: '15m',
+      },
+    );
+
+    const response = await request(app)
+      .get('/api/admin/health')
+      .set('Authorization', `Bearer ${tokenWithoutSubject}`)
+      .expect(401);
+
+    expect(response.body).toEqual({
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Authentication failed',
+      },
+    });
+  });
+  
   test('9) route admin ne fuit pas les claims auth -> 200', async () => {
     const adminToken = buildTestToken({ role: 'admin', id: 'admin-no-leak' });
 
