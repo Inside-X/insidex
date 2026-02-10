@@ -13,7 +13,6 @@ adminRouter.get('/health', (req, res) => {
     data: {
       status: 'ok',
       scope: 'admin',
-      auth: req.auth,
     },
   });
 });

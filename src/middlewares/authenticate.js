@@ -89,11 +89,7 @@ export function authenticate(req, res, next) {
 
     return next();
   } catch (error) {
-    if (error?.name === 'TokenExpiredError') {
-      return unauthorized(res, 'Token expired');
-    }
-
-    return unauthorized(res, 'Invalid token');
+    return unauthorized(res, 'Authentication failed');
   }
 }
 

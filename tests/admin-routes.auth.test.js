@@ -39,7 +39,7 @@ describe('Admin routes protection (/api/admin)', () => {
     expect(response.body).toEqual({
       error: {
         code: 'UNAUTHORIZED',
-        message: 'Invalid token',
+        message: 'Authentication failed',
       },
     });
   });
@@ -68,13 +68,9 @@ describe('Admin routes protection (/api/admin)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
 
-    expect(response.body.data).toMatchObject({
+    expect(response.body.data).toEqual({
       status: 'ok',
       scope: 'admin',
-      auth: {
-        sub: 'admin-1',
-        role: 'admin',
-      },
     });
   });
 
@@ -110,7 +106,7 @@ describe('Admin routes protection (/api/admin)', () => {
     expect(response.body).toEqual({
       error: {
         code: 'UNAUTHORIZED',
-        message: 'Token expired',
+        message: 'Authentication failed',
       },
     });
   });
@@ -130,7 +126,23 @@ describe('Admin routes protection (/api/admin)', () => {
     expect(response.body).toEqual({
       error: {
         code: 'UNAUTHORIZED',
-        message: 'Invalid token',
+        message: 'Authentication failed',
+      },
+    });
+  });
+
+  test('9) route admin ne fuit pas les claims auth -> 200', async () => {
+    const adminToken = buildTestToken({ role: 'admin', id: 'admin-no-leak' });
+
+    const response = await request(app)
+      .get('/api/admin/health')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(response.body).toEqual({
+      data: {
+        status: 'ok',
+        scope: 'admin',
       },
     });
   });
