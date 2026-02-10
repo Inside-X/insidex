@@ -6,6 +6,7 @@ import { showToast } from './modules/toast.js';
 import { renderTexts } from './modules/renderTexts.js';
 import { initRoleSimulation } from './modules/role.js';
 import { addAddress, addOrder, setActiveEmail, upsertProfile } from './modules/accountData.js';
+import { initAnalytics, trackAnalyticsEvent } from './modules/analytics.js';
 
 const currency = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 
@@ -135,6 +136,19 @@ function updateTotals() {
 async function renderCartSummary() {
   const cart = await loadCart();
   const entries = Object.entries(cart.items);
+
+  if (entries.length > 0) {
+    await trackAnalyticsEvent('begin_checkout', {
+      currency: 'EUR',
+      value: entries.reduce((sum, [, item]) => sum + (item.price * item.qty), 0),
+      items: entries.map(([id, item]) => ({
+        item_id: id,
+        item_name: item.name,
+        price: item.price,
+        quantity: item.qty
+      }))
+    });
+  }
   selectors.items.innerHTML = '';
   state.subtotal = 0;
 
@@ -225,6 +239,20 @@ async function handleSubmit(event) {
     address
   };
 
+  await trackAnalyticsEvent('purchase', {
+    transaction_id: order.id,
+    currency: 'EUR',
+    value: state.total,
+    shipping: state.shipping,
+    tax: state.tax,
+    items: items.map((item) => ({
+      item_id: item.id,
+      item_name: item.name,
+      price: item.price,
+      quantity: item.qty
+    }))
+  });
+
   if (email) {
     upsertProfile(email, { name: fullName, email, phone });
     addAddress(email, address);
@@ -245,6 +273,7 @@ async function handleSubmit(event) {
 
 document.addEventListener('DOMContentLoaded', async () => {
   initRoleSimulation();
+  initAnalytics();
   initHeader();
   initAuth();
   initCartDrawer();

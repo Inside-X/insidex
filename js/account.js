@@ -4,6 +4,7 @@ import { initCartDrawer } from './modules/cartDrawer.js';
 import { updateBadge } from './modules/cart.js';
 import { renderTexts } from './modules/renderTexts.js';
 import { initRoleSimulation } from './modules/role.js';
+import { initAnalytics } from './modules/analytics.js';
 import { showToast } from './modules/toast.js';
 import {
   addAddress,
@@ -194,6 +195,7 @@ function handleAddressSubmit(event) {
 
 document.addEventListener('DOMContentLoaded', async () => {
   initRoleSimulation();
+  initAnalytics();
   initHeader();
   initAuth();
   initCartDrawer();

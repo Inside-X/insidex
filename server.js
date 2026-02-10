@@ -24,6 +24,7 @@ const CARTS_PATH = path.join(__dirname, 'data', 'carts.json');
 const USERS_PATH = path.join(__dirname, 'data', 'users.json');
 const LEADS_PATH = path.join(__dirname, 'data', 'leads.json');
 const ABANDONED_PATH = path.join(__dirname, 'data', 'abandoned.json');
+const ANALYTICS_PATH = path.join(__dirname, 'data', 'analytics.json');
 const JWT_SECRET = process.env.JWT_SECRET || 'insidex-demo-secret';
 const ACCESS_TOKEN_TTL = 60 * 15;
 const REFRESH_TOKEN_TTL = 60 * 60 * 24 * 7;
@@ -230,6 +231,52 @@ async function loadAbandoned() {
 
 async function saveAbandoned(data) {
   await writeFile(ABANDONED_PATH, JSON.stringify(data, null, 2), 'utf-8');
+}
+
+async function loadAnalytics() {
+  try {
+    const content = await readFile(ANALYTICS_PATH, 'utf-8');
+    const data = JSON.parse(content);
+    return {
+      events: Array.isArray(data?.events) ? data.events : []
+    };
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      const empty = { events: [] };
+      await writeFile(ANALYTICS_PATH, JSON.stringify(empty, null, 2), 'utf-8');
+      return empty;
+    }
+    throw error;
+  }
+}
+
+async function saveAnalytics(data) {
+  await writeFile(ANALYTICS_PATH, JSON.stringify(data, null, 2), 'utf-8');
+}
+
+function summarizeConversion(events) {
+  const tracked = events.filter((event) => ['add_to_cart', 'begin_checkout', 'purchase'].includes(event.event));
+  const grouped = tracked.reduce((acc, event) => {
+    const key = event.event;
+    if (!acc[key]) acc[key] = 0;
+    acc[key] += 1;
+    return acc;
+  }, {});
+
+  const addToCart = grouped.add_to_cart || 0;
+  const beginCheckout = grouped.begin_checkout || 0;
+  const purchase = grouped.purchase || 0;
+
+  const checkoutRate = addToCart > 0 ? beginCheckout / addToCart : 0;
+  const purchaseRate = beginCheckout > 0 ? purchase / beginCheckout : 0;
+
+  return {
+    addToCart,
+    beginCheckout,
+    purchase,
+    checkoutRate,
+    purchaseRate
+  };
 }
 
 function recordLeadNotification({ notifications, lead }) {
@@ -684,6 +731,43 @@ app.post('/api/auth/reset', async (req, res) => {
     return res.json({ message: 'Mot de passe mis à jour.' });
   } catch (error) {
     console.error('Erreur reset:', error);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+
+app.post('/api/analytics/events', async (req, res) => {
+  try {
+    const { event, payload = {}, source = 'web', path: pagePath = '', sessionId } = req.body;
+    if (!event) {
+      return res.status(400).json({ error: 'Event requis.' });
+    }
+
+    const data = await loadAnalytics();
+    data.events.push({
+      id: crypto.randomUUID(),
+      event: String(event),
+      payload,
+      source: String(source),
+      path: String(pagePath),
+      sessionId: sessionId ? String(sessionId) : null,
+      createdAt: new Date().toISOString()
+    });
+    await saveAnalytics(data);
+    return res.status(201).json({ ok: true });
+  } catch (error) {
+    console.error('Erreur tracking analytics:', error);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+app.get('/api/analytics/conversion', async (req, res) => {
+  try {
+    const data = await loadAnalytics();
+    const summary = summarizeConversion(data.events);
+    return res.json(summary);
+  } catch (error) {
+    console.error('Erreur dashboard conversion:', error);
     return res.status(500).json({ error: 'Erreur serveur.' });
   }
 });

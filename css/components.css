@@ -485,3 +485,24 @@ main h2{ font-size:1.4rem; margin:18px 0 10px; }
 .icon-btn.is-authenticated{
   color:var(--primary);
 }
+.admin-metrics{
+  display:grid;
+  gap:12px;
+  grid-template-columns:repeat(auto-fit, minmax(160px,1fr));
+}
+.admin-metric-card{
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#fff;
+  padding:14px;
+}
+.admin-metric-label{
+  margin:0;
+  color:var(--muted);
+  font-size:.85rem;
+}
+.admin-metric-value{
+  margin-top:6px;
+  display:block;
+  font-size:1.2rem;
+}

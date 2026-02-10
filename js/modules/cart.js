@@ -1,5 +1,10 @@
+import { trackAnalyticsEvent } from './analytics.js';
+
 // Année footer
-document.getElementById("year").textContent = new Date().getFullYear().toString();
+const yearEl = document.getElementById("year");
+if (yearEl) {
+  yearEl.textContent = new Date().getFullYear().toString();
+}
 
 // --- Panier (backend) ---
 const CART_ANON_KEY = "insidex_cart_anon_id";
@@ -62,7 +67,7 @@ export async function updateBadge() {
   countEl.textContent = getCartCount(cart).toString();
 }
 
-export async function addToCart(id, name, price) {
+export async function addToCart(id, name, price, qty = 1) {
   const { anonId, userId } = getCartContext();
   await fetchJSON('/api/cart/items', {
     method: 'POST',
@@ -71,12 +76,23 @@ export async function addToCart(id, name, price) {
       id,
       name,
       price: Number(price),
-      qty: 1,
+      qty: Number(qty),
       anonId,
       userId
     })
   });
   await updateBadge();
+
+  await trackAnalyticsEvent('add_to_cart', {
+    currency: 'EUR',
+    value: Number(price) * Number(qty),
+    items: [{
+      item_id: id,
+      item_name: name,
+      price: Number(price),
+      quantity: Number(qty)
+    }]
+  });
 }
 
 export async function setQty(id, qty) {
