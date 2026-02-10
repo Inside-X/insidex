@@ -1,7 +1,9 @@
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
+import { jest } from '@jest/globals';
 import app from '../src/app.js';
 import { buildTestToken } from './helpers/jwt.helper.js';
+import { authRateLimiter } from '../src/middlewares/authRateLimiter.js';
 
 function expectApiError(response, { code, message }) {
   expect(response.body).toMatchObject({
@@ -11,6 +13,22 @@ function expectApiError(response, { code, message }) {
       requestId: expect.any(String),
     },
   });
+}
+
+function createMockResponse() {
+  return {
+    req: {},
+    statusCode: 200,
+    jsonPayload: null,
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(payload) {
+      this.jsonPayload = payload;
+      return this;
+    },
+  };
 }
 
 describe('Admin routes protection (/api/admin)', () => {
@@ -320,5 +338,37 @@ describe('JWT misconfiguration handling', () => {
 
     expect(response.headers['x-request-id']).toBe('req-test-123');
     expect(response.body.error.requestId).toBe('req-test-123');
+  });
+});
+
+describe('Auth rate limiter payload consistency', () => {
+  test('renvoie le schéma standardisé avec requestId après dépassement du seuil', () => {
+    let deniedResponse = null;
+
+    for (let attempt = 1; attempt <= 21; attempt += 1) {
+      const req = {
+        ip: '203.0.113.10',
+        requestId: `rate-limit-req-${attempt}`,
+      };
+      const res = createMockResponse();
+      const next = jest.fn();
+
+      authRateLimiter(req, res, next);
+
+      if (attempt <= 20) {
+        expect(next).toHaveBeenCalledTimes(1);
+      } else {
+        deniedResponse = res;
+      }
+    }
+
+    expect(deniedResponse.statusCode).toBe(429);
+    expect(deniedResponse.jsonPayload).toEqual({
+      error: {
+        code: 'RATE_LIMITED',
+        message: 'Too many authentication attempts',
+        requestId: 'rate-limit-req-21',
+      },
+    });
   });
 });

@@ -22,15 +22,11 @@ export function authRateLimiter(req, res, next) {
   attemptsByIp.set(ip, bucket);
 
   if (bucket.count > MAX_ATTEMPTS) {
-    return res.status(429).json({
-      error: {
-        code: 'RATE_LIMITED',
-        message: 'Too many authentication attempts',
-      },
-    });
+    return sendApiError(req, res, 429, 'RATE_LIMITED', 'Too many authentication attempts');
   }
 
   return next();
 }
 
 export default authRateLimiter;
+import { sendApiError } from '../utils/api-error.js';
