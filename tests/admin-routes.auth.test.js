@@ -3,17 +3,25 @@ import jwt from 'jsonwebtoken';
 import app from '../src/app.js';
 import { buildTestToken } from './helpers/jwt.helper.js';
 
+function expectApiError(response, { code, message }) {
+  expect(response.body).toMatchObject({
+    error: {
+      code,
+      message,
+      requestId: expect.any(String),
+    },
+  });
+}
+
 describe('Admin routes protection (/api/admin)', () => {
   test('1) sans token -> 401', async () => {
     const response = await request(app)
       .get('/api/admin/health')
       .expect(401);
 
-    expect(response.body).toEqual({
-      error: {
-        code: 'UNAUTHORIZED',
-        message: 'Authentication required',
-      },
+    expectApiError(response, {
+      code: 'UNAUTHORIZED',
+      message: 'Authentication required',
     });
   });
 
@@ -23,11 +31,9 @@ describe('Admin routes protection (/api/admin)', () => {
       .set('Authorization', 'Token abc123')
       .expect(401);
 
-    expect(response.body).toEqual({
-      error: {
-        code: 'UNAUTHORIZED',
-        message: 'Authorization header must be in the format: Bearer <token>',
-      },
+    expectApiError(response, {
+      code: 'UNAUTHORIZED',
+      message: 'Authorization header must be in the format: Bearer <token>',
     });
   });
 
@@ -37,11 +43,9 @@ describe('Admin routes protection (/api/admin)', () => {
       .set('Authorization', 'Bearer invalid.token.value')
       .expect(401);
 
-    expect(response.body).toEqual({
-      error: {
-        code: 'UNAUTHORIZED',
-        message: 'Authentication failed',
-      },
+    expectApiError(response, {
+      code: 'UNAUTHORIZED',
+      message: 'Authentication failed',
     });
   });
 
@@ -53,11 +57,9 @@ describe('Admin routes protection (/api/admin)', () => {
       .set('Authorization', `Bearer ${customerToken}`)
       .expect(403);
 
-    expect(response.body).toEqual({
-      error: {
-        code: 'FORBIDDEN',
-        message: 'Insufficient permissions',
-      },
+    expectApiError(response, {
+      code: 'FORBIDDEN',
+      message: 'Insufficient permissions',
     });
   });
 
@@ -83,11 +85,9 @@ describe('Admin routes protection (/api/admin)', () => {
       .set('Authorization', `Bearer ${tokenWithoutRole}`)
       .expect(403);
 
-    expect(response.body).toEqual({
-      error: {
-        code: 'FORBIDDEN',
-        message: 'Insufficient permissions',
-      },
+    expectApiError(response, {
+      code: 'FORBIDDEN',
+      message: 'Insufficient permissions',
     });
   });
 
@@ -104,11 +104,9 @@ describe('Admin routes protection (/api/admin)', () => {
       .set('Authorization', `Bearer ${expiredToken}`)
       .expect(401);
 
-    expect(response.body).toEqual({
-      error: {
-        code: 'UNAUTHORIZED',
-        message: 'Authentication failed',
-      },
+    expectApiError(response, {
+      code: 'UNAUTHORIZED',
+      message: 'Authentication failed',
     });
   });
 
@@ -124,11 +122,9 @@ describe('Admin routes protection (/api/admin)', () => {
       .set('Authorization', `Bearer ${tokenWrongAudience}`)
       .expect(401);
 
-    expect(response.body).toEqual({
-      error: {
-        code: 'UNAUTHORIZED',
-        message: 'Authentication failed',
-      },
+expectApiError(response, {
+      code: 'UNAUTHORIZED',
+      message: 'Authentication failed',
     });
   });
 
@@ -149,11 +145,9 @@ describe('Admin routes protection (/api/admin)', () => {
       .set('Authorization', `Bearer ${tokenWithoutSubject}`)
       .expect(401);
 
-    expect(response.body).toEqual({
-      error: {
-        code: 'UNAUTHORIZED',
-        message: 'Authentication failed',
-      },
+    expectApiError(response, {
+      code: 'UNAUTHORIZED',
+      message: 'Authentication failed',
     });
   });
 
@@ -211,11 +205,9 @@ describe('Admin example routes strategy (/api/admin/* via mounted example router
       .set('Authorization', `Bearer ${opsToken}`)
       .expect(403);
 
-    expect(response.body).toEqual({
-      error: {
-        code: 'FORBIDDEN',
-        message: 'Insufficient permissions',
-      },
+    expectApiError(response, {
+      code: 'FORBIDDEN',
+      message: 'Insufficient permissions',
     });
   });
 });
@@ -276,11 +268,9 @@ describe('JWT misconfiguration handling', () => {
       .set('Authorization', `Bearer ${validToken}`)
       .expect(500);
 
-    expect(response.body).toEqual({
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Authentication service misconfigured',
-      },
+    expectApiError(response, {
+      code: 'INTERNAL_ERROR',
+      message: 'Authentication service misconfigured',
     });
   });
 
@@ -297,11 +287,9 @@ describe('JWT misconfiguration handling', () => {
       .set('Authorization', `Bearer ${validToken}`)
       .expect(500);
 
-    expect(response.body).toEqual({
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Authentication service misconfigured',
-      },
+    expectApiError(response, {
+      code: 'INTERNAL_ERROR',
+      message: 'Authentication service misconfigured',
     });
   });
 
@@ -318,11 +306,19 @@ describe('JWT misconfiguration handling', () => {
       .set('Authorization', `Bearer ${validToken}`)
       .expect(500);
 
-    expect(response.body).toEqual({
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Authentication service misconfigured',
-      },
+    expectApiError(response, {
+      code: 'INTERNAL_ERROR',
+      message: 'Authentication service misconfigured',
     });
+  });
+
+  test('request-id entrant est propagé dans la réponse d’erreur', async () => {
+    const response = await request(app)
+      .get('/api/admin/health')
+      .set('x-request-id', 'req-test-123')
+      .expect(401);
+
+    expect(response.headers['x-request-id']).toBe('req-test-123');
+    expect(response.body.error.requestId).toBe('req-test-123');
   });
 });

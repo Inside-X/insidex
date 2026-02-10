@@ -1,9 +1,12 @@
 import express from 'express';
 import adminRouter from './routes/admin-routes.js';
+import adminExampleRouter from './routes/admin-example.routes.js';
+import requestContext from './middlewares/requestContext.js';
 
 const app = express();
 
 app.use(express.json());
+app.use(requestContext);
 
 // Route publique non protégée de démo
 app.get('/api/health', (req, res) => {

@@ -1,25 +1,9 @@
-function unauthorized(res) {
-  return res.status(401).json({
-    error: {
-      code: 'UNAUTHORIZED',
-      message: 'Authentication required',
-    },
-  });
-}
-
-function forbidden(res) {
-  return res.status(403).json({
-    error: {
-      code: 'FORBIDDEN',
-      message: 'Insufficient permissions',
-    },
-  });
-}
+import { sendApiError } from '../utils/api-error.js';
+import { normalizeRole } from '../security/rbac-policy.js';
 
 /**
  * authorizeRole('admin')
  * authorizeRole(['admin', 'ops'])
- *
  * Role policy:
  * - trims surrounding whitespace
  * - compares case-insensitively (lowercase normalization)
@@ -35,17 +19,14 @@ export function authorizeRole(roleOrArray) {
   const normalizedAllowedRoles = new Set(allowedRoles.map(normalizeRole));
 
   return function authorizeRoleMiddleware(req, res, next) {
-    const auth = req.auth;
-
-    if (!auth?.sub) {
-      return unauthorized(res);
+    if (!req.auth?.sub) {
+      return sendApiError(req, res, 401, 'UNAUTHORIZED', 'Authentication required');
     }
 
-    const currentRole = auth.role;
-    const normalizedCurrentRole = typeof currentRole === 'string' ? normalizeRole(currentRole) : null;
+    const normalizedCurrentRole = normalizeRole(req.auth.role);
 
     if (!normalizedCurrentRole || !normalizedAllowedRoles.has(normalizedCurrentRole)) {
-      return forbidden(res);
+      return sendApiError(req, res, 403, 'FORBIDDEN', 'Insufficient permissions');
     }
 
     return next();

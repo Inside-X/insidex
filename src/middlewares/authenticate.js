@@ -1,19 +1,20 @@
 import jwt from 'jsonwebtoken';
+import { normalizeRole } from '../security/rbac-policy.js';
+import { sendApiError } from '../utils/api-error.js';
 
 const BEARER_REGEX = /^Bearer\s+(.+)$/i;
 
-function unauthorized(res, message) {
-  return res.status(401).json({
-    error: {
-      code: 'UNAUTHORIZED',
-      message,
-    },
-  });
+function unauthorized(req, res, message) {
+  return sendApiError(req, res, 401, 'UNAUTHORIZED', message);
 }
 
 function logAuthenticationFailure(reason, error) {
-  const detail = error?.message ? ` (${error.message})` : '';
-  console.warn(`[auth] Authentication failed: ${reason}${detail}`);
+  console.warn(JSON.stringify({
+    event: 'auth_failure',
+    reason,
+    detail: error?.message,
+    requestId: error?.requestId,
+  }));
 }
 
 /**
@@ -27,17 +28,17 @@ export function authenticate(req, res, next) {
   const authorizationHeader = req.get('authorization');
 
   if (!authorizationHeader) {
-    return unauthorized(res, 'Authentication required');
+    return unauthorized(req, res, 'Authentication required');
   }
 
   const bearerMatch = authorizationHeader.match(BEARER_REGEX);
   if (!bearerMatch || !bearerMatch[1]) {
-    return unauthorized(res, 'Authorization header must be in the format: Bearer <token>');
+    return unauthorized(req, res, 'Authorization header must be in the format: Bearer <token>');
   }
 
   const token = bearerMatch[1].trim();
   if (!token) {
-    return unauthorized(res, 'Authentication required');
+    return unauthorized(req, res, 'Authentication required');
   }
 
   const secret = process.env.JWT_ACCESS_SECRET;
@@ -45,21 +46,11 @@ export function authenticate(req, res, next) {
   const audience = process.env.JWT_ACCESS_AUDIENCE;
 
   if (!secret) {
-    return res.status(500).json({
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Authentication service misconfigured',
-      },
-    });
+    return sendApiError(req, res, 500, 'INTERNAL_ERROR', 'Authentication service misconfigured');
   }
 
   if ((issuer && !audience) || (!issuer && audience)) {
-    return res.status(500).json({
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Authentication service misconfigured',
-      },
-    });
+    return sendApiError(req, res, 500, 'INTERNAL_ERROR', 'Authentication service misconfigured');
   }
   
   try {
@@ -82,9 +73,7 @@ export function authenticate(req, res, next) {
 
     req.auth = {
       sub: id,
-      role: decoded?.role,
-      iat: decoded?.iat,
-      exp: decoded?.exp,
+      role: normalizeRole(decoded?.role),
     };
 
     // Backward compatibility for existing handlers.
@@ -95,8 +84,11 @@ export function authenticate(req, res, next) {
 
     return next();
   } catch (error) {
-    logAuthenticationFailure('token verification error', error);
-    return unauthorized(res, 'Authentication failed');
+    logAuthenticationFailure('token verification error', {
+      ...error,
+      requestId: req.requestId,
+    });
+    return unauthorized(req, res, 'Authentication failed');
   }
 }
 

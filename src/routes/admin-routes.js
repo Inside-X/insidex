@@ -1,11 +1,11 @@
 import express from 'express';
 import { authenticate } from '../middlewares/authenticate.js';
-import { authorizeRole } from '../middlewares/authorizeRole.js';
+import { requirePermission } from '../middlewares/requirePermission.js';
 
 const adminRouter = express.Router();
 
 // Tous les endpoints de ce router exigent un user authentifié avec rôle admin.
-adminRouter.use(authenticate, authorizeRole('admin'));
+adminRouter.use(authenticate, requirePermission('admin:health:read'));
 
 // GET /api/admin/health
 adminRouter.get('/health', (req, res) => {
