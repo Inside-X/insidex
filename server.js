@@ -11,6 +11,8 @@ import {
   productsSchemas
 } from './src/validation/schemas/index.js';
 import { AppError } from './src/errors/app-error.js';
+import authenticate from './src/middlewares/authenticate.js';
+import authorizeRole from './src/middlewares/authorizeRole.js';
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -186,21 +188,7 @@ function sanitizeUser(user) {
   };
 }
 
-function requireAdminAccess(req, res, next) {
-  const authorizationHeader = req.headers.authorization || '';
-  const [scheme, token] = authorizationHeader.split(' ');
 
-  if (scheme !== 'Bearer' || !token) {
-    return res.status(401).json({ error: 'Authentification requise.' });
-  }
-
-  const payload = verifyToken(token);
-  if (!payload || payload.type !== 'access' || payload.role !== 'admin') {
-    return res.status(403).json({ error: 'Accès admin requis.' });
-  }
-
-  return next();
-}
 
 async function loadCarts() {
   try {
