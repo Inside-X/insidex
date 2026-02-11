@@ -3,6 +3,14 @@ import { readFile, writeFile } from 'fs/promises';
 import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { validate } from './src/validation/validate.middleware.js';
+import {
+  authSchemas,
+  cartSchemas,
+  leadsSchemas,
+  productsSchemas
+} from './src/validation/schemas/index.js';
+import { AppError } from './src/errors/app-error.js';
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -432,7 +440,7 @@ function resolveCartBucket(carts, { userId, anonId }) {
   return { bucket: carts.anonymous, key: anonId };
 }
 
-app.get('/api/cart', async (req, res) => {
+app.get('/api/cart', validate(cartSchemas.getCartQuery, 'query'), async (req, res) => {
   try {
     const carts = await loadCarts();
     const bucketInfo = resolveCartBucket(carts, {
@@ -450,12 +458,9 @@ app.get('/api/cart', async (req, res) => {
   }
 });
 
-app.post('/api/cart/items', async (req, res) => {
+app.post('/api/cart/items', validate(cartSchemas.addItem), async (req, res) => {
   try {
     const { id, name, price, qty = 1, userId, anonId } = req.body;
-    if (!id || !name) {
-      return res.status(400).json({ error: 'Produit invalide.' });
-    }
     const carts = await loadCarts();
     const bucketInfo = resolveCartBucket(carts, { userId, anonId });
     if (!bucketInfo) {
@@ -476,7 +481,7 @@ app.post('/api/cart/items', async (req, res) => {
   }
 });
 
-app.patch('/api/cart/items/:id', async (req, res) => {
+app.patch('/api/cart/items/:id', validate(cartSchemas.updateItemParams, 'params'), validate(cartSchemas.updateItemBody), async (req, res) => {
   try {
     const { userId, anonId, qty } = req.body;
     const carts = await loadCarts();
@@ -499,7 +504,7 @@ app.patch('/api/cart/items/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/cart/items/:id', async (req, res) => {
+app.delete('/api/cart/items/:id', validate(cartSchemas.removeItemParams, 'params'), validate(cartSchemas.removeItemBody), async (req, res) => {
   try {
     const { userId, anonId } = req.body;
     const carts = await loadCarts();
@@ -519,7 +524,7 @@ app.delete('/api/cart/items/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/cart', async (req, res) => {
+app.delete('/api/cart', validate(cartSchemas.clearCartBody), async (req, res) => {
   try {
     const { userId, anonId } = req.body;
     const carts = await loadCarts();
@@ -537,12 +542,9 @@ app.delete('/api/cart', async (req, res) => {
   }
 });
 
-app.post('/api/cart/sync', async (req, res) => {
+app.post('/api/cart/sync', validate(cartSchemas.sync), async (req, res) => {
   try {
     const { anonId, userId } = req.body;
-    if (!anonId || !userId) {
-      return res.status(400).json({ error: 'Identifiant manquant.' });
-    }
     const carts = await loadCarts();
     const anonCart = normalizeCart(carts.anonymous[anonId]);
     const userCart = normalizeCart(carts.users[userId]);
@@ -564,12 +566,9 @@ app.post('/api/cart/sync', async (req, res) => {
   }
 });
 
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', validate(authSchemas.register), async (req, res) => {
   try {
     const { email, password, name } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email et mot de passe requis.' });
-    }
     const normalizedEmail = String(email).trim().toLowerCase();
     const usersData = await loadUsers();
     if (usersData.users[normalizedEmail]) {
@@ -605,12 +604,9 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', validate(authSchemas.login), async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email et mot de passe requis.' });
-    }
     const normalizedEmail = String(email).trim().toLowerCase();
     const usersData = await loadUsers();
     const user = usersData.users[normalizedEmail];
@@ -639,7 +635,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.post('/api/auth/refresh', async (req, res) => {
+app.post('/api/auth/refresh', validate(authSchemas.refresh), async (req, res) => {
   try {
     const { refreshToken } = req.body;
     const payload = verifyToken(refreshToken);
@@ -705,7 +701,7 @@ app.get('/api/auth/me', async (req, res) => {
   }
 });
 
-app.post('/api/auth/logout', async (req, res) => {
+app.post('/api/auth/logout', validate(authSchemas.logout), async (req, res) => {
   try {
     const { refreshToken } = req.body;
     const payload = verifyToken(refreshToken);
@@ -726,12 +722,9 @@ app.post('/api/auth/logout', async (req, res) => {
   }
 });
 
-app.post('/api/auth/forgot', async (req, res) => {
+app.post('/api/auth/forgot', validate(authSchemas.forgot), async (req, res) => {
   try {
     const { email } = req.body;
-    if (!email) {
-      return res.status(400).json({ error: 'Email requis.' });
-    }
     const normalizedEmail = String(email).trim().toLowerCase();
     const usersData = await loadUsers();
     const user = usersData.users[normalizedEmail];
@@ -753,12 +746,9 @@ app.post('/api/auth/forgot', async (req, res) => {
   }
 });
 
-app.post('/api/auth/reset', async (req, res) => {
+app.post('/api/auth/reset', validate(authSchemas.reset), async (req, res) => {
   try {
     const { email, resetToken, newPassword } = req.body;
-    if (!email || !resetToken || !newPassword) {
-      return res.status(400).json({ error: 'Informations manquantes.' });
-    }
     const normalizedEmail = String(email).trim().toLowerCase();
     const usersData = await loadUsers();
     const user = usersData.users[normalizedEmail];
@@ -830,16 +820,10 @@ app.get('/api/leads', async (req, res) => {
   }
 });
 
-app.post('/api/leads', async (req, res) => {
+app.post('/api/leads', validate(leadsSchemas.create), async (req, res) => {
   try {
     const { email, source } = req.body;
-    if (!email) {
-      return res.status(400).json({ error: 'Email requis.' });
-    }
     const normalizedEmail = String(email).trim().toLowerCase();
-    if (!normalizedEmail.includes('@')) {
-      return res.status(400).json({ error: 'Email invalide.' });
-    }
     const data = await loadLeads();
     const lead = {
       id: crypto.randomUUID(),
@@ -882,7 +866,7 @@ function applyFilters(products, filters) {
   });
 }
 
-app.get('/api/products', async (req, res) => {
+app.get('/api/products', validate(productsSchemas.listQuery, 'query'), async (req, res) => {
   try {
     const products = await loadProducts();
     const { slug } = req.query;
@@ -897,10 +881,10 @@ app.get('/api/products', async (req, res) => {
 
     const filters = {
       category: req.query.category,
-      published: req.query.published ? req.query.published === 'true' : undefined,
-      featured: req.query.featured ? req.query.featured === 'true' : undefined,
-      minPrice: req.query.minPrice ? Number(req.query.minPrice) : undefined,
-      maxPrice: req.query.maxPrice ? Number(req.query.maxPrice) : undefined,
+      published: req.query.published,
+      featured: req.query.featured,
+      minPrice: req.query.minPrice,
+      maxPrice: req.query.maxPrice,
       q: req.query.q ? String(req.query.q).toLowerCase() : ''
     };
 
@@ -912,7 +896,7 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-app.get('/api/products/:id', async (req, res) => {
+app.get('/api/products/:id', validate(productsSchemas.byIdParams, 'params'), async (req, res) => {
   try {
     const products = await loadProducts();
     const match = products.find((product) => product.id === req.params.id);
@@ -979,6 +963,31 @@ app.get('/sitemap.xml', async (req, res) => {
     console.error('Erreur génération sitemap:', error);
     return res.status(500).send('Erreur serveur.');
   }
+});
+
+app.use((err, req, res, next) => {
+  if (err instanceof AppError) {
+    return res.status(err.statusCode).json({
+      error: {
+        code: err.code,
+        message: err.message,
+        details: err.details
+      }
+    });
+  }
+
+  if (err?.name === 'SyntaxError' && err?.status === 400 && 'body' in err) {
+    return res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Invalid request payload',
+        details: [{ path: 'body', message: 'Malformed JSON body', code: 'invalid_json' }]
+      }
+    });
+  }
+
+  console.error('Unhandled error:', err);
+  return res.status(500).json({ error: 'Erreur serveur.' });
 });
 
 app.listen(PORT, () => {
