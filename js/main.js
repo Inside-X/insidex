@@ -13,6 +13,7 @@ import { initAnalytics } from './modules/analytics.js';
 import { initAdminProducts } from './modules/adminProducts.js';
 import { initAdminLeads } from './modules/adminLeads.js';
 import { initAdminAnalytics } from './modules/adminAnalytics.js';
+import { applyAdminUiGuards } from './modules/adminUiAccess.js';
 
 let adminInitialized = false;
 
@@ -27,6 +28,7 @@ function upsertAdminLink(container, id) {
     link.id = id;
     link.href = '#admin';
     link.textContent = 'Espace admin';
+    link.dataset.adminOnly = 'true';
     container.appendChild(link);
   }
   link.hidden = false;
@@ -40,13 +42,7 @@ function removeAdminLink(container, id) {
 }
 
 function applyAdminVisibility(authState) {
-  const adminSection = document.getElementById('admin');
-  const isConfirmedAdmin = !authState.loading && authState.role === 'admin';
-
-  if (adminSection) {
-    adminSection.hidden = !isConfirmedAdmin;
-    adminSection.setAttribute('aria-hidden', String(!isConfirmedAdmin));
-  }
+  const isConfirmedAdmin = applyAdminUiGuards(authState);
 
   const nav = document.querySelector('.nav');
   const mobileNav = document.getElementById('mobileNav');
