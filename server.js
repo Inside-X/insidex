@@ -159,11 +159,17 @@ async function saveUsers(data) {
   await writeFile(USERS_PATH, JSON.stringify(data, null, 2), 'utf-8');
 }
 
+function normalizeUserRole(role) {
+  const normalized = typeof role === 'string' ? role.trim().toLowerCase() : '';
+  return normalized === 'admin' ? 'admin' : 'customer';
+}
+
 function sanitizeUser(user) {
   return {
     id: user.id,
     email: user.email,
-    name: user.name
+    name: user.name,
+    role: normalizeUserRole(user.role)
   };
 }
 
@@ -579,10 +585,11 @@ app.post('/api/auth/register', async (req, res) => {
       passwordHash,
       refreshTokenHash: null,
       resetToken: null,
-      resetTokenExpires: null
+      resetTokenExpires: null,
+      role: 'customer'
     };
-    const accessToken = signToken({ sub: user.id, email: user.email, type: 'access' }, ACCESS_TOKEN_TTL);
-    const refreshToken = signToken({ sub: user.id, email: user.email, type: 'refresh' }, REFRESH_TOKEN_TTL);
+    const accessToken = signToken({ sub: user.id, email: user.email, role: user.role, type: 'access' }, ACCESS_TOKEN_TTL);
+    const refreshToken = signToken({ sub: user.id, email: user.email, role: user.role, type: 'refresh' }, REFRESH_TOKEN_TTL);
     user.refreshTokenHash = hashToken(refreshToken);
     usersData.users[normalizedEmail] = user;
     await saveUsers(usersData);
@@ -614,8 +621,9 @@ app.post('/api/auth/login', async (req, res) => {
     if (candidateHash !== user.passwordHash) {
       return res.status(401).json({ error: 'Identifiants invalides.' });
     }
-    const accessToken = signToken({ sub: user.id, email: user.email, type: 'access' }, ACCESS_TOKEN_TTL);
-    const refreshToken = signToken({ sub: user.id, email: user.email, type: 'refresh' }, REFRESH_TOKEN_TTL);
+    user.role = normalizeUserRole(user.role);
+    const accessToken = signToken({ sub: user.id, email: user.email, role: user.role, type: 'access' }, ACCESS_TOKEN_TTL);
+    const refreshToken = signToken({ sub: user.id, email: user.email, role: user.role, type: 'refresh' }, REFRESH_TOKEN_TTL);
     user.refreshTokenHash = hashToken(refreshToken);
     usersData.users[normalizedEmail] = user;
     await saveUsers(usersData);
@@ -646,7 +654,8 @@ app.post('/api/auth/refresh', async (req, res) => {
     if (hashToken(refreshToken) !== user.refreshTokenHash) {
       return res.status(401).json({ error: 'Session expirée.' });
     }
-    const accessToken = signToken({ sub: user.id, email: user.email, type: 'access' }, ACCESS_TOKEN_TTL);
+    user.role = normalizeUserRole(user.role);
+    const accessToken = signToken({ sub: user.id, email: user.email, role: user.role, type: 'access' }, ACCESS_TOKEN_TTL);
     return res.json({
       user: sanitizeUser(user),
       accessToken,
@@ -654,6 +663,44 @@ app.post('/api/auth/refresh', async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur refresh:', error);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+
+app.get('/api/auth/me', async (req, res) => {
+  try {
+    const authorizationHeader = req.headers.authorization || '';
+    const [scheme, token] = authorizationHeader.split(' ');
+
+    if (scheme !== 'Bearer' || !token) {
+      return res.status(401).json({ error: 'Authentification requise.' });
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+      return res.status(401).json({ error: 'Token invalide ou expiré.' });
+    }
+
+    if (payload.type !== 'access') {
+      return res.status(403).json({ error: 'Token non autorisé pour ce endpoint.' });
+    }
+
+    const usersData = await loadUsers();
+    const user = usersData.users[payload.email];
+    if (!user) {
+      return res.status(401).json({ error: 'Session invalide.' });
+    }
+
+    user.role = normalizeUserRole(user.role);
+    usersData.users[payload.email] = user;
+    await saveUsers(usersData);
+
+    return res.json({
+      user: sanitizeUser(user)
+    });
+  } catch (error) {
+    console.error('Erreur profil auth:', error);
     return res.status(500).json({ error: 'Erreur serveur.' });
   }
 });

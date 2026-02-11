@@ -1,5 +1,5 @@
 import { showToast } from './toast.js';
-import { clearUserId, getUserId, setUserId, syncCartToUser, updateBadge } from './cart.js';
+import { clearUserId, setUserId, syncCartToUser, updateBadge } from './cart.js';
 
 const ACCESS_TOKEN_KEY = 'insidex_access_token';
 const REFRESH_TOKEN_KEY = 'insidex_refresh_token';
@@ -8,8 +8,32 @@ const USER_KEY = 'insidex_auth_user';
 const state = {
   user: null,
   accessToken: null,
-  refreshToken: null
+  refreshToken: null,
+  loading: true,
+  error: null
 };
+
+function normalizeRole(role) {
+  return typeof role === 'string' ? role.trim().toLowerCase() : null;
+}
+
+function sanitizeUser(user) {
+  if (!user || typeof user !== 'object') {
+    return null;
+  }
+  return {
+    id: user.id ?? null,
+    email: user.email ?? null,
+    name: user.name ?? null,
+    role: normalizeRole(user.role)
+  };
+}
+
+function emitAuthState() {
+  document.dispatchEvent(new CustomEvent('auth:state-changed', {
+    detail: getAuthState()
+  }));
+}
 
 function setStoredTokens({ accessToken, refreshToken, user }) {
   if (accessToken) {
@@ -21,9 +45,11 @@ function setStoredTokens({ accessToken, refreshToken, user }) {
     state.refreshToken = refreshToken;
   }
   if (user) {
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
-    state.user = user;
+    const safeUser = sanitizeUser(user);
+    localStorage.setItem(USER_KEY, JSON.stringify(safeUser));
+    state.user = safeUser;
   }
+  emitAuthState();
 }
 
 function clearStoredTokens() {
@@ -33,15 +59,26 @@ function clearStoredTokens() {
   state.accessToken = null;
   state.refreshToken = null;
   state.user = null;
+  state.error = null;
+  emitAuthState();
 }
 
 function loadStoredSession() {
   const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
   const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
   const userRaw = localStorage.getItem(USER_KEY);
+
   state.accessToken = accessToken;
   state.refreshToken = refreshToken;
-  state.user = userRaw ? JSON.parse(userRaw) : null;
+  state.user = null;
+
+  if (userRaw) {
+    try {
+      state.user = sanitizeUser(JSON.parse(userRaw));
+    } catch (error) {
+      localStorage.removeItem(USER_KEY);
+    }
+  }
 }
 
 async function authRequest(url, payload) {
@@ -55,6 +92,25 @@ async function authRequest(url, payload) {
     throw new Error(data.error || 'Erreur authentification.');
   }
   return data;
+}
+
+async function fetchProfile(accessToken) {
+  const response = await fetch('/api/auth/me', {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`
+    }
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const error = new Error(data.error || 'Impossible de charger le profil.');
+    error.status = response.status;
+    throw error;
+  }
+
+  return sanitizeUser(data.user);
 }
 
 function updateAccountButton(accountBtn) {
@@ -99,15 +155,87 @@ function setStatus(modal, message, tone = 'info') {
   status.dataset.tone = tone;
 }
 
+async function resolveAuthenticatedUser() {
+  if (!state.accessToken && !state.refreshToken) {
+    return null;
+  }
+
+  if (state.accessToken) {
+    try {
+      return await fetchProfile(state.accessToken);
+    } catch (error) {
+      if (error.status !== 401 && error.status !== 403) {
+        throw error;
+      }
+    }
+  }
+
+  if (!state.refreshToken) {
+    return null;
+  }
+
+  try {
+    const data = await authRequest('/api/auth/refresh', { refreshToken: state.refreshToken });
+    setStoredTokens({ accessToken: data.accessToken, user: data.user });
+    return await fetchProfile(data.accessToken);
+  } catch (error) {
+    return null;
+  }
+}
+
+async function refreshSession(modal) {
+  state.loading = true;
+  state.error = null;
+  emitAuthState();
+
+  try {
+    const profile = await resolveAuthenticatedUser();
+
+    if (!profile) {
+      clearStoredTokens();
+      clearUserId();
+      updateAccountButton(document.getElementById('accountBtn'));
+      if (modal) {
+        setStatus(modal, 'Connectez-vous pour synchroniser votre panier.', 'info');
+        updateProfilePanel(modal);
+        showPanel('login', modal);
+      }
+      return;
+    }
+
+    state.user = profile;
+    localStorage.setItem(USER_KEY, JSON.stringify(profile));
+    setUserId(profile.email);
+    updateAccountButton(document.getElementById('accountBtn'));
+    if (modal) {
+      setStatus(modal, `Connecté en tant que ${profile.email}.`, 'info');
+      updateProfilePanel(modal);
+      showPanel('profile', modal);
+    }
+  } catch (error) {
+    state.error = error.message;
+    clearStoredTokens();
+    clearUserId();
+    updateAccountButton(document.getElementById('accountBtn'));
+  } finally {
+    state.loading = false;
+    emitAuthState();
+  }
+}
+
 async function handleLogin(form, modal) {
   const formData = new FormData(form);
   const payload = Object.fromEntries(formData.entries());
   const data = await authRequest('/api/auth/login', payload);
   setStoredTokens(data);
-  setUserId(data.user.email);
-  await syncCartToUser(data.user.email);
+  await refreshSession(modal);
+  if (!state.user) {
+    throw new Error('Session invalide après connexion.');
+  }
+  setUserId(state.user.email);
+  await syncCartToUser(state.user.email);
   await updateBadge();
-  setStatus(modal, `Bienvenue ${data.user.name} !`, 'success');
+  setStatus(modal, `Bienvenue ${state.user.name || state.user.email} !`, 'success');
   showToast('✅ Connexion réussie.', 'success');
   updateAccountButton(document.getElementById('accountBtn'));
   updateProfilePanel(modal);
@@ -119,10 +247,14 @@ async function handleRegister(form, modal) {
   const payload = Object.fromEntries(formData.entries());
   const data = await authRequest('/api/auth/register', payload);
   setStoredTokens(data);
-  setUserId(data.user.email);
-  await syncCartToUser(data.user.email);
+  await refreshSession(modal);
+  if (!state.user) {
+    throw new Error('Session invalide après inscription.');
+  }
+  setUserId(state.user.email);
+  await syncCartToUser(state.user.email);
   await updateBadge();
-  setStatus(modal, `Compte créé pour ${data.user.email}.`, 'success');
+  setStatus(modal, `Compte créé pour ${state.user.email}.`, 'success');
   showToast('✅ Inscription terminée.', 'success');
   updateAccountButton(document.getElementById('accountBtn'));
   updateProfilePanel(modal);
@@ -165,25 +297,6 @@ async function handleLogout(modal) {
   updateAccountButton(document.getElementById('accountBtn'));
   updateProfilePanel(modal);
   showPanel('login', modal);
-}
-
-async function refreshSession(modal) {
-  if (!state.refreshToken) return;
-  try {
-    const data = await authRequest('/api/auth/refresh', { refreshToken: state.refreshToken });
-    setStoredTokens({ accessToken: data.accessToken, user: data.user });
-    setUserId(data.user.email);
-    updateAccountButton(document.getElementById('accountBtn'));
-    if (modal) {
-      setStatus(modal, `Connecté en tant que ${data.user.email}.`, 'info');
-      updateProfilePanel(modal);
-      showPanel('profile', modal);
-    }
-  } catch (error) {
-    clearStoredTokens();
-    clearUserId();
-    updateAccountButton(document.getElementById('accountBtn'));
-  }
 }
 
 function bindModal(modal) {
@@ -294,12 +407,31 @@ function bindModal(modal) {
   }
 }
 
-export function initAuth() {
+export function getAuthState() {
+  return {
+    user: state.user,
+    role: state.user?.role ?? null,
+    isAuthenticated: Boolean(state.user),
+    loading: state.loading,
+    error: state.error
+  };
+}
+
+export function onAuthStateChange(callback) {
+  const handler = (event) => callback(event.detail);
+  document.addEventListener('auth:state-changed', handler);
+  return () => document.removeEventListener('auth:state-changed', handler);
+}
+
+export async function initAuth() {
   const modal = document.getElementById('authModal');
-  if (!modal) return;
   loadStoredSession();
   updateAccountButton(document.getElementById('accountBtn'));
-  updateProfilePanel(modal);
-  bindModal(modal);
-  refreshSession(modal);
+
+  if (modal) {
+    updateProfilePanel(modal);
+    bindModal(modal);
+  }
+
+  await refreshSession(modal);
 }
