@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
+    "test:e2e": "NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js --runInBand tests/admin-ui-visibility.e2e.test.js"
   },
   "dependencies": {
     "express": "^4.19.2",

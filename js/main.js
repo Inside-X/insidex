@@ -17,47 +17,6 @@ import { applyAdminUiGuards } from './modules/adminUiAccess.js';
 
 let adminInitialized = false;
 
-function upsertAdminLink(container, id) {
-  if (!container) {
-    return;
-  }
-
-  let link = container.querySelector(`#${id}`);
-  if (!link) {
-    link = document.createElement('a');
-    link.id = id;
-    link.href = '#admin';
-    link.textContent = 'Espace admin';
-    link.dataset.adminOnly = 'true';
-    container.appendChild(link);
-  }
-  link.hidden = false;
-}
-
-function removeAdminLink(container, id) {
-  const link = container?.querySelector(`#${id}`);
-  if (link) {
-    link.remove();
-  }
-}
-
-function applyAdminVisibility(authState) {
-  const isConfirmedAdmin = applyAdminUiGuards(authState);
-
-  const nav = document.querySelector('.nav');
-  const mobileNav = document.getElementById('mobileNav');
-
-  if (isConfirmedAdmin) {
-    upsertAdminLink(nav, 'adminNavLink');
-    upsertAdminLink(mobileNav, 'adminMobileLink');
-  } else {
-    removeAdminLink(nav, 'adminNavLink');
-    removeAdminLink(mobileNav, 'adminMobileLink');
-  }
-
-  return isConfirmedAdmin;
-}
-
 async function initAdminFeaturesOnce() {
   if (adminInitialized) {
     return;
