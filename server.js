@@ -620,9 +620,9 @@ app.post('/api/cart/sync', validate(cartSchemas.sync), async (req, res) => {
   }
 });
 
-app.post('/api/auth/register', validate(authSchemas.register), async (req, res) => {
+app.post(['/api/auth/register', '/auth/register'], validate(authSchemas.register), async (req, res) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, role } = req.body;   
     const normalizedEmail = String(email).trim().toLowerCase();
     const usersData = await loadUsers();
     if (usersData.users[normalizedEmail]) {
@@ -876,7 +876,7 @@ app.get('/api/leads', validate(leadsSchemas.listQuery, 'query'), async (req, res
 
 app.post('/api/leads', validate(leadsSchemas.create), async (req, res) => {
   try {
-    const { email, source } = req.body;
+    const { name, email, message } = req.body;
     const normalizedEmail = String(email).trim().toLowerCase();
     const data = await loadLeads();
     const lead = {
