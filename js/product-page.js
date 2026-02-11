@@ -5,7 +5,6 @@ import { addToCart, updateBadge } from './modules/cart.js';
 import { getProductById, getProductBySlug } from './modules/productService.js';
 import { showToast } from './modules/toast.js';
 import { renderTexts } from './modules/renderTexts.js';
-import { initRoleSimulation } from './modules/role.js';
 import { initLeadCapture } from './modules/leadCapture.js';
 import { initAnalytics } from './modules/analytics.js';
 
@@ -160,7 +159,6 @@ async function resolveProduct() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  initRoleSimulation();
   initAnalytics();
   initHeader();
   initAuth();

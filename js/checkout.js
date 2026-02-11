@@ -4,7 +4,6 @@ import { initCartDrawer } from './modules/cartDrawer.js';
 import { clearCart, loadCart, updateBadge } from './modules/cart.js';
 import { showToast } from './modules/toast.js';
 import { renderTexts } from './modules/renderTexts.js';
-import { initRoleSimulation } from './modules/role.js';
 import { addAddress, addOrder, setActiveEmail, upsertProfile } from './modules/accountData.js';
 import { initAnalytics, trackAnalyticsEvent } from './modules/analytics.js';
 
@@ -272,7 +271,6 @@ async function handleSubmit(event) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  initRoleSimulation();
   initAnalytics();
   initHeader();
   initAuth();

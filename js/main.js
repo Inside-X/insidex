@@ -7,16 +7,11 @@ import { initProductLinks } from './modules/productLinks.js';
 import { renderCarousel } from './modules/renderCarousel.js';
 import { renderProducts } from './modules/renderProducts.js';
 import { renderTexts } from './modules/renderTexts.js';
-import { initRoleSimulation } from './modules/role.js';
 import { initLeadCapture } from './modules/leadCapture.js';
-import { initAdminProducts } from './modules/adminProducts.js';
-import { initAdminLeads } from './modules/adminLeads.js';
 import { initCatalogSearch } from './modules/catalogSearch.js';
 import { initAnalytics } from './modules/analytics.js';
-import { initAdminAnalytics } from './modules/adminAnalytics.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
-  initRoleSimulation();
   initAnalytics();
   initHeader();
   initAuth();
@@ -32,9 +27,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   initProductLinks();
   await updateBadge();
   initLeadCapture();
-  initAdminProducts();
-  await initAdminLeads();
-  await initAdminAnalytics();
 
   document.addEventListener('products:updated', async () => {
     await renderProducts();
