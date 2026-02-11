@@ -28,6 +28,11 @@ async function loadProducts() {
   return Array.isArray(products) ? products : [];
 }
 
+async function saveProducts(products) {
+  const filePath = path.join(__dirname, 'data', 'products.json');
+  await writeFile(filePath, JSON.stringify(products, null, 2), 'utf-8');
+}
+
 const CARTS_PATH = path.join(__dirname, 'data', 'carts.json');
 const USERS_PATH = path.join(__dirname, 'data', 'users.json');
 const LEADS_PATH = path.join(__dirname, 'data', 'leads.json');
@@ -179,6 +184,22 @@ function sanitizeUser(user) {
     name: user.name,
     role: normalizeUserRole(user.role)
   };
+}
+
+function requireAdminAccess(req, res, next) {
+  const authorizationHeader = req.headers.authorization || '';
+  const [scheme, token] = authorizationHeader.split(' ');
+
+  if (scheme !== 'Bearer' || !token) {
+    return res.status(401).json({ error: 'Authentification requise.' });
+  }
+
+  const payload = verifyToken(token);
+  if (!payload || payload.type !== 'access' || payload.role !== 'admin') {
+    return res.status(403).json({ error: 'Accès admin requis.' });
+  }
+
+  return next();
 }
 
 async function loadCarts() {
@@ -458,6 +479,39 @@ app.get('/api/cart', validate(cartSchemas.getCartQuery, 'query'), async (req, re
   }
 });
 
+app.post(['/api/cart/add', '/cart/add'], validate(cartSchemas.add), async (req, res) => {
+  try {
+    const { productId, quantity } = req.body;
+    const products = await loadProducts();
+    const product = products.find((item) => item.id === productId);
+    if (!product) {
+      return res.status(404).json({ error: 'Produit introuvable.' });
+    }
+
+    const carts = await loadCarts();
+    const anonId = 'public';
+    const bucketInfo = resolveCartBucket(carts, { anonId });
+    const cart = normalizeCart(bucketInfo.bucket[bucketInfo.key]);
+
+    if (!cart.items[productId]) {
+      cart.items[productId] = {
+        name: product.title || product.name || productId,
+        price: Number(product.price) || 0,
+        qty: 0
+      };
+    }
+
+    cart.items[productId].qty += quantity;
+    bucketInfo.bucket[bucketInfo.key] = cart;
+    await saveCarts(carts);
+
+    return res.status(201).json(cart);
+  } catch (error) {
+    console.error('Erreur ajout panier (nouvel endpoint):', error);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
 app.post('/api/cart/items', validate(cartSchemas.addItem), async (req, res) => {
   try {
     const { id, name, price, qty = 1, userId, anonId } = req.body;
@@ -579,13 +633,13 @@ app.post('/api/auth/register', validate(authSchemas.register), async (req, res) 
     const user = {
       id: crypto.randomUUID(),
       email: normalizedEmail,
-      name: name ? String(name).trim() : normalizedEmail.split('@')[0],
+    name: normalizedEmail.split('@')[0],
       salt,
       passwordHash,
       refreshTokenHash: null,
       resetToken: null,
       resetTokenExpires: null,
-      role: 'customer'
+      role: normalizeUserRole(role)
     };
     const accessToken = signToken({ sub: user.id, email: user.email, role: user.role, type: 'access' }, ACCESS_TOKEN_TTL);
     const refreshToken = signToken({ sub: user.id, email: user.email, role: user.role, type: 'refresh' }, REFRESH_TOKEN_TTL);
@@ -604,7 +658,7 @@ app.post('/api/auth/register', validate(authSchemas.register), async (req, res) 
   }
 });
 
-app.post('/api/auth/login', validate(authSchemas.login), async (req, res) => {
+app.post(['/api/auth/login', '/auth/login'], validate(authSchemas.login), async (req, res) => {
   try {
     const { email, password } = req.body;
     const normalizedEmail = String(email).trim().toLowerCase();
@@ -809,7 +863,7 @@ app.get('/api/analytics/conversion', async (req, res) => {
   }
 });
 
-app.get('/api/leads', async (req, res) => {
+app.get('/api/leads', validate(leadsSchemas.listQuery, 'query'), async (req, res) => {
   try {
     const { leads } = await loadLeads();
     const sorted = [...leads].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -827,8 +881,10 @@ app.post('/api/leads', validate(leadsSchemas.create), async (req, res) => {
     const data = await loadLeads();
     const lead = {
       id: crypto.randomUUID(),
+      name: String(name).trim(),
       email: normalizedEmail,
-      source: source ? String(source).trim() : 'web',
+      message: String(message).trim(),
+      source: 'web',
       status: 'new',
       createdAt: new Date().toISOString()
     };
@@ -865,6 +921,31 @@ function applyFilters(products, filters) {
     return true;
   });
 }
+
+app.post(['/api/products', '/products'], requireAdminAccess, validate(productsSchemas.create), async (req, res) => {
+  try {
+    const { name, description, price, stock, active } = req.body;
+    const products = await loadProducts();
+    const product = {
+      id: crypto.randomUUID(),
+      name,
+      title: name,
+      description,
+      price,
+      stock,
+      active,
+      published: active,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    products.push(product);
+    await saveProducts(products);
+    return res.status(201).json(product);
+  } catch (error) {
+    console.error('Erreur création produit:', error);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
 
 app.get('/api/products', validate(productsSchemas.listQuery, 'query'), async (req, res) => {
   try {
