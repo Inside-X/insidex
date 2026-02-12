@@ -218,3 +218,66 @@ Points faibles :
 
 - **Forces** : middleware auth/RBAC corrects sur routes existantes, schémas Zod stricts bien construits, schéma Prisma solide.
 - **Faiblesses structurelles** : flux métier non exposés en runtime, migrations non verrouillées, intégration DB non validée, couverture validation sous objectifs.
+
+
+---
+
+## Vérification avant EPIC-2 (paiement réel)
+
+### 1) Checklist validée / non validée
+
+#### Sécurité
+- [ ] **Helmet activé** — **NON VALIDÉ** (aucun `helmet()` monté dans l’app).
+- [ ] **CORS configuré proprement** — **NON VALIDÉ** (aucun middleware CORS explicite).
+- [ ] **Rate limiting présent** — **PARTIEL / NON VALIDÉ runtime** (`authRateLimiter` existe mais n’est pas monté).
+- [ ] **Logs non verbeux en prod** — **PARTIEL** (réponses client non verbeuses OK, mais logs serveur `console.*` restent détaillés sans stratégie de niveau par environnement).
+- [ ] **Variables sensibles via .env uniquement** — **PARTIEL** (`JWT_ACCESS_SECRET` lu via env côté runtime, mais `.env` versionné et ne contient pas les secrets JWT requis ; il faut sécuriser la stratégie secrets globale).
+
+#### Base de données
+- [x] **Transactions utilisées quand nécessaire** — **VALIDÉ partiellement** (transaction présente sur création de commande + stock).
+- [~] **Contraintes DB alignées avec validation Zod** — **PARTIEL** (bonne base FK/index/uniques, mais alignement incomplet sur certaines bornes métier validées côté Zod).
+- [x] **Gestion erreurs DB propre** — **VALIDÉ partiellement** (normalisation Prisma -> erreurs applicatives, mais logs DB peuvent rester verbeux).
+
+#### Performance
+- [~] **Pas de N+1 queries** — **PARTIEL** (pas de N+1 évident en lecture list, mais boucle d’updates stock par item dans transaction order = coût linéaire).
+- [x] **Index sur colonnes utilisées en WHERE** — **GLOBALLEMENT VALIDÉ** (email, FKs, status/date, etc.).
+- [x] **Pagination sur endpoints list** — **VALIDÉ au niveau repository** (`skip/take` présents sur `list`).
+
+#### Robustesse
+- [~] **Aucun throw non catché** — **PARTIEL** (repository catchent DB; des `throw` existent dans transactions puis sont normalisés, mais pas de couverture runtime complète des flux métier).
+- [x] **Middleware error central** — **VALIDÉ** (`errorHandler` global en fin de pipeline).
+- [~] **Status HTTP cohérents** — **PARTIEL** (cohérent sur admin/auth middleware ; non vérifiable bout-en-bout sur flux métier non montés).
+
+### 2) Correctifs nécessaires (priorité EPIC-2)
+
+1. **Ajouter les middlewares sécurité de base au runtime** :
+   - `helmet()` global,
+   - CORS strict par origin/method/header via env,
+   - rate limiting monté réellement (au moins auth + endpoints sensibles).
+2. **Finaliser la gouvernance secrets** :
+   - secrets JWT requis en prod via secret manager/variables d’environnement,
+   - `.env` local uniquement non sensible, `.env.example` documenté,
+   - fail-fast au boot si secret critique absent.
+3. **Compléter le backend runtime des flux métier** (`/api/auth`, `/api/products`, `/api/cart`, `/api/orders`, `/api/leads`) avant paiement réel.
+4. **Réduire la verbosité des logs en prod** :
+   - logger structuré avec niveaux,
+   - masking/redaction systématique des champs sensibles,
+   - pas de stack brute en production.
+5. **Durcir performance/order path** :
+   - limiter les updates unitaires en boucle si volumétrie augmente,
+   - valider plan d’index sur vraies requêtes prod,
+   - garder pagination/API contract sur toutes routes list runtime.
+6. **Verrouiller CI qualité** :
+   - migrations versionnées obligatoires,
+   - tests intégration DB exécutables (DB de test provisionnée),
+   - seuils coverage validation respectés.
+
+### 3) Niveau de sécurité avant paiement
+
+**Niveau actuel : MOYEN (insuffisant pour “production ready paiement réel”).**
+
+Justification :
+- points positifs sur JWT/RBAC/erreurs/DB schema,
+- mais manque des fondations sécurité runtime (Helmet/CORS/rate-limiter montés),
+- flux métier critiques pas complètement exposés et validés en bout-en-bout,
+- CI DB/migrations/coverage encore non stabilisée.
