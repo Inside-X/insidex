@@ -862,7 +862,7 @@ app.get('/api/leads', validate(leadsSchemas.listQuery, 'query'), async (req, res
   }
 });
 
-app.post('/api/leads', validate(leadsSchemas.create), async (req, res) => {
+app.post(['/api/leads', '/leads'], validate(leadsSchemas.create), async (req, res) => {
   try {
     const { name, email, message } = req.body;
     const normalizedEmail = String(email).trim().toLowerCase();
@@ -910,7 +910,7 @@ function applyFilters(products, filters) {
   });
 }
 
-app.post(['/api/products', '/products'], requireAdminAccess, validate(productsSchemas.create), async (req, res) => {
+app.post(['/api/products', '/products'], validate(productsSchemas.create), authenticate, authorizeRole('admin'), async (req, res) => {
   try {
     const { name, description, price, stock, active } = req.body;
     const products = await loadProducts();
