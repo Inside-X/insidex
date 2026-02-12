@@ -1,42 +1,220 @@
-# Audit EPIC-1 (backend Node.js production-ready)
+# Audit EPIC-1 — Analyse complète des flux backend (Node.js)
 
-## Portée auditée
-- Code backend runtime : `src/**`, `server.js`.
-- Schéma DB : `prisma/schema.prisma`, `db/postgres_schema.sql`.
-- Validation et sécurité : middlewares JWT/RBAC/Zod.
+## Méthode et périmètre vérifié
+Audit statique + tests existants, sans hypothèses fonctionnelles hors code.
+
+Périmètre inspecté :
+- Runtime backend : `src/app.js`, `src/routes/**`, `src/middlewares/**`, `src/security/**`, `src/utils/**`.
+- Validation : `src/validation/**`.
+- DB : `prisma/schema.prisma`, `src/repositories/**`, scripts DB.
 - Tests : `tests/**`, `jest.config.js`.
+- Front (uniquement pour détecter contournements de rôle) : `js/modules/**`.
 
-## 1) Problèmes critiques (blockers EPIC-2)
+---
 
-1. **Intégration PostgreSQL non opérationnelle dans l'environnement actuel**
-   - Le test d'intégration DB échoue car la base PostgreSQL n'est pas accessible (`localhost:5432`) ; cela bloque la validation E2E EPIC-1.4.
-2. **Migrations Prisma versionnées absentes/incomplètes**
-   - Le script de vérification EPIC-1.4 signale l'absence de migrations versionnées.
-3. **Architecture incomplète par rapport au périmètre annoncé**
-   - Le backend runtime expose seulement des routes de santé/admin d'exemple ; les endpoints métier critiques (`auth`, `cart`, `products`, `leads`) ne sont pas montés dans `src/app.js`.
+## Diagramme simplifié des flux (état réel du repository)
 
-## 2) Correctifs appliqués pendant audit
+```text
+[Client]
+   |
+   +--> GET /api/health -------------------------------> [Public route, no auth]
+   |
+   +--> GET /api/admin/health --------------------------> authenticate -> requirePermission -> handler
+   |
+   +--> GET /api/admin/reports -------------------------> authenticate -> requirePermission -> handler
+   |
+   +--> GET /api/admin/audit-log -----------------------> authenticate -> requirePermission -> handler
+   |
+   +--> /api/auth/*, /api/products, /api/cart, /api/orders, /api/leads
+         (référencés côté front/tests, mais non montés dans src/app.js au runtime)
+```
 
-1. **JWT auth : correction d'un appel erroné**
-   - Correction de l'appel `unauthorized(...)` pour retourner un 401 cohérent quand le token est sans `sub/id`.
-2. **RBAC role middleware plus robuste**
-   - Normalisation de rôle côté middleware alignée avec la policy centrale, sans crash si rôle manquant.
-3. **Validation payload renforcée**
-   - Rejet explicite des payloads non-JSON (`Content-Type` invalide) avec erreur de validation claire.
-4. **Validation `productId` panier durcie**
-   - Suppression du fallback trop permissif basé uniquement sur longueur minimale, remplacement par format alphanumérique borné.
+Conclusion structurante : les flux métier demandés (inscription/login/produit/panier/order/lead) ne sont **pas exposés** par le serveur Express runtime actuel.
 
-## 3) Améliorations recommandées
+---
 
-- Monter réellement dans `src/app.js` les routes métier validées (auth/products/cart/leads), sinon EPIC-1 n'est validé qu'au niveau des tests unitaires, pas du runtime.
-- Ajouter/commiter les migrations Prisma (`prisma/migrations/**`) et verrouiller un workflow `prisma migrate deploy` CI.
-- Exclure les tests d'intégration DB quand `DATABASE_URL` est placeholder ou inaccessible (healthcheck préalable + `describe.skip`).
-- Compléter la couverture de branches/fonctions pour `src/validation/**` afin de passer les seuils `jest.config.js`.
-- Garder la logique de privilèges côté front strictement cosmétique ; toute autorisation doit rester server-side (déjà vrai sur les routes admin runtime).
+## Analyse détaillée par flux demandé
 
-## 4) Score global de maturité EPIC-1
+## 1) Flux Inscription
+### 1.1 Cohérence auth
+- Pas de route runtime `POST /api/auth/register` montée dans `src/app.js`.
+- Des schémas Zod existent (`authSchemas.register`) et des tests existent, mais sur app de test dédiée (`buildValidationTestApp`), pas sur le runtime prod.
 
-**6.5 / 10**
+### 1.2 Validation payload
+- Schéma strict présent (`.strict()`), validation email/password/role.
+- Injection de champ en trop prévue/contrée dans les tests de validation.
 
-- **+** JWT/RBAC middleware présents, centralisation d'erreurs, schémas Zod stricts, modèle Prisma cohérent.
-- **-** Runtime backend trop partiel vs périmètre EPIC, migrations manquantes, intégration DB non validée en CI locale, couverture validation sous seuil demandé.
+### 1.3 Intégrité DB
+- Référentiel `User` prêt (email unique, role enum), mais aucun contrôleur runtime ne relie ce flux à la DB.
+
+### 1.4 Gestion d’erreurs
+- Middleware d’erreur global présent.
+- Mais flux non monté en prod => non testable en bout-en-bout runtime.
+
+### 1.5 Utilisateur malveillant (simulations demandées)
+- Non authentifié : N/A (pas de route).
+- Rôle incorrect : N/A (pas de route).
+- Payload malformé/champ en trop/injection admin : protégé au niveau schéma de test, pas au runtime prod.
+
+**Risque restant** : faux sentiment de couverture sécurité car validation démontrée surtout en tests, pas via endpoints runtime.
+
+---
+
+## 2) Flux Login
+Même constat que l’inscription : schémas et tests présents, mais pas de route runtime montée.
+
+- Auth : N/A runtime.
+- Validation : `authSchemas.login` strict.
+- DB : pas de service/controller runtime observable.
+- Erreurs : gérées en théorie par middleware global.
+- Simulations malveillantes : couvertes en tests validation, pas en HTTP runtime.
+
+**Risque restant** : absence de vérification réelle JWT issuance/refresh/logout côté serveur runtime.
+
+---
+
+## 3) Flux Accès Admin
+### 3.1 Cohérence auth
+- Route protégée correctement via `authenticate` + `requirePermission`.
+- Vérification JWT avec algo explicitement restreint `HS256`, et options issuer/audience quand configurés.
+
+### 3.2 Validation payload
+- Flux GET (pas de body critique).
+
+### 3.3 Intégrité DB
+- Pas d’accès DB sur endpoints admin actuels (health/messages).
+
+### 3.4 Gestion d’erreurs
+- 401/403 structurés via `sendApiError`.
+- Correction apportée : token sans `sub/id` renvoie désormais 401 uniforme.
+
+### 3.5 Utilisateur malveillant (simulations)
+- Non authentifié -> 401.
+- Rôle incorrect -> 403.
+- Token invalide/expiré -> 401 (tests présents).
+- Champ en trop/injection admin -> non applicable à ces GET.
+
+**Risque restant** : couverture limitée à des routes d’exemple, pas à des routes admin métier (produits/leads/orders admin, etc.).
+
+---
+
+## 4) Flux Création Produit
+- Route runtime `POST /api/products` absente.
+- Schéma `productsSchemas.create` strict existe (nom, description, price, stock, active).
+- Test de validation existe sur app de test, avec contrôle rôle `admin` dans ce harness.
+
+**Risques restants** :
+- Pas de preuve runtime que la création produit est protégée par auth + RBAC + validation avant DB.
+- Pas de preuve runtime de gestion transactionnelle/erreurs métier liées au produit.
+
+---
+
+## 5) Flux Ajout Panier
+- Route runtime absente.
+- Schéma `cartSchemas.add` strict existe, avec durcissement `productId` (UUID ou alphanum borné).
+
+Simulations sécurité (au niveau validation/harness) :
+- payload malformé : rejet prévu.
+- champ en trop : rejet via `.strict()`.
+- injection champ admin : rejet via `.strict()`.
+
+**Risque restant** : aucune garantie runtime que la validation précède un accès DB sur `/api/cart/*` (route non montée).
+
+---
+
+## 6) Flux Création Order
+- Aucune route runtime `/api/orders` observée.
+- Repository DB existe avec transaction `createWithItemsAndUpdateStock`.
+
+Points positifs DB :
+- Transaction atomique création commande + items + décrément stock.
+- Contrôles métier minimum (produit inexistant, stock insuffisant).
+
+Points faibles :
+- Logique métier non triviale dans repository (contrôles stock + total) : mélange persistance/métier.
+- Pas de couche service/contrôleur runtime observable exposant ce flux.
+
+---
+
+## 7) Flux Création Lead
+- Route runtime `POST /api/leads` absente.
+- Schéma `leadsSchemas.create` strict présent.
+
+**Risque restant** : front appelle `/api/leads` mais backend runtime ne l’expose pas ; risque d’écart fort entre UX/front et backend réel.
+
+---
+
+## Simulations demandées (synthèse globale)
+
+| Simulation | État constaté |
+|---|---|
+| User non authentifié | Correctement bloqué pour routes admin existantes (401). |
+| User rôle incorrect | Correctement bloqué pour routes admin existantes (403). |
+| Payload malformé | Couvert dans tests validation (harness), pas prouvé runtime pour flux métier absents. |
+| Champ en trop | Couvert par `.strict()` dans schémas, idem limitation runtime. |
+| Injection de champ admin | Couvert par `.strict()` dans schémas auth/cart/etc., mais pas exercé sur endpoints runtime métier (absents). |
+
+---
+
+## Points faibles / incohérences logiques
+
+1. **Incohérence majeure architecture vs EPIC annoncé**
+   - Les flux métier annoncés sont surtout représentés dans le front + schémas + tests, mais pas exposés en routes runtime backend.
+
+2. **Validation “forte” surtout théorique côté prod**
+   - Bonne qualité des schémas Zod, mais ils ne protègent réellement que les endpoints effectivement montés.
+
+3. **Intégration DB non validée en environnement de test courant**
+   - Tests et scripts DB échouent faute de connectivité PostgreSQL locale.
+
+4. **Migrations versionnées absentes/incomplètes**
+   - Le check EPIC-1.4 échoue explicitement.
+
+5. **Séparation des couches incomplète**
+   - Repositories majoritairement clean, mais `order.repository` embarque logique métier (stock/prix/contrôles).
+
+---
+
+## Risques sécurité restants (priorisés)
+
+### Critiques
+1. **Surface métier non implémentée côté backend runtime**
+   - Les contrôles auth/validation/RBAC ne peuvent pas être garantis en prod sur les flux métier non montés.
+
+2. **Risque de dérive front-only sur rôles admin**
+   - Le front masque/affiche UI admin via `authState.role`, mais cela n’est pas une barrière sécurité ; sans endpoints serveur complets protégés, risque d’interprétation erronée côté équipe.
+
+### Élevés
+3. **Absence de preuve E2E DB/migrations en CI locale**
+   - Forte probabilité de régression silencieuse au déploiement.
+
+4. **Coverage validation insuffisante au seuil configuré**
+   - Les branches/fonctions validation ne passent pas les seuils imposés.
+
+---
+
+## Recommandations actionnables (ordre de priorité)
+
+1. **Monter les routes runtime manquantes** (`/api/auth`, `/api/products`, `/api/cart`, `/api/orders`, `/api/leads`) avec pipeline strict :
+   `requestContext -> validate(Zod strict) -> authenticate -> requirePermission/authorizeRole -> controller -> service -> repository`.
+
+2. **Versionner toutes les migrations Prisma** et rendre bloquant en CI :
+   - `prisma migrate deploy` + vérif présence `prisma/migrations/*`.
+
+3. **Rendre les tests DB robustes à l’environnement**
+   - skip explicite si DB inaccessible, ou provision DB de test en CI.
+
+4. **Sortir la logique métier de `order.repository` vers une couche service**
+   - repository = persistance pure.
+
+5. **Conserver la règle : rôle/admin validé uniquement serveur**
+   - front = UX, jamais autorisation.
+
+---
+
+## Score de maturité EPIC-1 (révisé)
+
+**5.8 / 10**
+
+- **Forces** : middleware auth/RBAC corrects sur routes existantes, schémas Zod stricts bien construits, schéma Prisma solide.
+- **Faiblesses structurelles** : flux métier non exposés en runtime, migrations non verrouillées, intégration DB non validée, couverture validation sous objectifs.
