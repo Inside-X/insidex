@@ -12,7 +12,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "node prisma/seed.js"
+    "prisma:seed": "node prisma/seed.js",
+    "db:import": "node scripts/import-json-to-db.js"
   },
   "dependencies": {
     "express": "^4.19.2",
