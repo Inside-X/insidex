@@ -3,12 +3,13 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Seed minimal Prisma: connexion réussie (aucune donnée insérée).');
+  // Minimal seed placeholder. Add real inserts once models are defined.
+  console.log('Prisma seed executed: no model data inserted yet.');
 }
 
 main()
   .catch((error) => {
-    console.error('Erreur de seed Prisma:', error);
+    console.error('Seed failed:', error);
     process.exitCode = 1;
   })
   .finally(async () => {

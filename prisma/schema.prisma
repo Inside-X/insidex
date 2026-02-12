@@ -1,5 +1,5 @@
-// Prisma schema file for InsideX
-// Database: PostgreSQL
+// Prisma schema - base PostgreSQL configuration
+// Models intentionally left empty for incremental migration from JSON storage.
 
 generator client {
   provider = "prisma-client-js"
@@ -10,8 +10,4 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Add your models below, e.g.:
-// model User {
-//   id    String @id @default(cuid())
-//   email String @unique
-// }
+// TODO: Add your models here, e.g. User, Product, Cart, Order, Lead, AnalyticsEvent.
