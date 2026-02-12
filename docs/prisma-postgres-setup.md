@@ -67,3 +67,40 @@ Scripts ajoutés dans `package.json`:
 - Interdire la création de migration en production.
 - Revue PR obligatoire pour chaque migration SQL générée.
 - En cas de rollback, créer une migration corrective explicite (éviter modifications manuelles non tracées).
+
+## 7) Commentaires critiques sécurité
+
+- **Secrets**: ne jamais versionner de vrais credentials dans Git (`DATABASE_URL` doit provenir d’un secret manager / variables d’environnement runtime).
+- **Droits DB minimaux**: utiliser un utilisateur PostgreSQL applicatif avec permissions limitées au schéma applicatif.
+- **TLS/SSL**: en production, utiliser `sslmode=require` (ou mieux `verify-full` si CA/hostname validés).
+- **Migrations**: exécuter `migrate deploy` en CI/CD avec un compte DB contrôlé; interdire les changements manuels non versionnés.
+- **Données sensibles**: `passwordHash` doit toujours être hashé côté app (Argon2id/bcrypt), jamais stocké en clair.
+- **Audit**: journaliser les opérations sensibles (auth, changement rôle, paiement) et activer monitoring SQL.
+
+## 8) Commandes de migration (référence)
+
+### Développement
+
+```bash
+npm run prisma:migrate -- --name init_relational_model
+npm run prisma:generate
+```
+
+### Production
+
+```bash
+npm run prisma:migrate:deploy
+```
+
+## 9) Vérification de cohérence du schéma
+
+Checklist couverte dans `prisma/schema.prisma`:
+
+- Tous les modèles requis présents: `User`, `Product`, `Cart`, `CartItem`, `Order`, `OrderItem`, `Lead`, `AnalyticsEvent`.
+- UUID par défaut sur toutes les PK (`@default(uuid())` + `@db.Uuid`).
+- Horodatage auto (`createdAt @default(now())`, `updatedAt @updatedAt` quand pertinent).
+- Enums Prisma: `Role`, `OrderStatus`.
+- Contraintes d’unicité: `User.email`, `Cart.userId`, `CartItem(cartId, productId)`, `OrderItem(orderId, productId)`.
+- Types: `Decimal` pour `price`/`totalAmount`/`unitPrice`, `Json` + `@db.JsonB` pour `payload`.
+- Relations et suppression: `Cascade`/`Restrict`/`SetNull` configurés explicitement.
+- Index: colonnes stratégiques définies via `@@index`.
