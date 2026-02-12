@@ -68,7 +68,7 @@ export function authenticate(req, res, next) {
     const id = decoded?.sub ?? decoded?.id;
     if (!id) {
       logAuthenticationFailure('token payload missing subject');
-      return unauthorized(res, 'Authentication failed');
+      return unauthorized(req, res, 'Authentication failed');
     }
 
     req.auth = {

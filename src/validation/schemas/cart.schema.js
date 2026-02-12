@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const productIdSchema = z.union([
   z.string().uuid('productId must be a valid UUID'),
-  z.string().min(10, 'productId must contain at least 10 characters')
+  z.string().trim().regex(/^[a-zA-Z0-9_-]{10,128}$/, 'productId must be an alphanumeric identifier between 10 and 128 characters')
 ]);
 
 const legacyIdentifierSchema = z.string().trim().min(1).max(128);
