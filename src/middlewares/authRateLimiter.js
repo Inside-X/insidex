@@ -1,3 +1,5 @@
+import { sendApiError } from '../utils/api-error.js';
+
 const WINDOW_MS = 60_000;
 const MAX_ATTEMPTS = 20;
 
@@ -29,4 +31,3 @@ export function authRateLimiter(req, res, next) {
 }
 
 export default authRateLimiter;
-import { sendApiError } from '../utils/api-error.js';

@@ -1,11 +1,43 @@
+import net from 'node:net';
 import prisma from '../../src/lib/prisma.js';
 import { userRepository } from '../../src/repositories/user.repository.js';
 import { productRepository } from '../../src/repositories/product.repository.js';
 import { cartRepository } from '../../src/repositories/cart.repository.js';
 import { orderRepository } from '../../src/repositories/order.repository.js';
 
-const hasDb = Boolean(process.env.DATABASE_URL);
-const describeDb = hasDb ? describe : describe.skip;
+function parseDatabaseHostPort(databaseUrl) {
+  try {
+    const parsed = new URL(databaseUrl);
+    return {
+      host: parsed.hostname,
+      port: Number(parsed.port || 5432),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function canReachDatabase({ host, port }, timeoutMs = 400) {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+
+    const finalize = (result) => {
+      socket.destroy();
+      resolve(result);
+    };
+
+    socket.setTimeout(timeoutMs);
+    socket.once('connect', () => finalize(true));
+    socket.once('timeout', () => finalize(false));
+    socket.once('error', () => finalize(false));
+    socket.connect(port, host);
+  });
+}
+
+const hasDbUrl = Boolean(process.env.DATABASE_URL);
+const dbTarget = hasDbUrl ? parseDatabaseHostPort(process.env.DATABASE_URL) : null;
+const hasReachableDb = dbTarget ? await canReachDatabase(dbTarget) : false;
+const describeDb = hasReachableDb ? describe : describe.skip;
 
 describeDb('PostgreSQL integration (EPIC-1.4)', () => {
   let user;

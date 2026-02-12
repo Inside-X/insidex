@@ -3,9 +3,13 @@ import adminRouter from './routes/admin-routes.js';
 import adminExampleRouter from './routes/admin-example.routes.js';
 import requestContext from './middlewares/requestContext.js';
 import errorHandler from './middlewares/error-handler.js';
+import { securityHeaders } from './middlewares/securityHeaders.js';
+import { corsMiddleware } from './middlewares/cors.js';
 
 const app = express();
 
+app.use(securityHeaders);
+app.use(corsMiddleware);
 app.use(express.json());
 app.use(requestContext);
 
