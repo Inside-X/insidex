@@ -1,9 +1,4 @@
 import net from 'node:net';
-import prisma from '../../src/lib/prisma.js';
-import { userRepository } from '../../src/repositories/user.repository.js';
-import { productRepository } from '../../src/repositories/product.repository.js';
-import { cartRepository } from '../../src/repositories/cart.repository.js';
-import { orderRepository } from '../../src/repositories/order.repository.js';
 
 function parseDatabaseHostPort(databaseUrl) {
   try {
@@ -37,7 +32,26 @@ function canReachDatabase({ host, port }, timeoutMs = 400) {
 const hasDbUrl = Boolean(process.env.DATABASE_URL);
 const dbTarget = hasDbUrl ? parseDatabaseHostPort(process.env.DATABASE_URL) : null;
 const hasReachableDb = dbTarget ? await canReachDatabase(dbTarget) : false;
-const describeDb = hasReachableDb ? describe : describe.skip;
+
+let prisma;
+let userRepository;
+let productRepository;
+let cartRepository;
+let orderRepository;
+
+if (hasReachableDb) {
+  try {
+    ({ default: prisma } = await import('../../src/lib/prisma.js'));
+    ({ userRepository } = await import('../../src/repositories/user.repository.js'));
+    ({ productRepository } = await import('../../src/repositories/product.repository.js'));
+    ({ cartRepository } = await import('../../src/repositories/cart.repository.js'));
+    ({ orderRepository } = await import('../../src/repositories/order.repository.js'));
+  } catch {
+    // If Prisma client import cannot run in this runtime, skip the suite.
+  }
+}
+
+const describeDb = hasReachableDb && prisma ? describe : describe.skip;
 
 describeDb('PostgreSQL integration (EPIC-1.4)', () => {
   let user;

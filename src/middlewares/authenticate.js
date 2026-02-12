@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { normalizeRole } from '../security/rbac-policy.js';
 import { sendApiError } from '../utils/api-error.js';
+import { logger } from '../utils/logger.js';
 
 const BEARER_REGEX = /^Bearer\s+(.+)$/i;
 
@@ -9,12 +10,7 @@ function unauthorized(req, res, message) {
 }
 
 function logAuthenticationFailure(reason, error) {
-  console.warn(JSON.stringify({
-    event: 'auth_failure',
-    reason,
-    detail: error?.message,
-    requestId: error?.requestId,
-  }));
+  logger.warn('auth_failure', { reason, detail: error?.message, requestId: error?.requestId });
 }
 
 /**

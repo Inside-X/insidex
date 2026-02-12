@@ -1,4 +1,5 @@
 import { AppError } from '../errors/app-error.js';
+import { logger } from '../utils/logger.js';
 
 function normalizePayload(err, req) {
   const isAppError = err instanceof AppError;
@@ -26,12 +27,13 @@ export default function errorHandler(err, req, res, _next) {
 
   // Logger côté serveur uniquement (jamais dans la réponse client).
   if (shouldLog(statusCode)) {
-    console.error('[api-error]', {
+    logger.error('api_error', {
       code: payload.error.code,
       message: payload.error.message,
       requestId: req?.requestId,
       details: payload.error.details,
-      name: err?.name
+      name: err?.name,
+      stack: process.env.NODE_ENV === 'production' ? undefined : err?.stack,
     });
   }
 
