@@ -1,18 +1,32 @@
 import express from 'express';
-import { validate } from '../validation/validate.middleware.js';
 import { ordersSchemas } from '../validation/schemas/index.js';
-import authenticate from '../middlewares/authenticate.js';
+import { strictValidate } from '../validation/strict-validate.middleware.js';
+import authenticateJWT from '../middlewares/authenticate.js';
 import authorizeRole from '../middlewares/authorizeRole.js';
+import ensureCheckoutSessionJWT from '../middlewares/checkoutIdentity.js';
+import checkoutCustomerAccess, { enforceOrderOwnership } from '../middlewares/checkoutCustomerAccess.js';
 import { sendApiError } from '../utils/api-error.js';
 import { orderRepository } from '../repositories/order.repository.js';
 
 const router = express.Router();
 
-router.post('/', validate(ordersSchemas.create), authenticate, authorizeRole('customer'), async (req, res, next) => {
-  try {
-    if (req.body.userId !== req.auth.sub) {
-      return sendApiError(req, res, 403, 'FORBIDDEN', 'Cannot create order for another user');
-    }
+router.post(
+  '/',
+  strictValidate(ordersSchemas.create),
+  ensureCheckoutSessionJWT,
+  authenticateJWT,
+  authorizeRole('customer'),
+  checkoutCustomerAccess,
+  enforceOrderOwnership,
+  async (req, res, next) => {
+    try {
+      const response = {
+        data: result.order,
+        meta: {
+          replayed: result.replayed,
+          isGuestCheckout: req.auth.isGuest === true,
+        },
+      };
 
     const result = await orderRepository.createIdempotentWithItemsAndUpdateStock({
       userId: req.body.userId,
@@ -21,13 +35,18 @@ router.post('/', validate(ordersSchemas.create), authenticate, authorizeRole('cu
       stripePaymentIntentId: req.body.stripePaymentIntentId || null,
     });
 
-    return res.status(result.replayed ? 200 : 201).json({ data: result.order, meta: { replayed: result.replayed } });
-  } catch (error) {
-    return next(error);
-  }
-});
+      if (res.locals.implicitGuestToken) {
+        response.meta.guestSessionToken = res.locals.implicitGuestToken;
+      }
 
-router.post('/webhooks/payments', validate(ordersSchemas.paymentWebhook), async (req, res, next) => {
+      return res.status(result.replayed ? 200 : 201).json(response);
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.post('/webhooks/payments', strictValidate(ordersSchemas.paymentWebhook), async (req, res, next) => {
   try {
     const expectedSecret = process.env.PAYMENT_WEBHOOK_SECRET;
     if (expectedSecret && req.get('x-webhook-secret') !== expectedSecret) {
@@ -41,6 +60,6 @@ router.post('/webhooks/payments', validate(ordersSchemas.paymentWebhook), async 
   }
 });
 
-router.get('/:id', validate(ordersSchemas.byIdParams, 'params'), authenticate, authorizeRole(['admin', 'customer']), (req, res) => res.status(200).json({ data: { id: req.params.id } }));
+router.get('/:id', strictValidate(ordersSchemas.byIdParams, 'params'), authenticateJWT, authorizeRole(['admin', 'customer']), (req, res) => res.status(200).json({ data: { id: req.params.id } }));
 
 export default router;

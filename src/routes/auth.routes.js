@@ -5,21 +5,9 @@ import { validate } from '../validation/validate.middleware.js';
 import { authSchemas } from '../validation/schemas/index.js';
 import { strictAuthRateLimiter } from '../middlewares/rateLimit.js';
 import { sendApiError } from '../utils/api-error.js';
+import { issueAccessToken } from '../security/access-token.js';
 
 const router = express.Router();
-
-function issueAccessToken({ id, role }) {
-  return jwt.sign(
-    { sub: id, role },
-    process.env.JWT_ACCESS_SECRET,
-    {
-      algorithm: 'HS256',
-      expiresIn: '15m',
-      issuer: process.env.JWT_ACCESS_ISSUER,
-      audience: process.env.JWT_ACCESS_AUDIENCE,
-    }
-  );
-}
 
 function verifyRefreshToken(refreshToken) {
   const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_ACCESS_SECRET;

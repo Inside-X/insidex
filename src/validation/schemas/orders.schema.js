@@ -1,16 +1,16 @@
 import { z } from 'zod';
+import { checkoutCustomerSchema, checkoutItemSchema } from './checkout.schema.js';
 
 const uuidSchema = z.string().uuid('id must be a valid UUID');
 
 export const ordersSchemas = {
   create: z.object({
-    userId: uuidSchema,
+    userId: uuidSchema.optional(),
     idempotencyKey: z.string().min(10).max(128),
     stripePaymentIntentId: z.string().max(255).optional(),
-    items: z.array(z.object({
-      productId: uuidSchema,
-      quantity: z.number().int().min(1).max(100),
-    }).strict()).min(1),
+    email: checkoutCustomerSchema.shape.email,
+    address: checkoutCustomerSchema.shape.address,
+    items: z.array(checkoutItemSchema).min(1),
   }).strict({ message: 'unknown field in order payload' }),
   paymentWebhook: z.object({
     provider: z.enum(['stripe', 'paypal']),

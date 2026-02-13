@@ -20,17 +20,20 @@ enum OrderStatus {
 }
 
 model User {
-  id             String           @id @default(uuid()) @db.Uuid
-  email          String           @unique @db.VarChar(320)
-  passwordHash   String           @map("password_hash")
-  role           Role             @default(customer)
-  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
-  cart           Cart?
-  orders         Order[]
+  id              String           @id @default(uuid()) @db.Uuid
+  email           String           @unique @db.VarChar(320)
+  passwordHash    String?          @map("password_hash")
+  role            Role             @default(customer)
+  isGuest         Boolean          @default(false) @map("is_guest")
+  guestAddress    Json             @default("{}") @map("guest_address") @db.JsonB
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  cart            Cart?
+  orders          Order[]
   analyticsEvents AnalyticsEvent[]
 
   @@index([email], map: "idx_users_email")
+  @@index([isGuest], map: "idx_users_is_guest")
   @@map("users")
 }
 
@@ -53,26 +56,26 @@ model Product {
 }
 
 model Cart {
-  id         String     @id @default(uuid()) @db.Uuid
-  userId     String     @unique @map("user_id") @db.Uuid
-  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items      CartItem[]
+  id        String     @id @default(uuid()) @db.Uuid
+  userId    String     @unique @map("user_id") @db.Uuid
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
 
   @@index([userId], map: "idx_carts_user_id")
   @@map("carts")
 }
 
 model CartItem {
-  id         String    @id @default(uuid()) @db.Uuid
-  cartId     String    @map("cart_id") @db.Uuid
-  productId  String    @map("product_id") @db.Uuid
-  quantity   Int
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  cart       Cart      @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  product    Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  id        String   @id @default(uuid()) @db.Uuid
+  cartId    String   @map("cart_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  quantity  Int
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   @@unique([cartId, productId], map: "uq_cart_items_cart_product")
   @@index([cartId], map: "idx_cart_items_cart_id")
@@ -81,31 +84,32 @@ model CartItem {
 }
 
 model Order {
-  id           String       @id @default(uuid()) @db.Uuid
-  userId       String       @map("user_id") @db.Uuid
-  idempotencyKey String     @unique @map("idempotency_key") @db.VarChar(128)
-  stripePaymentIntentId String? @unique @map("stripe_payment_intent_id") @db.VarChar(255)
-  status       OrderStatus  @default(pending)
-  totalAmount  Decimal      @map("total_amount") @db.Decimal(12, 2)
-  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Restrict)
-  items        OrderItem[]
+  id                    String      @id @default(uuid()) @db.Uuid
+  userId                String      @map("user_id") @db.Uuid
+  idempotencyKey        String      @unique @map("idempotency_key") @db.VarChar(128)
+  stripePaymentIntentId String?     @unique @map("stripe_payment_intent_id") @db.VarChar(255)
+  status                OrderStatus @default(pending)
+  totalAmount           Decimal     @map("total_amount") @db.Decimal(12, 2)
+  createdAt             DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user                  User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  items                 OrderItem[]
 
   webhookEvents PaymentWebhookEvent[]
+
   @@index([userId, createdAt], map: "idx_orders_user_created_at")
   @@index([status, createdAt], map: "idx_orders_status_created_at")
   @@map("orders")
 }
 
 model PaymentWebhookEvent {
-  id         String    @id @default(uuid()) @db.Uuid
-  provider   String    @db.VarChar(40)
-  eventId    String    @unique @map("event_id") @db.VarChar(255)
-  orderId    String?   @map("order_id") @db.Uuid
-  payload    Json      @default("{}") @db.JsonB
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  order      Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  id        String   @id @default(uuid()) @db.Uuid
+  provider  String   @db.VarChar(40)
+  eventId   String   @unique @map("event_id") @db.VarChar(255)
+  orderId   String?  @map("order_id") @db.Uuid
+  payload   Json     @default("{}") @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  order     Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
 
   @@index([provider, createdAt], map: "idx_payment_webhook_events_provider_created_at")
   @@index([orderId], map: "idx_payment_webhook_events_order_id")
@@ -113,14 +117,14 @@ model PaymentWebhookEvent {
 }
 
 model OrderItem {
-  id         String    @id @default(uuid()) @db.Uuid
-  orderId    String    @map("order_id") @db.Uuid
-  productId  String    @map("product_id") @db.Uuid
-  quantity   Int
-  unitPrice  Decimal   @map("unit_price") @db.Decimal(12, 2)
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  order      Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product    Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @map("order_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  quantity  Int
+  unitPrice Decimal  @map("unit_price") @db.Decimal(12, 2)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   @@unique([orderId, productId], map: "uq_order_items_order_product")
   @@index([orderId], map: "idx_order_items_order_id")
@@ -129,11 +133,11 @@ model OrderItem {
 }
 
 model Lead {
-  id         String    @id @default(uuid()) @db.Uuid
-  name       String    @db.VarChar(255)
-  email      String    @db.VarChar(320)
-  message    String
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(255)
+  email     String   @db.VarChar(320)
+  message   String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([createdAt], map: "idx_leads_created_at")
   @@index([email], map: "idx_leads_email")
@@ -141,12 +145,12 @@ model Lead {
 }
 
 model AnalyticsEvent {
-  id         String    @id @default(uuid()) @db.Uuid
-  eventType  String    @map("event_type") @db.VarChar(100)
-  userId     String?   @map("user_id") @db.Uuid
-  payload    Json      @default("{}") @db.JsonB
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id        String   @id @default(uuid()) @db.Uuid
+  eventType String   @map("event_type") @db.VarChar(100)
+  userId    String?  @map("user_id") @db.Uuid
+  payload   Json     @default("{}") @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([eventType, createdAt], map: "idx_analytics_events_type_created_at")
   @@index([userId, createdAt], map: "idx_analytics_events_user_created_at")

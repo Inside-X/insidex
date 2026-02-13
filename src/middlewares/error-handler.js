@@ -3,9 +3,11 @@ import { logger } from '../utils/logger.js';
 
 function normalizePayload(err, req) {
   const isAppError = err instanceof AppError;
-  const statusCode = isAppError ? err.statusCode : 500;
-  const code = isAppError ? err.code : 'INTERNAL_ERROR';
-  const message = isAppError ? err.message : 'Internal server error';
+  const statusCode = isAppError
+    ? err.statusCode
+    : (typeof err?.statusCode === 'number' && err.statusCode >= 400 && err.statusCode < 600 ? err.statusCode : 500);
+  const code = isAppError ? err.code : (err?.code || 'INTERNAL_ERROR');
+  const message = isAppError ? err.message : (err?.message || 'Internal server error');
   const details = isAppError && Array.isArray(err.details) ? err.details : [];
 
   const error = { code, message, details };

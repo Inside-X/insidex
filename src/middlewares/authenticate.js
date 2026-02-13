@@ -19,6 +19,7 @@ function logAuthenticationFailure(reason, error) {
  * Expected token payload:
  * - sub: user id (string or number)
  * - role: optional, used by authorizeRole middleware
+ * - isGuest: optional boolean for implicit guest sessions
  */
 export function authenticate(req, res, next) {
   const authorizationHeader = req.get('authorization');
@@ -70,12 +71,14 @@ export function authenticate(req, res, next) {
     req.auth = {
       sub: id,
       role: normalizeRole(decoded?.role),
+      isGuest: decoded?.isGuest === true,
     };
 
     // Backward compatibility for existing handlers.
     req.user = {
       id,
       role: decoded?.role,
+      isGuest: decoded?.isGuest === true,
     };
 
     return next();

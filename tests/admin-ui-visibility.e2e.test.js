@@ -154,6 +154,16 @@ describe('E2E UI visibility - admin menu/actions by role', () => {
     expect(window.location.hash).toBe('#admin');
   });
 
+
+  test('guest identity is always blocked from admin UI even if role payload is tampered', () => {
+    const root = createFakeRoot();
+    const isAdmin = applyAdminUiGuards({ loading: false, role: 'admin', isGuest: true }, root);
+
+    expect(isAdmin).toBe(false);
+    expect(root.getElementById('admin').hidden).toBe(true);
+    expect(root.querySelector('.nav').querySelector('#adminNavLink')).toBeNull();
+  });
+  
   test('loading state: fail-closed (admin remains hidden until role confirmed)', () => {
     const root = createFakeRoot();
     const isAdmin = applyAdminUiGuards({ loading: true, role: 'admin' }, root);

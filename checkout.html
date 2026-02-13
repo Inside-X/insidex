@@ -92,6 +92,7 @@
         <p class="eyebrow">Checkout complet</p>
         <h1>Finalisez votre commande</h1>
         <p class="section-subtitle">Renseignez la livraison, l’adresse et vos coordonnées pour confirmer.</p>
+        <p class="checkout__guest-note" id="guestCheckoutNote">✅ Pas besoin de créer de compte pour finaliser votre achat.</p>
       </div>
       <a class="btn btn-outline" href="index.html#produits">Continuer vos achats</a>
     </div>
@@ -242,6 +243,10 @@
 
         <div class="checkout__actions">
           <button class="btn" id="placeOrderBtn" type="submit">Finaliser la commande</button>
+          <label class="checkout__checkbox checkout__checkbox--account">
+            <input type="checkbox" id="createAccountAfterPayment" name="createAccountAfterPayment" />
+            Créer un compte après paiement pour fusionner mon achat invité avec mon compte permanent
+          </label>
           <p class="checkout__helper" id="checkoutHelper">Un conseiller confirme votre créneau sous 24h.</p>
         </div>
       </form>

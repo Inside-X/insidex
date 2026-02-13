@@ -239,3 +239,14 @@
     align-items: flex-start;
   }
 }
+
+.checkout__guest-note {
+  margin: 8px 0 0;
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.checkout__checkbox--account {
+  margin-top: 6px;
+  margin-bottom: 2px;
+}

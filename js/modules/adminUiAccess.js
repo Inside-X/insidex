@@ -1,5 +1,5 @@
 function isConfirmedAdmin(authState) {
-  return Boolean(authState && authState.loading === false && authState.role === 'admin');
+  return Boolean(authState && authState.loading === false && authState.role === 'admin' && authState.isGuest !== true);
 }
 
 function upsertAdminLink(container, id, root = document) {

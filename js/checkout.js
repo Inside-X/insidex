@@ -6,6 +6,7 @@ import { showToast } from './modules/toast.js';
 import { renderTexts } from './modules/renderTexts.js';
 import { addAddress, addOrder, setActiveEmail, upsertProfile } from './modules/accountData.js';
 import { initAnalytics, trackAnalyticsEvent } from './modules/analytics.js';
+import { buildCheckoutPayload, confirmStripePayment, createPaymentIntent, generateIdempotencyKey, storeGuestSession } from './modules/guestCheckoutApi.js';
 
 const currency = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 
@@ -57,20 +58,31 @@ function setPaymentStatus(message, status = '') {
   }
 }
 
-async function processPayment() {
+async function processPayment({ paymentIntent, testOutcome }) {
   const method = getSelectedPaymentMethod();
-  const outcome = selectors.paymentOutcome.value;
   setPaymentStatus(`Traitement du paiement via ${method.toUpperCase()}...`, 'processing');
 
-  await new Promise((resolve) => setTimeout(resolve, 900));
-
-  if (outcome === 'success') {
-    setPaymentStatus('Paiement accepté ✅ Votre commande est confirmée.', 'success');
+  if (method === 'paypal') {
+    if (testOutcome === 'failure') {
+      setPaymentStatus('Paiement PayPal refusé ❌ (mode test).', 'error');
+      return false;
+    }
+    setPaymentStatus('Paiement PayPal accepté ✅', 'success');
     return true;
   }
 
-  setPaymentStatus('Paiement refusé ❌ Merci de vérifier vos informations ou réessayer.', 'error');
-  return false;
+  const result = await confirmStripePayment({
+    clientSecret: paymentIntent.clientSecret,
+    testOutcome,
+  });
+
+  if (!result.ok) {
+    setPaymentStatus(result.message, 'error');
+    return false;
+  }
+
+  setPaymentStatus('Paiement accepté ✅ Votre commande est confirmée.', 'success');
+  return true;
 }
 
 function getZoneMultiplier(zone) {
@@ -190,13 +202,7 @@ async function handleSubmit(event) {
     return;
   }
 
-  const paymentSuccess = await processPayment();
-  if (!paymentSuccess) {
-    showToast('Le paiement a échoué. Votre panier reste disponible.', 'error');
-    return;
-  }
-
-    const formData = new FormData(selectors.form);
+  const formData = new FormData(selectors.form);
   const email = formData.get('email')?.toString().trim();
   const fullName = formData.get('fullName')?.toString().trim();
   const phone = formData.get('phone')?.toString().trim();
@@ -217,8 +223,48 @@ async function handleSubmit(event) {
     phone,
     lastUsed: 'Utilisée pour la dernière commande'
   };
+  const paymentItems = items.map((item) => ({
+    id: item.id,
+    quantity: item.qty,
+    price: item.price,
+  }));
+
+  const checkoutPayload = buildCheckoutPayload({
+    email,
+    address: {
+      line1: address.line,
+      city: address.city,
+      postalCode: address.postalCode,
+      country: address.country,
+    },
+    items: paymentItems,
+    idempotencyKey: generateIdempotencyKey(),
+  });
+
+  const accessToken = localStorage.getItem('insidex_access_token');
+  let paymentIntent;
+
+  try {
+    const paymentIntentResponse = await createPaymentIntent(checkoutPayload, accessToken);
+    paymentIntent = paymentIntentResponse.data;
+    storeGuestSession(paymentIntentResponse.meta, email);
+  } catch (error) {
+    setPaymentStatus(error.message || 'Paiement indisponible.', 'error');
+    showToast(error.message || "Impossible d'initialiser le paiement.", 'error');
+    return;
+  }
+
+  const paymentSuccess = await processPayment({
+    paymentIntent,
+    testOutcome: selectors.paymentOutcome.value,
+  });
+  if (!paymentSuccess) {
+    showToast('Le paiement a échoué. Votre panier reste disponible.', 'error');
+    return;
+  }
+
   const order = {
-    id: `CMD-${Date.now().toString(36).toUpperCase()}`,
+  id: paymentIntent?.metadata?.orderId || `CMD-${Date.now().toString(36).toUpperCase()}`,
     date: new Date().toISOString(),
     status: 'Confirmée',
     items,
@@ -258,7 +304,11 @@ async function handleSubmit(event) {
     addOrder(email, order);
     setActiveEmail(email);
   }
-  
+
+  if (document.getElementById('createAccountAfterPayment')?.checked) {
+    showToast('✅ Vous pourrez finaliser la création de votre compte depuis votre espace client.', 'success');
+  }
+ 
   await clearCart();
   await updateBadge();
   await renderCartSummary();

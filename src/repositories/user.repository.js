@@ -10,6 +10,38 @@ export const userRepository = {
     }
   },
 
+  /**
+   * Creates (or returns) a guest customer profile that can later be merged into
+   * a permanent account. The merge flow can pivot on email + isGuest=true.
+   */
+  async createGuest({ email, address }) {
+    try {
+      const existing = await prisma.user.findUnique({ where: { email } });
+      if (existing) {
+        if (existing.isGuest) {
+          return await prisma.user.update({
+            where: { id: existing.id },
+            data: { guestAddress: address },
+          });
+        }
+
+        // Keep permanent account identity intact for future guest->account merge safety.
+        return existing;
+      }
+
+      return await prisma.user.create({
+        data: {
+          email,
+          role: 'customer',
+          isGuest: true,
+          guestAddress: address,
+        },
+      });
+    } catch (error) {
+      normalizeDbError(error, { repository: 'user', operation: 'createGuest' });
+    }
+  },
+
   async findById(id) {
     try {
       return await prisma.user.findUnique({ where: { id } });
