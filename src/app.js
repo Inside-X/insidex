@@ -20,6 +20,7 @@ const app = express();
 
 app.use(securityHeaders);
 app.use(corsMiddleware);
+app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
 app.use(express.json());
 app.use(requestContext);
 app.use(requestLogger);

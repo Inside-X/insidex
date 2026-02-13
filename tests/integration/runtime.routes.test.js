@@ -1,10 +1,10 @@
 import { jest } from '@jest/globals';
-import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import app from '../../src/app.js';
 import prisma from '../../src/lib/prisma.js';
 import { orderRepository } from '../../src/repositories/order.repository.js';
+import { createStripeSignatureHeader } from '../helpers/stripe-signature.js';
 
 function token(role = 'customer', sub = '00000000-0000-0000-0000-000000000123', isGuest = false) {
   return jwt.sign({ sub, role, isGuest }, process.env.JWT_ACCESS_SECRET, {
@@ -174,7 +174,7 @@ describe('runtime business routes', () => {
       },
     };
 
-    const signature = crypto.createHmac('sha256', process.env.STRIPE_WEBHOOK_SECRET).update(JSON.stringify(body)).digest('hex');
+    const signature = createStripeSignatureHeader(body, process.env.STRIPE_WEBHOOK_SECRET);
     jest.spyOn(orderRepository, 'markPaidFromWebhook').mockResolvedValue({ replayed: false, orderMarkedPaid: true });
 
     const res = await request(app)
@@ -186,6 +186,68 @@ describe('runtime business routes', () => {
     expect(res.body.data.orderMarkedPaid).toBe(true);
   });
 
+
+  test('stripe webhook rejects invalid signature', async () => {
+    const body = {
+      id: 'evt_invalid_sig',
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi_invalid_sig',
+          metadata: {
+            orderId: '00000000-0000-0000-0000-000000000777',
+            userId: '00000000-0000-0000-0000-000000000123',
+            idempotencyKey: 'idem-payment-intent-123',
+          },
+        },
+      },
+    };
+
+    const res = await request(app)
+      .post('/api/webhooks/stripe')
+      .set('stripe-signature', 't=1700000000,v1=invalid')
+      .send(body);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  test('stripe webhook replay keeps idempotent behavior', async () => {
+    const body = {
+      id: 'evt_replay_123',
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi_replay_123',
+          metadata: {
+            orderId: '00000000-0000-0000-0000-000000000777',
+            userId: '00000000-0000-0000-0000-000000000123',
+            idempotencyKey: 'idem-payment-intent-123',
+          },
+        },
+      },
+    };
+
+    const signature = createStripeSignatureHeader(body, process.env.STRIPE_WEBHOOK_SECRET);
+    jest.spyOn(orderRepository, 'markPaidFromWebhook')
+      .mockResolvedValueOnce({ replayed: false, orderMarkedPaid: true })
+      .mockResolvedValueOnce({ replayed: true, orderMarkedPaid: false });
+
+    const first = await request(app)
+      .post('/api/webhooks/stripe')
+      .set('stripe-signature', signature)
+      .send(body);
+
+    const replay = await request(app)
+      .post('/api/webhooks/stripe')
+      .set('stripe-signature', signature)
+      .send(body);
+
+    expect(first.status).toBe(200);
+    expect(replay.status).toBe(200);
+    expect(replay.body.data.replayed).toBe(true);
+  });
+  
   test('orders create blocks userId spoofing against req.auth.sub', async () => {
     const res = await request(app)
       .post('/api/orders')

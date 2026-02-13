@@ -1,11 +1,11 @@
 import { jest } from '@jest/globals';
-import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import app from '../../src/app.js';
 import prisma from '../../src/lib/prisma.js';
 import { userRepository } from '../../src/repositories/user.repository.js';
 import { orderRepository } from '../../src/repositories/order.repository.js';
+import { createStripeSignatureHeader } from '../helpers/stripe-signature.js';
 
 function token(role = 'customer', sub = '00000000-0000-0000-0000-000000000123', isGuest = false) {
   return jwt.sign({ sub, role, isGuest }, process.env.JWT_ACCESS_SECRET, {
@@ -164,7 +164,7 @@ describe('guest checkout runtime e2e', () => {
         },
       },
     };
-    const sig = crypto.createHmac('sha256', process.env.STRIPE_WEBHOOK_SECRET).update(JSON.stringify(stripeBody)).digest('hex');
+    const sig = createStripeSignatureHeader(stripeBody, process.env.STRIPE_WEBHOOK_SECRET);
 
     const stripeFirst = await request(app).post('/api/webhooks/stripe').set('stripe-signature', sig).send(stripeBody);
     const stripeReplay = await request(app).post('/api/webhooks/stripe').set('stripe-signature', sig).send(stripeBody);
