@@ -193,7 +193,7 @@ describe('runtime business routes', () => {
       .send({
         ...validCheckoutPayload,
         userId: '00000000-0000-0000-0000-000000000124',
-        idempotencyKey: 'idem-runtime-test-123',,
+        idempotencyKey: 'idem-runtime-test-123',
       });
     expect(res.status).toBe(403);
   });
@@ -209,7 +209,7 @@ describe('runtime business routes', () => {
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
-  
+
   test('orders route validates uuid params', async () => {
     const res = await request(app)
       .get('/api/orders/not-uuid')

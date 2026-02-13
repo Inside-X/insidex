@@ -20,6 +20,13 @@ router.post(
   enforceOrderOwnership,
   async (req, res, next) => {
     try {
+      const result = await orderRepository.createIdempotentWithItemsAndUpdateStock({
+        userId: req.body.userId,
+        items: req.body.items,
+        idempotencyKey: req.body.idempotencyKey,
+        stripePaymentIntentId: req.body.stripePaymentIntentId || null,
+      });
+
       const response = {
         data: result.order,
         meta: {
@@ -27,13 +34,6 @@ router.post(
           isGuestCheckout: req.auth.isGuest === true,
         },
       };
-
-    const result = await orderRepository.createIdempotentWithItemsAndUpdateStock({
-      userId: req.body.userId,
-      items: req.body.items,
-      idempotencyKey: req.body.idempotencyKey,
-      stripePaymentIntentId: req.body.stripePaymentIntentId || null,
-    });
 
       if (res.locals.implicitGuestToken) {
         response.meta.guestSessionToken = res.locals.implicitGuestToken;

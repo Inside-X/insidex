@@ -61,35 +61,64 @@ describe('guest checkout runtime e2e', () => {
     expect(adminRes.status).toBe(403);
   });
 
-  test('orders: success, spoofing blocked, invalid payload 400, stock insuffisant 400, idempotency replay', async () => {
-    jest.spyOn(orderRepository, 'createIdempotentWithItemsAndUpdateStock')
-      .mockResolvedValueOnce({ replayed: false, order: { id: 'order-ok-1', items: [] } })
-      .mockResolvedValueOnce({ replayed: true, order: { id: 'order-ok-1', items: [] } });
+  test('orders: success + response contract unchanged', async () => {
+    jest.spyOn(orderRepository, 'createIdempotentWithItemsAndUpdateStock').mockResolvedValueOnce({
+      replayed: false,
+      order: { id: 'order-ok-1', items: [] },
+    });
 
     const ok = await request(app)
       .post('/api/orders')
       .set('Authorization', `Bearer ${token('customer')}`)
       .send({ ...checkoutPayload, idempotencyKey: 'idem-order-success-12345' });
+
     expect(ok.status).toBe(201);
+    expect(ok.body.data.id).toBe('order-ok-1');
+    expect(ok.body.meta).toEqual({ replayed: false, isGuestCheckout: false });
+  });
+
+  test('orders: idempotency replay returns 200 and replayed=true', async () => {
+    jest.spyOn(orderRepository, 'createIdempotentWithItemsAndUpdateStock').mockResolvedValueOnce({
+      replayed: true,
+      order: { id: 'order-ok-1', items: [] },
+    });
 
     const replay = await request(app)
       .post('/api/orders')
       .set('Authorization', `Bearer ${token('customer')}`)
-      .send({ ...checkoutPayload, idempotencyKey: 'idem-order-success-12345' });
-    expect(replay.status).toBe(200);
+      .send({ ...checkoutPayload, idempotencyKey: 'idem-order-replay-12345' });
 
+    expect(replay.status).toBe(200);
+    expect(replay.body.meta.replayed).toBe(true);
+  });
+
+  test('orders: invalid payload returns 400', async () => {
+    const invalid = await request(app)
+      .post('/api/orders')
+      .set('Authorization', `Bearer ${token('customer')}`)
+      .send({ idempotencyKey: 'idem-order-invalid-12345', items: [] });
+
+    expect(invalid.status).toBe(400);
+    expect(invalid.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  test('orders: auth failure returns 401 for invalid token', async () => {
+    const unauthorized = await request(app)
+      .post('/api/orders')
+      .set('Authorization', 'Bearer invalid.token.value')
+      .send({ ...checkoutPayload, idempotencyKey: 'idem-order-unauth-12345' });
+
+    expect(unauthorized.status).toBe(401);
+    expect(unauthorized.body.error.code).toBe('UNAUTHORIZED');
+  });
+
+  test('orders: spoofing blocked and stock insuffisant returns 400', async () => {
     const spoof = await request(app)
       .post('/api/orders')
       .set('Authorization', `Bearer ${token('customer', '00000000-0000-0000-0000-000000000123')}`)
       .send({ ...checkoutPayload, userId: '00000000-0000-0000-0000-000000000999', idempotencyKey: 'idem-order-spoof-12345' });
     expect(spoof.status).toBe(403);
-
-    const invalid = await request(app)
-      .post('/api/orders')
-      .set('Authorization', `Bearer ${token('customer')}`)
-      .send({ idempotencyKey: 'idem-order-invalid-12345', items: [] });
-    expect(invalid.status).toBe(400);
-
+    
     jest.spyOn(orderRepository, 'createIdempotentWithItemsAndUpdateStock').mockRejectedValueOnce(
       Object.assign(new Error('Insufficient stock for product'), { statusCode: 400, code: 'INSUFFICIENT_STOCK' }),
     );
@@ -99,6 +128,7 @@ describe('guest checkout runtime e2e', () => {
       .set('Authorization', `Bearer ${token('customer')}`)
       .send({ ...checkoutPayload, idempotencyKey: 'idem-order-low-stock-12345' });
     expect(lowStock.status).toBe(400);
+    expect(lowStock.body.error.code).toBe('INSUFFICIENT_STOCK');
   });
 
   test('payments: stripe intent + webhook replay + paypal webhook replay + invalid signature 400', async () => {
