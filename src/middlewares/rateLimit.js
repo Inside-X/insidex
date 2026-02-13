@@ -3,7 +3,7 @@ import { sendApiError } from '../utils/api-error.js';
 function createRateLimiter({ windowMs, max, code, message }) {
   const buckets = new Map();
 
-  return function rateLimiter(req, res, next) {
+  function rateLimiter(req, res, next) {
     const now = Date.now();
     const key = req.ip || req.socket?.remoteAddress || 'unknown';
     const resolvedWindowMs = typeof windowMs === 'function' ? windowMs() : windowMs;
@@ -26,7 +26,11 @@ function createRateLimiter({ windowMs, max, code, message }) {
     }
 
     return next();
-  };
+  }
+
+  rateLimiter.reset = () => buckets.clear();
+
+  return rateLimiter;
 }
 
 export const apiRateLimiter = createRateLimiter({
@@ -42,5 +46,10 @@ export const strictAuthRateLimiter = createRateLimiter({
   code: 'RATE_LIMITED',
   message: 'Too many authentication attempts',
 });
+
+export function resetRateLimiters() {
+  apiRateLimiter.reset();
+  strictAuthRateLimiter.reset();
+}
 
 export default createRateLimiter;

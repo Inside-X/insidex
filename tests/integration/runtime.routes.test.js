@@ -61,6 +61,28 @@ describe('runtime business routes', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
+  
+  test('orders create returns 403 for non-customer role', async () => {
+    const res = await request(app)
+      .post('/api/orders')
+      .set('Authorization', `Bearer ${token('admin')}`)
+      .send({
+        userId: '00000000-0000-0000-0000-000000000123',
+        items: [{ productId: '00000000-0000-0000-0000-000000000999', quantity: 1 }],
+      });
+    expect(res.status).toBe(403);
+  });
+
+  test('orders create returns 403 when customer tries to create order for another user', async () => {
+    const res = await request(app)
+      .post('/api/orders')
+      .set('Authorization', `Bearer ${token('customer', '00000000-0000-0000-0000-000000000123')}`)
+      .send({
+        userId: '00000000-0000-0000-0000-000000000124',
+        items: [{ productId: '00000000-0000-0000-0000-000000000999', quantity: 1 }],
+      });
+    expect(res.status).toBe(403);
+  });
   test('orders route validates uuid params', async () => {
     const res = await request(app)
       .get('/api/orders/not-uuid')
