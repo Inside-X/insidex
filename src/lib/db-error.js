@@ -8,6 +8,10 @@ export function normalizeDbError(error, context = {}) {
 
   console.error('[DB_ERROR]', JSON.stringify(payload));
 
+  if (typeof error?.statusCode === 'number' && error.statusCode >= 400 && error.statusCode < 500) {
+    throw error;
+  }
+  
   if (error?.code === 'P2002') {
     const conflict = new Error('Database unique constraint violation');
     conflict.statusCode = 409;

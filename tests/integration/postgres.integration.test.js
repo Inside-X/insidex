@@ -99,10 +99,10 @@ describeDb('PostgreSQL integration (EPIC-1.4)', () => {
     const cartItem = await cartRepository.upsertItem(cart.id, product.id, 3);
     expect(cartItem.quantity).toBe(3);
 
-    order = await orderRepository.createWithItemsAndUpdateStock({
+    order = (await orderRepository.createIdempotentWithItemsAndUpdateStock({
       userId: user.id,
       items: [{ productId: product.id, quantity: 3 }],
-    });
+    })).order;
     expect(order.items).toHaveLength(1);
 
     const updatedProduct = await productRepository.findById(product.id);

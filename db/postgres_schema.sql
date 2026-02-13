@@ -73,13 +73,30 @@ CREATE TABLE IF NOT EXISTS cart_items (
 CREATE TABLE IF NOT EXISTS orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL,
+  idempotency_key VARCHAR(128) NOT NULL,
+  stripe_payment_intent_id VARCHAR(255),
   status order_status NOT NULL DEFAULT 'pending',
   total_amount NUMERIC(12, 2) NOT NULL CHECK (total_amount >= 0),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT orders_user_fk
     FOREIGN KEY (user_id) REFERENCES users(id)
-    ON DELETE RESTRICT
+    ON DELETE RESTRICT,
+  CONSTRAINT orders_idempotency_key_unique UNIQUE (idempotency_key),
+  CONSTRAINT orders_stripe_payment_intent_id_unique UNIQUE (stripe_payment_intent_id)
+);
+
+CREATE TABLE IF NOT EXISTS payment_webhook_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider VARCHAR(40) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  order_id UUID,
+  payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT payment_webhook_events_event_id_unique UNIQUE (event_id),
+  CONSTRAINT payment_webhook_events_order_fk
+    FOREIGN KEY (order_id) REFERENCES orders(id)
+    ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS order_items (
@@ -136,6 +153,12 @@ CREATE INDEX IF NOT EXISTS idx_orders_user_created_at
 CREATE INDEX IF NOT EXISTS idx_orders_status_created_at
   ON orders (status, created_at DESC);
 
+CREATE INDEX IF NOT EXISTS idx_payment_webhook_events_provider_created_at
+  ON payment_webhook_events (provider, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_payment_webhook_events_order_id
+  ON payment_webhook_events (order_id);
+  
 CREATE INDEX IF NOT EXISTS idx_leads_created_at
   ON leads (created_at DESC);
 

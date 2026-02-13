@@ -68,6 +68,7 @@ describe('runtime business routes', () => {
       .set('Authorization', `Bearer ${token('admin')}`)
       .send({
         userId: '00000000-0000-0000-0000-000000000123',
+        idempotencyKey: 'idem-runtime-test-123',
         items: [{ productId: '00000000-0000-0000-0000-000000000999', quantity: 1 }],
       });
     expect(res.status).toBe(403);
@@ -79,6 +80,7 @@ describe('runtime business routes', () => {
       .set('Authorization', `Bearer ${token('customer', '00000000-0000-0000-0000-000000000123')}`)
       .send({
         userId: '00000000-0000-0000-0000-000000000124',
+        idempotencyKey: 'idem-runtime-test-123',
         items: [{ productId: '00000000-0000-0000-0000-000000000999', quantity: 1 }],
       });
     expect(res.status).toBe(403);
