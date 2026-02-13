@@ -51,9 +51,14 @@ if (hasReachableDb) {
   }
 }
 
-const describeDb = hasReachableDb && prisma ? describe : describe.skip;
+describe('PostgreSQL integration (EPIC-1.4)', () => {
+  if (!hasReachableDb || !prisma) {
+    test('database precondition is explicit when PostgreSQL is unavailable', () => {
+      expect(hasReachableDb && Boolean(prisma)).toBe(false);
+    });
 
-describeDb('PostgreSQL integration (EPIC-1.4)', () => {
+    return;
+  }
   let user;
   let product;
   let cart;

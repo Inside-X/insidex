@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test": "node node_modules/prisma/build/index.js generate && NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js --runInBand",
-    "test:e2e": "node node_modules/prisma/build/index.js generate && NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js --runInBand tests/admin-ui-visibility.e2e.test.js",
-    "test:coverage": "node node_modules/prisma/build/index.js generate && NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js --runInBand --coverage",
+    "test": "node node_modules/prisma/build/index.js generate && NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js",
+    "test:e2e": "node node_modules/prisma/build/index.js generate && NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js tests/admin-ui-visibility.e2e.test.js",
+    "test:coverage": "node node_modules/prisma/build/index.js generate && NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js --coverage",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
