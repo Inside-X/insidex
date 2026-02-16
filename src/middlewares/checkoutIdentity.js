@@ -5,7 +5,7 @@ import { issueAccessToken } from '../security/access-token.js';
 /**
  * Ensure a checkout JWT exists before authenticate middleware:
  * - if Authorization header is already present, keep it
- * - otherwise, create/resolve guest user and inject implicit Bearer token
+ * - otherwise, create isolated guest user and inject implicit Bearer token
  */
 export async function ensureCheckoutSessionJWT(req, res, next) {
   if (req.get('authorization')) {
@@ -22,9 +22,13 @@ export async function ensureCheckoutSessionJWT(req, res, next) {
     address: guest.address,
   });
 
+  if (!guestUser?.id || guestUser.isGuest !== true) {
+    return sendApiError(req, res, 500, 'GUEST_ISOLATION_VIOLATION', 'Invalid guest checkout identity');
+  }
+
   const guestToken = issueAccessToken({
     id: guestUser.id,
-    role: 'customer',
+    role: 'guest',
     isGuest: true,
     // Reduce replay window for implicit checkout-only sessions.
     expiresIn: '10m',

@@ -66,6 +66,81 @@ describe('guest checkout runtime e2e', () => {
   });
 
   test('orders: success + response contract unchanged', async () => {
+
+  test('auth: guest checkout with existing permanent email creates isolated guest identity and guest JWT claims', async () => {
+    const permanentUser = {
+      id: '00000000-0000-0000-0000-00000000aa11',
+      email: checkoutPayload.email,
+      isGuest: false,
+      role: 'customer',
+    };
+    const createdGuest = {
+      id: '00000000-0000-0000-0000-00000000bb22',
+      email: 'guest-system@guest.insidex.local',
+      isGuest: true,
+      role: 'customer',
+      guestAddress: checkoutPayload.address,
+    };
+
+    jest.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(null);
+    const userCreateSpy = jest.spyOn(prisma.user, 'create').mockResolvedValueOnce(createdGuest);
+
+    jest.spyOn(prisma.product, 'findMany').mockResolvedValue([{ id: checkoutPayload.items[0].id, price: 59.9 }]);
+    jest.spyOn(orderRepository, 'createPendingPaymentOrder').mockResolvedValue({
+      replayed: false,
+      order: { id: '00000000-0000-0000-0000-000000000888', stripePaymentIntentId: 'pi_888' },
+    });
+
+    const guestRes = await request(app)
+      .post('/api/payments/create-intent')
+      .send({ ...checkoutPayload, idempotencyKey: 'idem-guest-isolation-12345' });
+
+    expect(guestRes.status).toBe(201);
+    expect(userCreateSpy).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        isGuest: true,
+        role: 'customer',
+        guestAddress: checkoutPayload.address,
+      }),
+    }));
+
+    const tokenPayload = jwt.verify(guestRes.body.meta.guestSessionToken, process.env.JWT_ACCESS_SECRET, {
+      algorithms: ['HS256'],
+      issuer: process.env.JWT_ACCESS_ISSUER,
+      audience: process.env.JWT_ACCESS_AUDIENCE,
+    });
+
+    expect(tokenPayload.sub).toBe(createdGuest.id);
+    expect(tokenPayload.role).toBe('guest');
+    expect(tokenPayload.isGuest).toBe(true);
+    expect(tokenPayload.sub).not.toBe(permanentUser.id);
+    expect(createdGuest.id).not.toBe(permanentUser.id);
+    expect(createdGuest.email).not.toBe(permanentUser.email);
+    expect(permanentUser.email).toBe(checkoutPayload.email);
+  });
+
+
+  test('orders: guest-created orders always use authenticated guest id', async () => {
+    const guestUser = { id: '00000000-0000-0000-0000-00000000cc33', isGuest: true };
+    jest.spyOn(userRepository, 'createGuest').mockResolvedValue(guestUser);
+
+    const createOrderSpy = jest.spyOn(orderRepository, 'createIdempotentWithItemsAndUpdateStock').mockResolvedValueOnce({
+      replayed: false,
+      order: { id: 'order-guest-1', items: [] },
+    });
+
+    const response = await request(app)
+      .post('/api/orders')
+      .send({
+        ...checkoutPayload,
+        idempotencyKey: 'idem-order-guest-owner-12345',
+      });
+
+    expect(response.status).toBe(201);
+    expect(createOrderSpy).toHaveBeenCalledWith(expect.objectContaining({ userId: guestUser.id }));
+    expect(response.body.meta.isGuestCheckout).toBe(true);
+  });
+  
     jest.spyOn(orderRepository, 'createIdempotentWithItemsAndUpdateStock').mockResolvedValueOnce({
       replayed: false,
       order: { id: 'order-ok-1', items: [] },
@@ -202,7 +277,7 @@ describe('guest checkout runtime e2e', () => {
     verifyPaypalSignature.mockResolvedValueOnce({ verified: false, reason: 'FAILURE' });
     const paypalInvalid = await request(app).post('/api/webhooks/paypal').send(paypalPayload);
     expect(paypalInvalid.status).toBe(400);
-    
+
     const badSig = await request(app)
       .post('/api/webhooks/stripe')
       .set('stripe-signature', 'invalid')

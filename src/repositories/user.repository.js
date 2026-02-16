@@ -1,6 +1,34 @@
 import prisma from '../lib/prisma.js';
 import { normalizeDbError } from '../lib/db-error.js';
 
+function buildGuestSystemEmail() {
+  const randomToken = `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+  return `guest-${randomToken}@guest.insidex.local`;
+}
+
+async function reserveUniqueGuestEmail() {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const candidateEmail = buildGuestSystemEmail();
+    const existing = await prisma.user.findUnique({ where: { email: candidateEmail } });
+
+    if (existing && existing.isGuest === false) {
+      const guardError = new Error('Guest isolation violation: resolved non-guest user during guest provisioning');
+      guardError.statusCode = 500;
+      guardError.code = 'GUEST_ISOLATION_VIOLATION';
+      throw guardError;
+    }
+
+    if (!existing) {
+      return candidateEmail;
+    }
+  }
+
+  const exhausted = new Error('Unable to provision isolated guest identity');
+  exhausted.statusCode = 500;
+  exhausted.code = 'GUEST_ISOLATION_VIOLATION';
+  throw exhausted;
+}
+
 export const userRepository = {
   async create(data) {
     try {
@@ -11,27 +39,18 @@ export const userRepository = {
   },
 
   /**
-   * Creates (or returns) a guest customer profile that can later be merged into
-   * a permanent account. The merge flow can pivot on email + isGuest=true.
+   * Creates an isolated guest profile.
+   * Guest identity MUST NEVER be bound to payload email.
    */
   async createGuest({ email, address }) {
     try {
-      const existing = await prisma.user.findUnique({ where: { email } });
-      if (existing) {
-        if (existing.isGuest) {
-          return await prisma.user.update({
-            where: { id: existing.id },
-            data: { guestAddress: address },
-          });
-        }
-
-        // Keep permanent account identity intact for future guest->account merge safety.
-        return existing;
-      }
+      const _payloadEmail = email;
+      void _payloadEmail;
+      const systemEmail = await reserveUniqueGuestEmail();
 
       return await prisma.user.create({
         data: {
-          email,
+          email: systemEmail,
           role: 'customer',
           isGuest: true,
           guestAddress: address,

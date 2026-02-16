@@ -18,6 +18,7 @@ export function strictValidate(schema, property = 'body') {
             code: 'VALIDATION_ERROR',
             message: 'Invalid request payload',
             requestId: req.requestId,
+            details: [],
           },
         });
       }

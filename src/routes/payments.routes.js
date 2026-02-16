@@ -16,7 +16,7 @@ function normalizeCurrency(currency) {
   return String(currency || 'EUR').trim().toUpperCase();
 }
 
-router.post('/create-intent', strictValidate(paymentsSchemas.createIntent), ensureCheckoutSessionJWT, authenticateJWT, authorizeRole('customer'), checkoutCustomerAccess, async (req, res, next) => {
+router.post('/create-intent', strictValidate(paymentsSchemas.createIntent), ensureCheckoutSessionJWT, authenticateJWT, authorizeRole(['customer', 'guest']), checkoutCustomerAccess, async (req, res, next) => {
   try {
     const requestedItems = req.body.items;
     const productIds = requestedItems.map((item) => item.id);

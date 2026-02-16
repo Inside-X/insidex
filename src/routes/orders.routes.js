@@ -15,13 +15,13 @@ router.post(
   strictValidate(ordersSchemas.create),
   ensureCheckoutSessionJWT,
   authenticateJWT,
-  authorizeRole('customer'),
+  authorizeRole(['customer', 'guest']),
   checkoutCustomerAccess,
   enforceOrderOwnership,
   async (req, res, next) => {
     try {
       const result = await orderRepository.createIdempotentWithItemsAndUpdateStock({
-        userId: req.body.userId,
+        userId: req.auth.sub,
         items: req.body.items,
         idempotencyKey: req.body.idempotencyKey,
         stripePaymentIntentId: req.body.stripePaymentIntentId || null,
