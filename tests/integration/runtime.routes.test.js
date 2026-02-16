@@ -5,6 +5,7 @@ import app from '../../src/app.js';
 import prisma from '../../src/lib/prisma.js';
 import { orderRepository } from '../../src/repositories/order.repository.js';
 import { createStripeSignatureHeader } from '../helpers/stripe-signature.js';
+import paypal from '../../src/lib/paypal.js';
 
 function token(role = 'customer', sub = '00000000-0000-0000-0000-000000000123', isGuest = false) {
   return jwt.sign({ sub, role, isGuest }, process.env.JWT_ACCESS_SECRET, {
@@ -31,6 +32,9 @@ describe('runtime business routes', () => {
     process.env.AUTH_RATE_MAX = '2';
     process.env.API_RATE_MAX = '200';
     process.env.STRIPE_WEBHOOK_SECRET = 'test_stripe_secret';
+    process.env.PAYPAL_WEBHOOK_ID = 'WH-TEST';
+    process.env.PAYPAL_CLIENT_ID = 'paypal-client-id';
+    process.env.PAYPAL_CLIENT_SECRET = 'paypal-client-secret';
   });
 
   afterEach(() => {
@@ -247,7 +251,80 @@ describe('runtime business routes', () => {
     expect(replay.status).toBe(200);
     expect(replay.body.data.replayed).toBe(true);
   });
-  
+
+  test('paypal webhook with verified signature is processed', async () => {
+    const body = {
+      eventId: 'paypal_evt_valid_1',
+      orderId: '00000000-0000-0000-0000-000000000777',
+      metadata: {
+        orderId: '00000000-0000-0000-0000-000000000777',
+        userId: '00000000-0000-0000-0000-000000000123',
+        idempotencyKey: 'idem-payment-intent-123',
+      },
+    };
+
+    jest.spyOn(paypal.webhooks, 'verifyWebhookSignature').mockResolvedValue({ verified: true, reason: 'SUCCESS' });
+    jest.spyOn(orderRepository, 'processPaymentWebhookEvent').mockResolvedValue({ replayed: false, orderMarkedPaid: true });
+
+    const res = await request(app)
+      .post('/api/webhooks/paypal')
+      .send(body);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.orderMarkedPaid).toBe(true);
+  });
+
+  test('paypal webhook rejects invalid signature', async () => {
+    const body = {
+      eventId: 'paypal_evt_invalid_1',
+      orderId: '00000000-0000-0000-0000-000000000777',
+      metadata: {
+        orderId: '00000000-0000-0000-0000-000000000777',
+        userId: '00000000-0000-0000-0000-000000000123',
+        idempotencyKey: 'idem-payment-intent-123',
+      },
+    };
+
+    jest.spyOn(paypal.webhooks, 'verifyWebhookSignature').mockResolvedValue({ verified: false, reason: 'FAILURE' });
+    const processSpy = jest.spyOn(orderRepository, 'processPaymentWebhookEvent');
+
+    const res = await request(app)
+      .post('/api/webhooks/paypal')
+      .send(body);
+
+    expect(res.status).toBe(400);
+    expect(processSpy).not.toHaveBeenCalled();
+  });
+
+  test('paypal webhook replay keeps idempotent behavior', async () => {
+    const body = {
+      eventId: 'paypal_evt_replay_1',
+      orderId: '00000000-0000-0000-0000-000000000777',
+      metadata: {
+        orderId: '00000000-0000-0000-0000-000000000777',
+        userId: '00000000-0000-0000-0000-000000000123',
+        idempotencyKey: 'idem-payment-intent-123',
+      },
+    };
+
+    jest.spyOn(paypal.webhooks, 'verifyWebhookSignature').mockResolvedValue({ verified: true, reason: 'SUCCESS' });
+    jest.spyOn(orderRepository, 'processPaymentWebhookEvent')
+      .mockResolvedValueOnce({ replayed: false, orderMarkedPaid: true })
+      .mockResolvedValueOnce({ replayed: true, orderMarkedPaid: false });
+
+    const first = await request(app)
+      .post('/api/webhooks/paypal')
+      .send(body);
+
+    const replay = await request(app)
+      .post('/api/webhooks/paypal')
+      .send(body);
+
+    expect(first.status).toBe(200);
+    expect(replay.status).toBe(200);
+    expect(replay.body.data.replayed).toBe(true);
+  });
+
   test('orders create blocks userId spoofing against req.auth.sub', async () => {
     const res = await request(app)
       .post('/api/orders')

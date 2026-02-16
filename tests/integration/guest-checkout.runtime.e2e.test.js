@@ -6,6 +6,7 @@ import prisma from '../../src/lib/prisma.js';
 import { userRepository } from '../../src/repositories/user.repository.js';
 import { orderRepository } from '../../src/repositories/order.repository.js';
 import { createStripeSignatureHeader } from '../helpers/stripe-signature.js';
+import paypal from '../../src/lib/paypal.js';
 
 function token(role = 'customer', sub = '00000000-0000-0000-0000-000000000123', isGuest = false) {
   return jwt.sign({ sub, role, isGuest }, process.env.JWT_ACCESS_SECRET, {
@@ -31,6 +32,9 @@ describe('guest checkout runtime e2e', () => {
   beforeEach(() => {
     process.env.API_RATE_MAX = '200';
     process.env.STRIPE_WEBHOOK_SECRET = 'test_stripe_secret';
+    process.env.PAYPAL_WEBHOOK_ID = 'WH-TEST';
+    process.env.PAYPAL_CLIENT_ID = 'paypal-client-id';
+    process.env.PAYPAL_CLIENT_SECRET = 'paypal-client-secret';
   });
 
   afterEach(() => {
@@ -173,6 +177,7 @@ describe('guest checkout runtime e2e', () => {
     expect(stripeReplay.status).toBe(200);
     expect(stripeReplay.body.data.replayed).toBe(true);
 
+    const verifyPaypalSignature = jest.spyOn(paypal.webhooks, 'verifyWebhookSignature').mockResolvedValue({ verified: true, reason: 'SUCCESS' });
     jest.spyOn(orderRepository, 'processPaymentWebhookEvent')
       .mockResolvedValueOnce({ replayed: false, orderMarkedPaid: true })
       .mockResolvedValueOnce({ replayed: true, orderMarkedPaid: false });
@@ -194,6 +199,10 @@ describe('guest checkout runtime e2e', () => {
     expect(paypalReplay.status).toBe(200);
     expect(paypalReplay.body.data.replayed).toBe(true);
 
+    verifyPaypalSignature.mockResolvedValueOnce({ verified: false, reason: 'FAILURE' });
+    const paypalInvalid = await request(app).post('/api/webhooks/paypal').send(paypalPayload);
+    expect(paypalInvalid.status).toBe(400);
+    
     const badSig = await request(app)
       .post('/api/webhooks/stripe')
       .set('stripe-signature', 'invalid')

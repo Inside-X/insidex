@@ -1,6 +1,7 @@
 import express from 'express';
 import { ZodError } from 'zod';
 import stripe from '../lib/stripe.js';
+import paypal from '../lib/paypal.js';
 import { paymentsSchemas } from '../validation/schemas/index.js';
 import { sendApiError } from '../utils/api-error.js';
 import { orderRepository } from '../repositories/order.repository.js';
@@ -56,6 +57,14 @@ router.post('/stripe', async (req, res, next) => {
 router.post('/paypal', async (req, res, next) => {
   try {
     const payload = paymentsSchemas.paypalWebhook.parse(req.body);
+    const verification = await paypal.webhooks.verifyWebhookSignature({
+      getHeader: (name) => req.get(name),
+      webhookEvent: req.body,
+    });
+
+    if (!verification.verified) {
+      return sendApiError(req, res, 400, 'VALIDATION_ERROR', 'Invalid paypal signature');
+    }
 
     if (payload.orderId !== payload.metadata.orderId) {
       return sendApiError(req, res, 400, 'VALIDATION_ERROR', 'metadata.orderId mismatch');
