@@ -33,8 +33,7 @@ export function clearUserId() {
 
 function getCartContext() {
   return {
-    anonId: getAnonId(),
-    userId: getUserId()
+    anonId: getAnonId()
   };
 }
 
@@ -47,9 +46,8 @@ async function fetchJSON(url, options) {
 }
 
 export async function loadCart() {
-  const { anonId, userId } = getCartContext();
+  const { anonId } = getCartContext();
   const params = new URLSearchParams();
-  if (userId) params.set('userId', userId);
   if (anonId) params.set('anonId', anonId);
   try {
     return await fetchJSON(`/api/cart?${params.toString()}`);
@@ -68,7 +66,7 @@ export async function updateBadge() {
 }
 
 export async function addToCart(id, name, price, qty = 1) {
-  const { anonId, userId } = getCartContext();
+  const { anonId } = getCartContext();
   await fetchJSON('/api/cart/items', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -77,8 +75,7 @@ export async function addToCart(id, name, price, qty = 1) {
       name,
       price: Number(price),
       qty: Number(qty),
-      anonId,
-      userId
+      anonId
     })
   });
   await updateBadge();
@@ -96,35 +93,34 @@ export async function addToCart(id, name, price, qty = 1) {
 }
 
 export async function setQty(id, qty) {
-  const { anonId, userId } = getCartContext();
+  const { anonId } = getCartContext();
   await fetchJSON(`/api/cart/items/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       qty: Number(qty),
-      anonId,
-      userId
+      anonId
     })
   });
   await updateBadge();
 }
 
 export async function removeItem(id) {
-  const { anonId, userId } = getCartContext();
+  const { anonId } = getCartContext();
   await fetchJSON(`/api/cart/items/${id}`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ anonId, userId })
+    body: JSON.stringify({ anonId })
   });
   await updateBadge();
 }
 
 export async function clearCart() {
-  const { anonId, userId } = getCartContext();
+  const { anonId } = getCartContext();
   await fetchJSON('/api/cart', {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ anonId, userId })
+    body: JSON.stringify({ anonId })
   });
   await updateBadge();
 }
@@ -137,7 +133,7 @@ export async function syncCartToUser(userId) {
   const cart = await fetchJSON('/api/cart/sync', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ anonId, userId })
+    body: JSON.stringify({ anonId })
   });
   await updateBadge();
   return cart;

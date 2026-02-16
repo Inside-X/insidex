@@ -3,7 +3,6 @@ import { z } from 'zod';
 export const analyticsSchemas = {
   track: z.object({
     eventType: z.string().trim().min(1).max(100),
-    userId: z.string().uuid().optional(),
     payload: z.record(z.any()).default({}),
   }).strict({ message: 'unknown field in analytics payload' }),
   listQuery: z.object({

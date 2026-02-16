@@ -19,44 +19,31 @@ export const addToCartSchema = z
   })
   .strict({ message: 'unknown field in cart payload' });
 
-const userScopeSchema = z.object({
-  userId: legacyIdentifierSchema.optional(),
+const anonScopeSchema = z.object({
   anonId: legacyIdentifierSchema.optional()
-}).strict({ message: 'unknown field in cart scope payload' }).refine((value) => value.userId || value.anonId, {
-  message: 'either userId or anonId is required',
-  path: ['userId']
-});
+}).strict({ message: 'unknown field in cart scope payload' });
 
 export const cartSchemas = {
   // Nouveau endpoint cible.
   add: addToCartSchema,
   // Endpoints existants maintenus.
-  getCartQuery: userScopeSchema,
+  getCartQuery: anonScopeSchema,
   addItem: z.object({
     id: legacyIdentifierSchema,
     name: z.string().trim().min(1).max(180),
     price: z.number().min(0),
     qty: z.number().int().min(1).max(999).optional(),
-    userId: legacyIdentifierSchema.optional(),
     anonId: legacyIdentifierSchema.optional()
-  }).strict({ message: 'unknown field in cart add item payload' }).refine((value) => value.userId || value.anonId, {
-    message: 'either userId or anonId is required',
-    path: ['userId']
-  }),
+  }).strict({ message: 'unknown field in cart add item payload' }),
   updateItemParams: z.object({ id: legacyIdentifierSchema }).strict({ message: 'unknown field in cart params payload' }),
   updateItemBody: z.object({
     qty: z.number().int().min(1).max(999),
-    userId: legacyIdentifierSchema.optional(),
     anonId: legacyIdentifierSchema.optional()
-  }).strict({ message: 'unknown field in cart update payload' }).refine((value) => value.userId || value.anonId, {
-    message: 'either userId or anonId is required',
-    path: ['userId']
-  }),
+  }).strict({ message: 'unknown field in cart update payload' }),
   removeItemParams: z.object({ id: legacyIdentifierSchema }).strict({ message: 'unknown field in cart params payload' }),
-  removeItemBody: userScopeSchema,
-  clearCartBody: userScopeSchema,
+  removeItemBody: anonScopeSchema,
+  clearCartBody: anonScopeSchema,
   sync: z.object({
-    anonId: legacyIdentifierSchema,
-    userId: legacyIdentifierSchema
+    anonId: legacyIdentifierSchema
   }).strict({ message: 'unknown field in cart sync payload' })
 };

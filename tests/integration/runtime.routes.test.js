@@ -95,6 +95,17 @@ describe('runtime business routes', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
+
+  test('cart add item rejects client-provided userId', async () => {
+    const res = await request(app)
+      .post('/api/cart/items')
+      .set('Authorization', `Bearer ${token('customer')}`)
+      .send({ productId: 'LEGACY_ID_12345', quantity: 2, userId: '00000000-0000-0000-0000-000000000123' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
   test('cart route mounted and validates params/body', async () => {
     const res = await request(app)
       .patch('/api/cart/items/item-1')
@@ -422,6 +433,17 @@ describe('runtime business routes', () => {
     expect(res.status).toBe(403);
   });
 
+
+  test('analytics events reject client-provided userId', async () => {
+    const res = await request(app)
+      .post('/api/analytics/events')
+      .set('Authorization', `Bearer ${token('customer')}`)
+      .send({ eventType: 'view', userId: '00000000-0000-0000-0000-000000000123', payload: {} });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+  
   test('analytics listing mounted and protected', async () => {
     const res = await request(app)
       .get('/api/analytics/events?eventType=view')

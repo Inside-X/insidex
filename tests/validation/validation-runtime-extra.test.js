@@ -33,7 +33,8 @@ describe('validation coverage hardening', () => {
 
   test('cart legacy addItem + sync strict schemas are enforced', () => {
     expect(() => cartSchemas.addItem.parse({ id: '1', name: 'n', price: 1, userId: 'u', extra: true })).toThrow();
-    expect(cartSchemas.sync.parse({ anonId: 'a', userId: 'u' })).toEqual({ anonId: 'a', userId: 'u' });
+    expect(cartSchemas.sync.parse({ anonId: 'a' })).toEqual({ anonId: 'a' });
+    expect(cartSchemas.sync.safeParse({ anonId: 'a', userId: 'u' }).success).toBe(false);
   });
 
 
@@ -51,7 +52,16 @@ describe('validation coverage hardening', () => {
       userId: '00000000-0000-0000-0000-000000000123',
     }).success).toBe(false);
   });
-  
+
+
+  test('analytics track rejects client-provided userId', () => {
+    expect(analyticsSchemas.track.safeParse({
+      eventType: 'add_to_cart',
+      userId: '00000000-0000-0000-0000-000000000123',
+      payload: { test: true },
+    }).success).toBe(false);
+  });
+
   test('query/params schemas accept valid payload', () => {
     expect(productsSchemas.listQuery.parse({ published: 'true', minPrice: '1' }).published).toBe(true);
     expect(productsSchemas.byIdParams.parse({ id: 'p-123' }).id).toBe('p-123');
@@ -78,6 +88,6 @@ describe('validation coverage hardening', () => {
     expect(cartSchemas.add.parse({ productId: '123e4567-e89b-12d3-a456-426614174000', quantity: 1 }).quantity).toBe(1);
     expect(cartSchemas.add.parse({ productId: 'LEGACY_ID_12345', quantity: 2 }).quantity).toBe(2);
     expect(cartSchemas.add.safeParse({ productId: 'bad', quantity: 2 }).success).toBe(false);
-    expect(cartSchemas.getCartQuery.safeParse({}).success).toBe(false);
+    expect(cartSchemas.getCartQuery.safeParse({}).success).toBe(true);
   });
 });
