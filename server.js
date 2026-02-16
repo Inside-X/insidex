@@ -3,10 +3,13 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import app from './src/app.js';
 import { logger } from './src/utils/logger.js';
+import { assertProductionBootConfigOrExit } from './src/config/boot-validation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 3000;
+
+assertProductionBootConfigOrExit();
 
 app.disable('x-powered-by');
 
