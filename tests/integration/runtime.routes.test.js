@@ -198,7 +198,6 @@ describe('runtime business routes', () => {
 
   test('payments create-intent is idempotent for concurrent multi-client retries', async () => {
     jest.spyOn(prisma.product, 'findMany').mockResolvedValue([{ id: validCheckoutPayload.items[0].id, price: 49 }]);
-
     let first = true;
     jest.spyOn(orderRepository, 'createPendingPaymentOrder').mockImplementation(async () => {
       if (first) {

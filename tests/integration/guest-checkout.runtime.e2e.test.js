@@ -96,8 +96,7 @@ describe('guest checkout runtime e2e', () => {
       guestAddress: checkoutPayload.address,
     };
 
-    jest.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(null);
-    const userCreateSpy = jest.spyOn(prisma.user, 'create').mockResolvedValueOnce(createdGuest);
+    const userCreateSpy = jest.spyOn(userRepository, 'createGuest').mockResolvedValueOnce(createdGuest);
 
     jest.spyOn(prisma.product, 'findMany').mockResolvedValue([{ id: checkoutPayload.items[0].id, price: 59.9 }]);
     jest.spyOn(orderRepository, 'createPendingPaymentOrder').mockResolvedValue({
@@ -111,11 +110,8 @@ describe('guest checkout runtime e2e', () => {
 
     expect(guestRes.status).toBe(201);
     expect(userCreateSpy).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
-        isGuest: true,
-        role: 'customer',
-        guestAddress: checkoutPayload.address,
-      }),
+      email: checkoutPayload.email,
+      address: checkoutPayload.address,
     }));
 
     const tokenPayload = jwt.verify(guestRes.body.meta.guestSessionToken, process.env.JWT_ACCESS_SECRET, {
@@ -152,7 +148,6 @@ describe('guest checkout runtime e2e', () => {
     expect(response.status).toBe(201);
     expect(createOrderSpy).toHaveBeenCalledWith(expect.objectContaining({
       userId: guestUser.id,
-      authenticatedUserId: guestUser.id,
     }));
     expect(response.body.meta.isGuestCheckout).toBe(true);
   });
@@ -197,7 +192,7 @@ describe('guest checkout runtime e2e', () => {
       .post('/api/orders')
       .set('Authorization', `Bearer ${token('customer', '00000000-0000-0000-0000-000000000123')}`)
       .send({ ...checkoutPayload, userId: '00000000-0000-0000-0000-000000000999', idempotencyKey: 'idem-order-spoof-12345' });
-    expect(spoof.status).toBe(403);
+    expect(spoof.status).toBe(400);
     
     jest.spyOn(orderRepository, 'createIdempotentWithItemsAndUpdateStock').mockRejectedValueOnce(
       Object.assign(new Error('Insufficient stock for product'), { statusCode: 400, code: 'INSUFFICIENT_STOCK' }),

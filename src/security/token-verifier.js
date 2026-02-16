@@ -19,35 +19,8 @@ function verifyToken(token, config) {
   }
 }
 
-function shouldAllowLegacyAccessToken(env = process.env) {
-  return env.NODE_ENV !== 'production';
-}
-
-function verifyLegacyAccessToken(token, config) {
-  if (!config.secret) {
-    return { ok: false, reason: 'misconfigured' };
-  }
-
-  try {
-    const payload = jwt.verify(token, config.secret, {
-      algorithms: ['HS256'],
-    });
-
-    return { ok: true, payload };
-  } catch {
-    return { ok: false, reason: 'invalid' };
-  }
-}
-
 export function verifyAccessToken(token, env = process.env) {
-  const accessConfig = getAccessTokenConfig(env);
-  const strictResult = verifyToken(token, accessConfig);
-
-  if (strictResult.ok || strictResult.reason === 'misconfigured' || !shouldAllowLegacyAccessToken(env)) {
-    return strictResult;
-  }
-
-  return verifyLegacyAccessToken(token, accessConfig);
+  return verifyToken(token, getAccessTokenConfig(env));
 }
 
 export function verifyRefreshToken(token, env = process.env) {
