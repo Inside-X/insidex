@@ -76,6 +76,25 @@ describe('runtime business routes', () => {
     expect(res.status).toBe(201);
   });
 
+  test('leads create returns 400 for unknown fields', async () => {
+    const res = await request(app)
+      .post('/api/leads')
+      .send({ name: 'Jane Doe', email: 'jane@example.com', message: 'Message long enough', unknown: true });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  test('cart add item returns 400 for unknown fields', async () => {
+    const res = await request(app)
+      .post('/api/cart/items')
+      .set('Authorization', `Bearer ${token('customer')}`)
+      .send({ productId: 'LEGACY_ID_12345', quantity: 2, unknown: true });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
   test('cart route mounted and validates params/body', async () => {
     const res = await request(app)
       .patch('/api/cart/items/item-1')
