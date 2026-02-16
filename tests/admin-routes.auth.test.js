@@ -1,5 +1,4 @@
 import request from 'supertest';
-import jwt from 'jsonwebtoken';
 import { jest } from '@jest/globals';
 import app from '../src/app.js';
 import { buildTestToken } from './helpers/jwt.helper.js';
@@ -128,26 +127,22 @@ describe('Admin routes protection (/api/admin)', () => {
     });
   });
 
-  test('7b) ancien token dev/test sans issuer/audience reste accepté -> 200', async () => {
-    const legacyToken = jwt.sign(
-      { sub: 'admin-legacy-token', role: 'admin' },
-      process.env.JWT_ACCESS_SECRET,
-      {
-        algorithm: 'HS256',
-        expiresIn: '15m',
-      },
-    );
+  test('7b) token sans issuer/audience (legacy) -> 401', async () => {
+    const legacyToken = buildTestToken({
+      role: 'admin',
+      id: 'admin-legacy-token',
+      issuer: null,
+      audience: null,
+    });
 
     const response = await request(app)
       .get('/api/admin/health')
       .set('Authorization', `Bearer ${legacyToken}`)
-      .expect(200);
+      .expect(401);
 
-    expect(response.body).toEqual({
-      data: {
-        status: 'ok',
-        scope: 'admin',
-      },
+    expectApiError(response, {
+      code: 'UNAUTHORIZED',
+      message: 'Authentication failed',
     });
   });
 
@@ -188,16 +183,10 @@ expectApiError(response, {
   });
   
   test('8b) token avec payload invalide (sans sub/id) -> 401 uniforme', async () => {
-    const tokenWithoutSubject = jwt.sign(
-      { role: 'admin' },
-      process.env.JWT_ACCESS_SECRET,
-      {
-        algorithm: 'HS256',
-        issuer: process.env.JWT_ACCESS_ISSUER,
-        audience: process.env.JWT_ACCESS_AUDIENCE,
-        expiresIn: '15m',
-      },
-    );
+    const tokenWithoutSubject = buildTestToken({
+      role: 'admin',
+      id: null,
+    });
 
     const response = await request(app)
       .get('/api/admin/health')
