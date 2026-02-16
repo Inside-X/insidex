@@ -104,6 +104,16 @@ describe('runtime business routes', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
+  test('cart delete uses strict validation for payload and params', async () => {
+    const res = await request(app)
+      .delete('/api/cart/items/item-1')
+      .set('Authorization', `Bearer ${token('customer')}`)
+      .send({ anonId: 'anon-12345', extra: true });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
   test('orders create returns 403 for admin role', async () => {
     const res = await request(app)
       .post('/api/orders')
@@ -126,7 +136,6 @@ describe('runtime business routes', () => {
       .set('Authorization', `Bearer ${token('guest', '00000000-0000-0000-0000-000000000123', true)}`)
       .send({
         ...validCheckoutPayload,
-        userId: '00000000-0000-0000-0000-000000000123',
         idempotencyKey: 'idem-runtime-test-guest-123',
       });
 
@@ -375,7 +384,7 @@ describe('runtime business routes', () => {
     expect(replay.body.data.replayed).toBe(true);
   });
 
-  test('orders create blocks userId spoofing against req.auth.sub', async () => {
+  test('orders create rejects any userId field from client payload', async () => {
     const res = await request(app)
       .post('/api/orders')
       .set('Authorization', `Bearer ${token('customer', '00000000-0000-0000-0000-000000000123')}`)
@@ -384,7 +393,8 @@ describe('runtime business routes', () => {
         userId: '00000000-0000-0000-0000-000000000124',
         idempotencyKey: 'idem-runtime-test-123',
       });
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
   test('orders create returns 400 for unknown fields (strict zod)', async () => {

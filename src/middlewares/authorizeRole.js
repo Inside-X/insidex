@@ -1,5 +1,5 @@
 import { sendApiError } from '../utils/api-error.js';
-import { normalizeRole as normalizeRbacRole } from '../security/rbac-policy.js';
+import { getNormalizedAuthRole, requireAuthenticatedSubject } from './rbac.js';
 
 /**
  * authorizeRole('admin')
@@ -15,14 +15,14 @@ export function authorizeRole(roleOrArray) {
     throw new Error('authorizeRole expects a non-empty role string or array of non-empty role strings');
   }
 
-  const normalizedAllowedRoles = new Set(allowedRoles.map((role) => normalizeRbacRole(role)));
+  const normalizedAllowedRoles = new Set(allowedRoles.map((role) => role.trim().toLowerCase()));
 
   return function authorizeRoleMiddleware(req, res, next) {
-    if (!req.auth?.sub) {
-      return sendApiError(req, res, 401, 'UNAUTHORIZED', 'Authentication required');
+    if (!requireAuthenticatedSubject(req, res)) {
+      return undefined;
     }
 
-    const normalizedCurrentRole = normalizeRbacRole(req.auth.role);
+    const normalizedCurrentRole = getNormalizedAuthRole(req);
 
     if (!normalizedCurrentRole || !normalizedAllowedRoles.has(normalizedCurrentRole)) {
       return sendApiError(req, res, 403, 'FORBIDDEN', 'Insufficient permissions');

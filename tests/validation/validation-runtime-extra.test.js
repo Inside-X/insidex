@@ -36,6 +36,22 @@ describe('validation coverage hardening', () => {
     expect(cartSchemas.sync.parse({ anonId: 'a', userId: 'u' })).toEqual({ anonId: 'a', userId: 'u' });
   });
 
+
+  test('orders create schema rejects client-provided userId', () => {
+    expect(ordersSchemas.create.safeParse({
+      idempotencyKey: 'idem-order-schema-12345',
+      email: 'guest@insidex.test',
+      address: {
+        line1: '12 rue du Port',
+        city: 'Mamoudzou',
+        postalCode: '97600',
+        country: 'FR',
+      },
+      items: [{ id: '00000000-0000-0000-0000-000000000999', quantity: 1, price: 9.9 }],
+      userId: '00000000-0000-0000-0000-000000000123',
+    }).success).toBe(false);
+  });
+  
   test('query/params schemas accept valid payload', () => {
     expect(productsSchemas.listQuery.parse({ published: 'true', minPrice: '1' }).published).toBe(true);
     expect(productsSchemas.byIdParams.parse({ id: 'p-123' }).id).toBe('p-123');

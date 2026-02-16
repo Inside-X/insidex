@@ -138,6 +138,16 @@ describe('guest checkout runtime e2e', () => {
     expect(response.body.meta.isGuestCheckout).toBe(true);
   });
 
+
+  test('guest token is rejected on customer-only order read route', async () => {
+    const response = await request(app)
+      .get('/api/orders/00000000-0000-0000-0000-000000000777')
+      .set('Authorization', `Bearer ${token('guest', '00000000-0000-0000-0000-000000000123', true)}`);
+
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe('FORBIDDEN');
+  });
+
   test('orders: success + response contract unchanged', async () => {
     jest.spyOn(orderRepository, 'createIdempotentWithItemsAndUpdateStock').mockResolvedValueOnce({
       replayed: false,
@@ -194,7 +204,8 @@ describe('guest checkout runtime e2e', () => {
       .post('/api/orders')
       .set('Authorization', `Bearer ${token('customer', '00000000-0000-0000-0000-000000000123')}`)
       .send({ ...checkoutPayload, userId: '00000000-0000-0000-0000-000000000999', idempotencyKey: 'idem-order-spoof-12345' });
-    expect(spoof.status).toBe(403);
+    expect(spoof.status).toBe(400);
+    expect(spoof.body.error.code).toBe('VALIDATION_ERROR');
     
     jest.spyOn(orderRepository, 'createIdempotentWithItemsAndUpdateStock').mockRejectedValueOnce(
       Object.assign(new Error('Insufficient stock for product'), { statusCode: 400, code: 'INSUFFICIENT_STOCK' }),

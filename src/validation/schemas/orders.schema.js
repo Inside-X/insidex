@@ -5,7 +5,6 @@ const uuidSchema = z.string().uuid('id must be a valid UUID');
 
 export const ordersSchemas = {
   create: z.object({
-    userId: uuidSchema.optional(),
     idempotencyKey: z.string().min(10).max(128),
     stripePaymentIntentId: z.string().max(255).optional(),
     email: checkoutCustomerSchema.shape.email,

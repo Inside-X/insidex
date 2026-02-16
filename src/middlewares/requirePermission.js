@@ -1,5 +1,6 @@
-import { roleHasPermission } from '../security/rbac-policy.js';
 import { sendApiError } from '../utils/api-error.js';
+import { roleHasPermission } from '../security/rbac-policy.js';
+import { getNormalizedAuthRole, requireAuthenticatedSubject } from './rbac.js';
 
 /**
  * requirePermission('reports:read')
@@ -15,11 +16,12 @@ export function requirePermission(permissionOrArray) {
   const normalizedPermissions = requiredPermissions.map((p) => p.trim());
 
   return function requirePermissionMiddleware(req, res, next) {
-    if (!req.auth?.sub) {
-      return sendApiError(req, res, 401, 'UNAUTHORIZED', 'Authentication required');
+    if (!requireAuthenticatedSubject(req, res)) {
+      return undefined;
     }
 
-    const hasAnyPermission = normalizedPermissions.some((permission) => roleHasPermission(req.auth.role, permission));
+    const normalizedRole = getNormalizedAuthRole(req);
+    const hasAnyPermission = normalizedPermissions.some((permission) => roleHasPermission(normalizedRole, permission));
 
     if (!hasAnyPermission) {
       return sendApiError(req, res, 403, 'FORBIDDEN', 'Insufficient permissions');

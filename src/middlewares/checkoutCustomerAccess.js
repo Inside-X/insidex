@@ -1,4 +1,4 @@
-import { normalizeRole } from '../security/rbac-policy.js';
+import { hasCheckoutIdentityAccess, requireAuthenticatedSubject } from './rbac.js';
 import { sendApiError } from '../utils/api-error.js';
 
 /**
@@ -16,21 +16,11 @@ import { sendApiError } from '../utils/api-error.js';
  * - Mixed/tampered claim pairs (e.g. role=guest + isGuest=false) are rejected.
  */
 export function checkoutCustomerAccess(req, res, next) {
-  if (!req.auth?.sub) {
-    return sendApiError(req, res, 401, 'UNAUTHORIZED', 'Authentication required');
+  if (!requireAuthenticatedSubject(req, res)) {
+    return undefined;
   }
 
-  const normalizedRole = normalizeRole(req.auth.role);
-  const isGuest = req.auth.isGuest;
-
-  if (typeof isGuest !== 'boolean') {
-    return sendApiError(req, res, 403, 'FORBIDDEN', 'Invalid checkout identity');
-  }
-
-  const isCustomerIdentity = normalizedRole === 'customer' && isGuest === false;
-  const isGuestIdentity = normalizedRole === 'guest' && isGuest === true;
-
-  if (!isCustomerIdentity && !isGuestIdentity) {
+  if (!hasCheckoutIdentityAccess(req)) {
     return sendApiError(req, res, 403, 'FORBIDDEN', 'Insufficient permissions');
   }
   
@@ -41,12 +31,12 @@ export function checkoutCustomerAccess(req, res, next) {
  * Prevent user impersonation via payload userId.
  */
 export function enforceOrderOwnership(req, res, next) {
-  if (!req.auth?.sub) {
-    return sendApiError(req, res, 401, 'UNAUTHORIZED', 'Authentication required');
+  if (!requireAuthenticatedSubject(req, res)) {
+    return undefined;
   }
 
-  if (req.body.userId && req.body.userId !== req.auth.sub) {
-    return sendApiError(req, res, 403, 'FORBIDDEN', 'Cannot create order for another user');
+  if (Object.hasOwn(req.body || {}, 'userId')) {
+    return sendApiError(req, res, 400, 'VALIDATION_ERROR', 'userId must not be provided');
   }
 
   return next();
