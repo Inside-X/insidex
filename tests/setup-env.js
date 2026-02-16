@@ -6,3 +6,4 @@ process.env.JWT_REFRESH_SECRET = 'test-jwt-refresh-secret-1234567890a';
 process.env.JWT_REFRESH_ISSUER = 'insidex-auth-refresh';
 process.env.JWT_REFRESH_AUDIENCE = 'insidex-api-refresh';
 process.env.JWT_REFRESH_EXPIRY = '30m';
+process.env.PRISMA_DISABLE_DB = '1';
