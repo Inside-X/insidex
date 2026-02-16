@@ -25,28 +25,28 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>8/8</span>
+                <span class='fraction'>5/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">83.33% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>5/6</span>
+                <span class='fraction'>0/0</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>3/3</span>
+                <span class='fraction'>0/0</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>8/8</span>
+                <span class='fraction'>5/5</span>
             </div>
         
             
@@ -111,20 +111,7 @@
 <a name='L46'></a><a href='#L46'>46</a>
 <a name='L47'></a><a href='#L47'>47</a>
 <a name='L48'></a><a href='#L48'>48</a>
-<a name='L49'></a><a href='#L49'>49</a>
-<a name='L50'></a><a href='#L50'>50</a>
-<a name='L51'></a><a href='#L51'>51</a>
-<a name='L52'></a><a href='#L52'>52</a>
-<a name='L53'></a><a href='#L53'>53</a>
-<a name='L54'></a><a href='#L54'>54</a>
-<a name='L55'></a><a href='#L55'>55</a>
-<a name='L56'></a><a href='#L56'>56</a>
-<a name='L57'></a><a href='#L57'>57</a>
-<a name='L58'></a><a href='#L58'>58</a>
-<a name='L59'></a><a href='#L59'>59</a>
-<a name='L60'></a><a href='#L60'>60</a>
-<a name='L61'></a><a href='#L61'>61</a>
-<a name='L62'></a><a href='#L62'>62</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L49'></a><a href='#L49'>49</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -148,10 +135,6 @@
 <span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -165,16 +148,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -206,45 +180,32 @@ export const addToCartSchema = z
   })
   .strict({ message: 'unknown field in cart payload' });
 &nbsp;
-const userScopeSchema = z.object({
-  userId: legacyIdentifierSchema.optional(),
+const anonScopeSchema = z.object({
   anonId: legacyIdentifierSchema.optional()
-}).strict({ message: 'unknown field in cart scope payload' }).refine((value) =&gt; value.userId || value.anonId, {
-  message: 'either userId or anonId is required',
-  path: ['userId']
-});
+}).strict({ message: 'unknown field in cart scope payload' });
 &nbsp;
 export const cartSchemas = {
   // Nouveau endpoint cible.
   add: addToCartSchema,
   // Endpoints existants maintenus.
-  getCartQuery: userScopeSchema,
+  getCartQuery: anonScopeSchema,
   addItem: z.object({
     id: legacyIdentifierSchema,
     name: z.string().trim().min(1).max(180),
     price: z.number().min(0),
     qty: z.number().int().min(1).max(999).optional(),
-    userId: legacyIdentifierSchema.optional(),
     anonId: legacyIdentifierSchema.optional()
-  }).strict({ message: 'unknown field in cart add item payload' }).refine((value) =&gt; value.userId || <span class="branch-1 cbranch-no" title="branch not covered" >value.anonId,</span> {
-    message: 'either userId or anonId is required',
-    path: ['userId']
-  }),
+  }).strict({ message: 'unknown field in cart add item payload' }),
   updateItemParams: z.object({ id: legacyIdentifierSchema }).strict({ message: 'unknown field in cart params payload' }),
   updateItemBody: z.object({
     qty: z.number().int().min(1).max(999),
-    userId: legacyIdentifierSchema.optional(),
     anonId: legacyIdentifierSchema.optional()
-  }).strict({ message: 'unknown field in cart update payload' }).refine((value) =&gt; value.userId || value.anonId, {
-    message: 'either userId or anonId is required',
-    path: ['userId']
-  }),
+  }).strict({ message: 'unknown field in cart update payload' }),
   removeItemParams: z.object({ id: legacyIdentifierSchema }).strict({ message: 'unknown field in cart params payload' }),
-  removeItemBody: userScopeSchema,
-  clearCartBody: userScopeSchema,
+  removeItemBody: anonScopeSchema,
+  clearCartBody: anonScopeSchema,
   sync: z.object({
-    anonId: legacyIdentifierSchema,
-    userId: legacyIdentifierSchema
+    anonId: legacyIdentifierSchema
   }).strict({ message: 'unknown field in cart sync payload' })
 };</pre></td></tr></table></pre>
 
@@ -253,7 +214,7 @@ export const cartSchemas = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-02-16T19:05:35.588Z
+                at 2026-02-16T20:00:25.478Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
