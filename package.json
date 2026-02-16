@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test": "node node_modules/prisma/build/index.js generate && NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js",
-    "test:e2e": "node node_modules/prisma/build/index.js generate && NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js tests/admin-ui-visibility.e2e.test.js",
-    "test:coverage": "node node_modules/prisma/build/index.js generate && NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js --coverage",
+    "test": "node node_modules/prisma/build/index.js generate && cross-env NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js",
+    "test:e2e": "node node_modules/prisma/build/index.js generate && cross-env NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js tests/admin-ui-visibility.e2e.test.js",
+    "test:coverage": "node node_modules/prisma/build/index.js generate && cross-env NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js --coverage",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
@@ -18,15 +18,16 @@
     "epic:1.4:verify": "node scripts/verify-epic-1.4.js"
   },
   "dependencies": {
+    "@prisma/client": "^6.0.0",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
-    "zod": "^3.23.8",
-    "@prisma/client": "^6.0.0"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
+    "cross-env": "^10.1.0",
     "jest": "^29.7.0",
-    "supertest": "^7.0.0",
-    "prisma": "^6.0.0"
+    "prisma": "^6.0.0",
+    "supertest": "^7.0.0"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

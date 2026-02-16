@@ -1,22 +1,39 @@
+import { normalizeRole } from '../security/rbac-policy.js';
 import { sendApiError } from '../utils/api-error.js';
 
 /**
- * Checkout is restricted to CUSTOMER identities only.
- * Both permanent customers (isGuest=false) and guest customers (isGuest=true) are allowed.
+ * Checkout RBAC policy (single authorization layer for checkout routes).
+ *
+ * Access matrix:
+ * - customer: allowed (standard checkout) when role === "customer" and isGuest === false
+ * - guest: allowed (limited scope) when role === "guest" and isGuest === true
+ * - admin: forbidden unless explicitly added by route policy
+ * - anonymous: unauthorized (401)
+ *
+ * Notes:
+ * - Claims are evaluated after JWT verification (authenticate middleware).
+ * - Role values are normalized before comparison.
+ * - Mixed/tampered claim pairs (e.g. role=guest + isGuest=false) are rejected.
  */
 export function checkoutCustomerAccess(req, res, next) {
   if (!req.auth?.sub) {
     return sendApiError(req, res, 401, 'UNAUTHORIZED', 'Authentication required');
   }
 
-  if (req.auth.role !== 'customer') {
-    return sendApiError(req, res, 403, 'FORBIDDEN', 'Insufficient permissions');
-  }
+  const normalizedRole = normalizeRole(req.auth.role);
+  const isGuest = req.auth.isGuest;
 
-  if (typeof req.auth.isGuest !== 'boolean') {
+  if (typeof isGuest !== 'boolean') {
     return sendApiError(req, res, 403, 'FORBIDDEN', 'Invalid checkout identity');
   }
 
+  const isCustomerIdentity = normalizedRole === 'customer' && isGuest === false;
+  const isGuestIdentity = normalizedRole === 'guest' && isGuest === true;
+
+  if (!isCustomerIdentity && !isGuestIdentity) {
+    return sendApiError(req, res, 403, 'FORBIDDEN', 'Insufficient permissions');
+  }
+  
   return next();
 }
 

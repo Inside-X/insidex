@@ -65,8 +65,6 @@ describe('guest checkout runtime e2e', () => {
     expect(adminRes.status).toBe(403);
   });
 
-  test('orders: success + response contract unchanged', async () => {
-
   test('auth: guest checkout with existing permanent email creates isolated guest identity and guest JWT claims', async () => {
     const permanentUser = {
       id: '00000000-0000-0000-0000-00000000aa11',
@@ -119,7 +117,6 @@ describe('guest checkout runtime e2e', () => {
     expect(permanentUser.email).toBe(checkoutPayload.email);
   });
 
-
   test('orders: guest-created orders always use authenticated guest id', async () => {
     const guestUser = { id: '00000000-0000-0000-0000-00000000cc33', isGuest: true };
     jest.spyOn(userRepository, 'createGuest').mockResolvedValue(guestUser);
@@ -140,7 +137,8 @@ describe('guest checkout runtime e2e', () => {
     expect(createOrderSpy).toHaveBeenCalledWith(expect.objectContaining({ userId: guestUser.id }));
     expect(response.body.meta.isGuestCheckout).toBe(true);
   });
-  
+
+  test('orders: success + response contract unchanged', async () => {
     jest.spyOn(orderRepository, 'createIdempotentWithItemsAndUpdateStock').mockResolvedValueOnce({
       replayed: false,
       order: { id: 'order-ok-1', items: [] },

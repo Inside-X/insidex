@@ -115,7 +115,7 @@ describe('runtime business routes', () => {
     expect(res.status).toBe(403);
   });
 
-  test('orders create returns 200 for guest customer when order is replayed', async () => {
+  test('orders create returns 200 for guest when replayed', async () => {
     jest.spyOn(orderRepository, 'createIdempotentWithItemsAndUpdateStock').mockResolvedValue({
       replayed: true,
       order: { id: 'order-guest-1', userId: '00000000-0000-0000-0000-000000000123', items: [] },
@@ -123,7 +123,7 @@ describe('runtime business routes', () => {
 
     const res = await request(app)
       .post('/api/orders')
-      .set('Authorization', `Bearer ${token('customer', '00000000-0000-0000-0000-000000000123', true)}`)
+      .set('Authorization', `Bearer ${token('guest', '00000000-0000-0000-0000-000000000123', true)}`)
       .send({
         ...validCheckoutPayload,
         userId: '00000000-0000-0000-0000-000000000123',
@@ -134,6 +134,37 @@ describe('runtime business routes', () => {
     expect(res.body.meta.isGuestCheckout).toBe(true);
   });
 
+  test('orders create returns 201 for customer role', async () => {
+    jest.spyOn(orderRepository, 'createIdempotentWithItemsAndUpdateStock').mockResolvedValue({
+      replayed: false,
+      order: { id: 'order-customer-1', userId: '00000000-0000-0000-0000-000000000123', items: [] },
+    });
+
+    const res = await request(app)
+      .post('/api/orders')
+      .set('Authorization', `Bearer ${token('customer', '00000000-0000-0000-0000-000000000123', false)}`)
+      .send({
+        ...validCheckoutPayload,
+        idempotencyKey: 'idem-runtime-test-customer-123',
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.meta.isGuestCheckout).toBe(false);
+  });
+
+  test('orders create returns 403 for tampered guest claims', async () => {
+    const res = await request(app)
+      .post('/api/orders')
+      .set('Authorization', `Bearer ${token('guest', '00000000-0000-0000-0000-000000000123', false)}`)
+      .send({
+        ...validCheckoutPayload,
+        idempotencyKey: 'idem-runtime-test-tamper-123',
+      });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+  
   test('payments create-intent computes amount from DB and returns metadata', async () => {
     jest.spyOn(prisma.product, 'findMany').mockResolvedValue([{ id: validCheckoutPayload.items[0].id, price: 120.5 }]);
     jest.spyOn(orderRepository, 'createPendingPaymentOrder').mockResolvedValue({

@@ -5,7 +5,6 @@ import { paymentsSchemas } from '../validation/schemas/index.js';
 import { strictValidate } from '../validation/strict-validate.middleware.js';
 import ensureCheckoutSessionJWT from '../middlewares/checkoutIdentity.js';
 import authenticateJWT from '../middlewares/authenticate.js';
-import authorizeRole from '../middlewares/authorizeRole.js';
 import checkoutCustomerAccess from '../middlewares/checkoutCustomerAccess.js';
 import { orderRepository } from '../repositories/order.repository.js';
 import { sendApiError } from '../utils/api-error.js';
@@ -16,7 +15,7 @@ function normalizeCurrency(currency) {
   return String(currency || 'EUR').trim().toUpperCase();
 }
 
-router.post('/create-intent', strictValidate(paymentsSchemas.createIntent), ensureCheckoutSessionJWT, authenticateJWT, authorizeRole(['customer', 'guest']), checkoutCustomerAccess, async (req, res, next) => {
+router.post('/create-intent', strictValidate(paymentsSchemas.createIntent), ensureCheckoutSessionJWT, authenticateJWT, checkoutCustomerAccess, async (req, res, next) => {
   try {
     const requestedItems = req.body.items;
     const productIds = requestedItems.map((item) => item.id);

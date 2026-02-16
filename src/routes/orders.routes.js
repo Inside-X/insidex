@@ -15,7 +15,6 @@ router.post(
   strictValidate(ordersSchemas.create),
   ensureCheckoutSessionJWT,
   authenticateJWT,
-  authorizeRole(['customer', 'guest']),
   checkoutCustomerAccess,
   enforceOrderOwnership,
   async (req, res, next) => {
