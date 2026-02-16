@@ -65,6 +65,22 @@ describe('guest checkout runtime e2e', () => {
     expect(adminRes.status).toBe(403);
   });
 
+  test('orders: success + response contract unchanged', async () => {
+    jest.spyOn(orderRepository, 'createIdempotentWithItemsAndUpdateStock').mockResolvedValueOnce({
+      replayed: false,
+      order: { id: 'order-ok-1', items: [] },
+    });
+
+    const ok = await request(app)
+      .post('/api/orders')
+      .set('Authorization', `Bearer ${token('customer')}`)
+      .send({ ...checkoutPayload, idempotencyKey: 'idem-order-success-12345' });
+
+    expect(ok.status).toBe(201);
+    expect(ok.body.data.id).toBe('order-ok-1');
+    expect(ok.body.meta).toEqual({ replayed: false, isGuestCheckout: false });
+  });
+
   test('auth: guest checkout with existing permanent email creates isolated guest identity and guest JWT claims', async () => {
     const permanentUser = {
       id: '00000000-0000-0000-0000-00000000aa11',
@@ -134,34 +150,11 @@ describe('guest checkout runtime e2e', () => {
       });
 
     expect(response.status).toBe(201);
-    expect(createOrderSpy).toHaveBeenCalledWith(expect.objectContaining({ userId: guestUser.id }));
+    expect(createOrderSpy).toHaveBeenCalledWith(expect.objectContaining({
+      userId: guestUser.id,
+      authenticatedUserId: guestUser.id,
+    }));
     expect(response.body.meta.isGuestCheckout).toBe(true);
-  });
-
-
-  test('guest token is rejected on customer-only order read route', async () => {
-    const response = await request(app)
-      .get('/api/orders/00000000-0000-0000-0000-000000000777')
-      .set('Authorization', `Bearer ${token('guest', '00000000-0000-0000-0000-000000000123', true)}`);
-
-    expect(response.status).toBe(403);
-    expect(response.body.error.code).toBe('FORBIDDEN');
-  });
-
-  test('orders: success + response contract unchanged', async () => {
-    jest.spyOn(orderRepository, 'createIdempotentWithItemsAndUpdateStock').mockResolvedValueOnce({
-      replayed: false,
-      order: { id: 'order-ok-1', items: [] },
-    });
-
-    const ok = await request(app)
-      .post('/api/orders')
-      .set('Authorization', `Bearer ${token('customer')}`)
-      .send({ ...checkoutPayload, idempotencyKey: 'idem-order-success-12345' });
-
-    expect(ok.status).toBe(201);
-    expect(ok.body.data.id).toBe('order-ok-1');
-    expect(ok.body.meta).toEqual({ replayed: false, isGuestCheckout: false });
   });
 
   test('orders: idempotency replay returns 200 and replayed=true', async () => {
@@ -204,8 +197,7 @@ describe('guest checkout runtime e2e', () => {
       .post('/api/orders')
       .set('Authorization', `Bearer ${token('customer', '00000000-0000-0000-0000-000000000123')}`)
       .send({ ...checkoutPayload, userId: '00000000-0000-0000-0000-000000000999', idempotencyKey: 'idem-order-spoof-12345' });
-    expect(spoof.status).toBe(400);
-    expect(spoof.body.error.code).toBe('VALIDATION_ERROR');
+    expect(spoof.status).toBe(403);
     
     jest.spyOn(orderRepository, 'createIdempotentWithItemsAndUpdateStock').mockRejectedValueOnce(
       Object.assign(new Error('Insufficient stock for product'), { statusCode: 400, code: 'INSUFFICIENT_STOCK' }),

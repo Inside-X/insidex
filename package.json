@@ -24,6 +24,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "caniuse-lite": "^1.0.30001770",
     "cross-env": "^10.1.0",
     "jest": "^29.7.0",
     "prisma": "^6.0.0",

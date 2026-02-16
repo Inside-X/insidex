@@ -128,6 +128,29 @@ describe('Admin routes protection (/api/admin)', () => {
     });
   });
 
+  test('7b) ancien token dev/test sans issuer/audience reste accepté -> 200', async () => {
+    const legacyToken = jwt.sign(
+      { sub: 'admin-legacy-token', role: 'admin' },
+      process.env.JWT_ACCESS_SECRET,
+      {
+        algorithm: 'HS256',
+        expiresIn: '15m',
+      },
+    );
+
+    const response = await request(app)
+      .get('/api/admin/health')
+      .set('Authorization', `Bearer ${legacyToken}`)
+      .expect(200);
+
+    expect(response.body).toEqual({
+      data: {
+        status: 'ok',
+        scope: 'admin',
+      },
+    });
+  });
+
   test('8) token avec mauvaise audience -> 401', async () => {
     const tokenWrongAudience = buildTestToken({
       role: 'admin',
@@ -146,6 +169,24 @@ expectApiError(response, {
     });
   });
 
+  test('8a) token signé avec le secret refresh -> 401', async () => {
+    const tokenWrongSecret = buildTestToken({
+      role: 'admin',
+      id: 'admin-wrong-secret',
+      secret: process.env.JWT_REFRESH_SECRET,
+    });
+
+    const response = await request(app)
+      .get('/api/admin/health')
+      .set('Authorization', `Bearer ${tokenWrongSecret}`)
+      .expect(401);
+
+    expectApiError(response, {
+      code: 'UNAUTHORIZED',
+      message: 'Authentication failed',
+    });
+  });
+  
   test('8b) token avec payload invalide (sans sub/id) -> 401 uniforme', async () => {
     const tokenWithoutSubject = jwt.sign(
       { role: 'admin' },

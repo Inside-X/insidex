@@ -1,3 +1,4 @@
+import { getJwtConfigValidationErrors } from '../security/jwt-config.js';
 import { logger } from '../utils/logger.js';
 
 function isProduction(env = process.env) {
@@ -33,9 +34,7 @@ export function validateBootConfig(env = process.env) {
   const paymentsEnabled = parseBoolean(env.PAYMENTS_ENABLED);
   const paypalEnabled = parseBoolean(env.PAYPAL_ENABLED);
 
-  if (!env.JWT_SECRET) {
-    errors.push('JWT_SECRET is required');
-  }
+  errors.push(...getJwtConfigValidationErrors(env));
 
   if (paymentsEnabled && !env.STRIPE_SECRET) {
     errors.push('STRIPE_SECRET is required when PAYMENTS_ENABLED=true');

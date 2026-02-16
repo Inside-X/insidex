@@ -18,18 +18,18 @@ async function cleanupDatabase() {
   await prisma.user.deleteMany();
 }
 
-function refreshToken(sub = '00000000-0000-0000-0000-000000000123') {
-  return jwt.sign({ sub, type: 'refresh' }, process.env.JWT_REFRESH_SECRET, {
+function refreshToken(sub = '00000000-0000-0000-0000-000000000123', options = {}) {
+  return jwt.sign({ sub, type: 'refresh' }, options.secret || process.env.JWT_REFRESH_SECRET, {
     algorithm: 'HS256',
-    issuer: process.env.JWT_REFRESH_ISSUER,
-    audience: process.env.JWT_REFRESH_AUDIENCE,
-    expiresIn: '30m',
+    issuer: options.issuer || process.env.JWT_REFRESH_ISSUER,
+    audience: options.audience || process.env.JWT_REFRESH_AUDIENCE,
+    expiresIn: options.expiresIn || '30m',
   });
 }
 
 beforeAll(async () => {
   process.env.AUTH_RATE_WINDOW_MS = '60000';
-  process.env.AUTH_RATE_MAX = '2';
+  process.env.AUTH_RATE_MAX = '6';
   process.env.API_RATE_MAX = '200';
 
   if (process.env.DATABASE_URL) {
@@ -74,6 +74,10 @@ describe('sensitive auth runtime endpoints', () => {
   test('POST /api/auth/forgot returns 429 when strict auth rate limit exceeded', async () => {
     await request(app).post('/api/auth/forgot').send({ email: 'valid@example.com' });
     await request(app).post('/api/auth/forgot').send({ email: 'valid@example.com' });
+    await request(app).post('/api/auth/forgot').send({ email: 'valid@example.com' });
+    await request(app).post('/api/auth/forgot').send({ email: 'valid@example.com' });
+    await request(app).post('/api/auth/forgot').send({ email: 'valid@example.com' });
+    await request(app).post('/api/auth/forgot').send({ email: 'valid@example.com' });
     const res = await request(app).post('/api/auth/forgot').send({ email: 'valid@example.com' });
 
     expect(res.status).toBe(429);
@@ -108,6 +112,10 @@ describe('sensitive auth runtime endpoints', () => {
 
     await request(app).post('/api/auth/reset').send(payload);
     await request(app).post('/api/auth/reset').send(payload);
+    await request(app).post('/api/auth/reset').send(payload);
+    await request(app).post('/api/auth/reset').send(payload);
+    await request(app).post('/api/auth/reset').send(payload);
+    await request(app).post('/api/auth/reset').send(payload);
     const res = await request(app).post('/api/auth/reset').send(payload);
 
     expect(res.status).toBe(429);
@@ -136,9 +144,31 @@ describe('sensitive auth runtime endpoints', () => {
     expect(res.body.error.message).toBe('Invalid refresh token');
   });
 
+  test('POST /api/auth/refresh rejects refresh token signed with wrong secret', async () => {
+    const res = await request(app)
+      .post('/api/auth/refresh')
+      .send({ refreshToken: refreshToken('sub-1', { secret: process.env.JWT_ACCESS_SECRET }) });
+
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe('UNAUTHORIZED');
+  });
+
+  test('POST /api/auth/refresh rejects refresh token with wrong audience', async () => {
+    const res = await request(app)
+      .post('/api/auth/refresh')
+      .send({ refreshToken: refreshToken('sub-1', { audience: 'not-insidex-api-refresh' }) });
+
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe('UNAUTHORIZED');
+  });
+
   test('POST /api/auth/refresh returns 429 when strict auth rate limit exceeded', async () => {
     const payload = { refreshToken: refreshToken() };
 
+    await request(app).post('/api/auth/refresh').send(payload);
+    await request(app).post('/api/auth/refresh').send(payload);
+    await request(app).post('/api/auth/refresh').send(payload);
+    await request(app).post('/api/auth/refresh').send(payload);
     await request(app).post('/api/auth/refresh').send(payload);
     await request(app).post('/api/auth/refresh').send(payload);
     const res = await request(app).post('/api/auth/refresh').send(payload);

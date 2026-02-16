@@ -1,5 +1,5 @@
-import jwt from 'jsonwebtoken';
 import { normalizeRole } from '../security/rbac-policy.js';
+import { verifyAccessToken } from '../security/token-verifier.js';
 import { sendApiError } from '../utils/api-error.js';
 import { logger } from '../utils/logger.js';
 
@@ -38,57 +38,40 @@ export function authenticate(req, res, next) {
     return unauthorized(req, res, 'Authentication required');
   }
 
-  const secret = process.env.JWT_ACCESS_SECRET;
-  const issuer = process.env.JWT_ACCESS_ISSUER;
-  const audience = process.env.JWT_ACCESS_AUDIENCE;
-
-  if (!secret) {
+  const verification = verifyAccessToken(token);
+  if (!verification.ok && verification.reason === 'misconfigured') {
     return sendApiError(req, res, 500, 'INTERNAL_ERROR', 'Authentication service misconfigured');
   }
 
-  if ((issuer && !audience) || (!issuer && audience)) {
-    return sendApiError(req, res, 500, 'INTERNAL_ERROR', 'Authentication service misconfigured');
-  }
-  
-  try {
-    const verifyOptions = {
-      algorithms: ['HS256'],
-    };
-
-    if (issuer && audience) {
-      verifyOptions.issuer = issuer;
-      verifyOptions.audience = audience;
-    }
-
-    const decoded = jwt.verify(token, secret, verifyOptions);
-
-    const id = decoded?.sub ?? decoded?.id;
-    if (!id) {
-      logAuthenticationFailure('token payload missing subject');
-      return unauthorized(req, res, 'Authentication failed');
-    }
-
-    req.auth = {
-      sub: id,
-      role: normalizeRole(decoded?.role),
-      isGuest: decoded?.isGuest === true,
-    };
-
-    // Backward compatibility for existing handlers.
-    req.user = {
-      id,
-      role: decoded?.role,
-      isGuest: decoded?.isGuest === true,
-    };
-
-    return next();
-  } catch (error) {
+  if (!verification.ok) {
     logAuthenticationFailure('token verification error', {
-      ...error,
+      message: 'Invalid access token',
       requestId: req.requestId,
     });
     return unauthorized(req, res, 'Authentication failed');
   }
+
+  const decoded = verification.payload;
+  const id = decoded?.sub ?? decoded?.id;
+  if (!id) {
+    logAuthenticationFailure('token payload missing subject');
+    return unauthorized(req, res, 'Authentication failed');
+  }
+
+  req.auth = {
+    sub: id,
+    role: normalizeRole(decoded?.role),
+    isGuest: decoded?.isGuest === true,
+  };
+
+  // Backward compatibility for existing handlers.
+  req.user = {
+    id,
+    role: decoded?.role,
+    isGuest: decoded?.isGuest === true,
+  };
+
+  return next();
 }
 
 export default authenticate;
