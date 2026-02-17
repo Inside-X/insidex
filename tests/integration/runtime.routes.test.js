@@ -42,11 +42,49 @@ describe('runtime business routes', () => {
   });
 
   test('mounts auth register', async () => {
-    const res = await request(app).post('/api/auth/register').send({ email: 'u@x.com', password: 'Password123', role: 'customer' });
+    const res = await request(app).post('/api/auth/register').send({ email: 'u@x.com', password: 'Password123' });
     expect(res.status).toBe(201);
     expect(res.body.data.accessToken).toBeDefined();
   });
 
+  test('register ignores role=admin and always returns customer role', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'admin-attempt@x.com', password: 'Password123', role: 'admin' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.role).toBe('customer');
+  });
+
+  test('register token is always signed with customer role even when role=admin is provided', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'token-role-check@x.com', password: 'Password123', role: 'admin' });
+
+    expect(res.status).toBe(201);
+    const payload = jwt.verify(res.body.data.accessToken, process.env.JWT_ACCESS_SECRET, {
+      algorithms: ['HS256'],
+      issuer: process.env.JWT_ACCESS_ISSUER,
+      audience: process.env.JWT_ACCESS_AUDIENCE,
+    });
+    expect(payload.role).toBe('customer');
+  });
+
+
+  test('public register flow cannot create an admin able to access admin routes', async () => {
+    const registerRes = await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'admin-block-check@x.com', password: 'Password123', role: 'admin' });
+
+    expect(registerRes.status).toBe(201);
+    const adminHealthRes = await request(app)
+      .get('/api/admin/health')
+      .set('Authorization', `Bearer ${registerRes.body.data.accessToken}`);
+
+    expect(adminHealthRes.status).toBe(403);
+    expect(adminHealthRes.body.error.code).toBe('FORBIDDEN');
+  });
+  
   test('returns 429 on strict auth rate limiting', async () => {
     await request(app).post('/api/auth/login').send({ email: 'u@x.com', password: 'Password123' });
     await request(app).post('/api/auth/login').send({ email: 'u@x.com', password: 'Password123' });

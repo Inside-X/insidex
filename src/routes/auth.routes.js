@@ -11,8 +11,9 @@ const router = express.Router();
 
 router.post('/register', strictAuthRateLimiter, strictValidate(authSchemas.register), (req, res) => {
   const id = crypto.randomUUID();
-  const token = issueAccessToken({ id, role: req.body.role });
-  return res.status(201).json({ data: { id, email: req.body.email, role: req.body.role, accessToken: token } });
+  const role = 'customer';
+  const token = issueAccessToken({ id, role });
+  return res.status(201).json({ data: { id, email: req.body.email, role, accessToken: token } });
 });
 
 router.post('/login', strictAuthRateLimiter, strictValidate(authSchemas.login), (req, res) => {

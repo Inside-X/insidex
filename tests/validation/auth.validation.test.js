@@ -30,6 +30,15 @@ describe('Auth validation', () => {
     );
   });
 
+
+  test('accepts register payload even when role is injected (server-side role is enforced later)', async () => {
+    const response = await request(app)
+      .post('/auth/register')
+      .send({ email: 'user@example.com', password: '12345678', role: 'admin' });
+
+    expect(response.status).toBe(201);
+  });
+  
   test('rejects unknown injected field', async () => {
     const response = await request(app)
       .post('/auth/register')
