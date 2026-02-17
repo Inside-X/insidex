@@ -46,8 +46,8 @@ export const loginSchema = z
 export const authSchemas = {
   register: registerSchema,
   login: loginSchema,
-  refresh: z.object({ refreshToken: z.string().min(1).max(2048) }).strict({ message: 'unknown field in refresh payload' }),
-  logout: z.object({ refreshToken: z.string().min(1).max(2048) }).strict({ message: 'unknown field in logout payload' }),
+  refresh: z.object({ refreshToken: z.string().min(1).max(2048).optional() }).strict({ message: 'unknown field in refresh payload' }),
+  logout: z.object({ refreshToken: z.string().min(1).max(2048).optional() }).strict({ message: 'unknown field in logout payload' }),
   forgot: z.object({ email: emailSchema }).strict({ message: 'unknown field in forgot payload' }),
   reset: z.object({
     email: emailSchema,

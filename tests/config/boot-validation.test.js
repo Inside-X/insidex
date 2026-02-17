@@ -23,7 +23,9 @@ describe('boot configuration validation', () => {
       'JWT_REFRESH_EXPIRY is required',
       'STRIPE_SECRET is required when PAYMENTS_ENABLED=true',
       'STRIPE_WEBHOOK_SECRET is required',
+      'PAYMENT_WEBHOOK_SECRET is required',
       'PAYPAL_CLIENT_SECRET is required when PAYPAL_ENABLED=true',
+      'PAYPAL_WEBHOOK_SECRET is required when PAYPAL_ENABLED=true',
       'CORS_ORIGIN contains an invalid origin: *',
     ]));
   });
@@ -40,6 +42,7 @@ describe('boot configuration validation', () => {
       JWT_REFRESH_AUDIENCE: 'aud-r',
       JWT_REFRESH_EXPIRY: '30m',
       STRIPE_WEBHOOK_SECRET: 'whsec_x',
+      PAYMENT_WEBHOOK_SECRET: 'internal_secret',
       CORS_ORIGIN: 'https://app.example.com',
     });
 
@@ -90,6 +93,7 @@ describe('boot configuration validation', () => {
       JWT_REFRESH_AUDIENCE: 'insidex-api-refresh',
       JWT_REFRESH_EXPIRY: '30m',
       STRIPE_WEBHOOK_SECRET: 'whsec_123',
+      PAYMENT_WEBHOOK_SECRET: 'internal_secret',
       CORS_ORIGIN: 'https://app.example.com',
     });
 
@@ -111,6 +115,7 @@ describe('boot configuration validation', () => {
       JWT_REFRESH_AUDIENCE: 'insidex-api-refresh',
       JWT_REFRESH_EXPIRY: '30m',
       STRIPE_WEBHOOK_SECRET: 'whsec_123',
+      PAYMENT_WEBHOOK_SECRET: 'internal_secret',
       CORS_ORIGIN: 'https://app.example.com',
     });
 

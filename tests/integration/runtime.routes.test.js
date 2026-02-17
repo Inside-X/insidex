@@ -6,6 +6,9 @@ import prisma from '../../src/lib/prisma.js';
 import { orderRepository } from '../../src/repositories/order.repository.js';
 import { createStripeSignatureHeader } from '../helpers/stripe-signature.js';
 import paypal from '../../src/lib/paypal.js';
+import { userRepository } from '../../src/repositories/user.repository.js';
+import { hashPassword } from '../../src/security/password.js';
+import { issueAccessToken } from '../../src/security/access-token.js';
 
 function token(role = 'customer', sub = '00000000-0000-0000-0000-000000000123', isGuest = false) {
   return jwt.sign({ sub, role, isGuest }, process.env.JWT_ACCESS_SECRET, {
@@ -35,6 +38,8 @@ describe('runtime business routes', () => {
     process.env.PAYPAL_WEBHOOK_ID = 'WH-TEST';
     process.env.PAYPAL_CLIENT_ID = 'paypal-client-id';
     process.env.PAYPAL_CLIENT_SECRET = 'paypal-client-secret';
+    process.env.PAYPAL_WEBHOOK_SECRET = 'paypal_webhook_secret';
+    process.env.PAYMENT_WEBHOOK_SECRET = 'orders_webhook_secret';
   });
 
   afterEach(() => {
@@ -42,9 +47,62 @@ describe('runtime business routes', () => {
   });
 
   test('mounts auth register', async () => {
+<<<<<<< HEAD
     const res = await request(app).post('/api/auth/register').send({ email: 'u@x.com', password: 'Password123' });
+=======
+    jest.spyOn(userRepository, 'findByEmail').mockResolvedValue(null);
+    jest.spyOn(userRepository, 'create').mockResolvedValue({
+      id: '00000000-0000-0000-0000-00000000a111',
+      email: 'u@x.com',
+      role: 'customer',
+      isGuest: false,
+    });
+
+    const res = await request(app).post('/api/auth/register').send({ email: 'u@x.com', password: 'Password123', role: 'customer' });
+>>>>>>> hotfix/epic-1-phase-1-register-fix
     expect(res.status).toBe(201);
-    expect(res.body.data.accessToken).toBeDefined();
+    expect(res.body.data.user).toBeDefined();
+    expect(res.headers['set-cookie']).toBeDefined();
+  });
+
+
+  test('login checks credentials against DB hash', async () => {
+    const passwordHash = await hashPassword('Password123');
+    jest.spyOn(userRepository, 'findByEmail').mockResolvedValue({
+      id: '00000000-0000-0000-0000-00000000a222',
+      email: 'u@x.com',
+      role: 'customer',
+      isGuest: false,
+      passwordHash,
+    });
+
+    const res = await request(app).post('/api/auth/login').send({ email: 'u@x.com', password: 'Password123' });
+    expect(res.status).toBe(200);
+    expect(res.body.data.user).toBeDefined();
+    expect(res.headers['set-cookie']).toBeDefined();
+  });
+
+
+  test('auth me returns profile when access cookie is present', async () => {
+    jest.spyOn(userRepository, 'findById').mockResolvedValue({
+      id: '00000000-0000-0000-0000-00000000a333',
+      email: 'u2@x.com',
+      role: 'customer',
+      isGuest: false,
+    });
+
+    const accessToken = issueAccessToken({
+      id: '00000000-0000-0000-0000-00000000a333',
+      role: 'customer',
+      isGuest: false,
+    });
+
+    const meRes = await request(app)
+      .get('/api/auth/me')
+      .set('Cookie', `insidex_access_token=${accessToken}`);
+
+    expect(meRes.status).toBe(200);
+    expect(meRes.body.user.email).toBe('u2@x.com');
   });
 
   test('register ignores role=admin and always returns customer role', async () => {
@@ -243,6 +301,46 @@ describe('runtime business routes', () => {
     expect(res.body.data.metadata.idempotencyKey).toBe('idem-payment-intent-123');
   });
 
+    test('payments create-intent handles decimal edge rounding using minor units', async () => {
+    jest.spyOn(prisma.product, 'findMany').mockResolvedValue([{ id: validCheckoutPayload.items[0].id, price: '19.999' }]);
+    jest.spyOn(orderRepository, 'createPendingPaymentOrder').mockResolvedValue({
+      replayed: false,
+      order: { id: '00000000-0000-0000-0000-000000000778', stripePaymentIntentId: 'pi_existing_778' },
+    });
+
+    const res = await request(app)
+      .post('/api/payments/create-intent')
+      .set('Authorization', `Bearer ${token('customer', '00000000-0000-0000-0000-000000000123', false)}`)
+      .send({
+        ...validCheckoutPayload,
+        items: [{ id: validCheckoutPayload.items[0].id, quantity: 3, price: 1 }],
+        idempotencyKey: 'idem-payment-rounding-778',
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.amount).toBe(6000);
+  });
+
+  test('payments create-intent supports large carts without float drift', async () => {
+    jest.spyOn(prisma.product, 'findMany').mockResolvedValue([{ id: validCheckoutPayload.items[0].id, price: '99999999.99' }]);
+    jest.spyOn(orderRepository, 'createPendingPaymentOrder').mockResolvedValue({
+      replayed: false,
+      order: { id: '00000000-0000-0000-0000-000000000779', stripePaymentIntentId: 'pi_existing_779' },
+    });
+
+    const res = await request(app)
+      .post('/api/payments/create-intent')
+      .set('Authorization', `Bearer ${token('customer', '00000000-0000-0000-0000-000000000123', false)}`)
+      .send({
+        ...validCheckoutPayload,
+        items: [{ id: validCheckoutPayload.items[0].id, quantity: 100, price: 1 }],
+        idempotencyKey: 'idem-payment-large-cart-779',
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.amount).toBe(999_999_999_900);
+  });
+
 
 
   test('payments create-intent is idempotent for concurrent multi-client retries', async () => {
@@ -291,6 +389,7 @@ describe('runtime business routes', () => {
     const res = await request(app)
       .post('/api/webhooks/stripe')
       .set('stripe-signature', signature)
+      .set('x-webhook-secret', process.env.PAYMENT_WEBHOOK_SECRET)
       .send(body);
 
     expect(res.status).toBe(200);
@@ -317,6 +416,36 @@ describe('runtime business routes', () => {
     const res = await request(app)
       .post('/api/webhooks/stripe')
       .set('stripe-signature', 't=1700000000,v1=invalid')
+      .set('x-webhook-secret', process.env.PAYMENT_WEBHOOK_SECRET)
+      .send(body);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+
+  test('stripe webhook rejects signature outside tolerance window', async () => {
+    const body = {
+      id: 'evt_old_timestamp',
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi_old_timestamp',
+          metadata: {
+            orderId: '00000000-0000-0000-0000-000000000777',
+            userId: '00000000-0000-0000-0000-000000000123',
+            idempotencyKey: 'idem-payment-intent-123',
+          },
+        },
+      },
+    };
+
+    const stale = Math.floor(Date.now() / 1000) - 600;
+    const signature = createStripeSignatureHeader(body, process.env.STRIPE_WEBHOOK_SECRET, stale);
+
+    const res = await request(app)
+      .post('/api/webhooks/stripe')
+      .set('stripe-signature', signature)
       .send(body);
 
     expect(res.status).toBe(400);
@@ -347,11 +476,13 @@ describe('runtime business routes', () => {
     const first = await request(app)
       .post('/api/webhooks/stripe')
       .set('stripe-signature', signature)
+      .set('x-webhook-secret', process.env.PAYMENT_WEBHOOK_SECRET)
       .send(body);
 
     const replay = await request(app)
       .post('/api/webhooks/stripe')
       .set('stripe-signature', signature)
+      .set('x-webhook-secret', process.env.PAYMENT_WEBHOOK_SECRET)
       .send(body);
 
     expect(first.status).toBe(200);
@@ -375,6 +506,7 @@ describe('runtime business routes', () => {
 
     const res = await request(app)
       .post('/api/webhooks/paypal')
+      .set('x-webhook-secret', process.env.PAYPAL_WEBHOOK_SECRET)
       .send(body);
 
     expect(res.status).toBe(200);
@@ -397,6 +529,7 @@ describe('runtime business routes', () => {
 
     const res = await request(app)
       .post('/api/webhooks/paypal')
+      .set('x-webhook-secret', process.env.PAYPAL_WEBHOOK_SECRET)
       .send(body);
 
     expect(res.status).toBe(400);
@@ -421,15 +554,47 @@ describe('runtime business routes', () => {
 
     const first = await request(app)
       .post('/api/webhooks/paypal')
+      .set('x-webhook-secret', process.env.PAYPAL_WEBHOOK_SECRET)
       .send(body);
 
     const replay = await request(app)
       .post('/api/webhooks/paypal')
+      .set('x-webhook-secret', process.env.PAYPAL_WEBHOOK_SECRET)
       .send(body);
 
     expect(first.status).toBe(200);
     expect(replay.status).toBe(200);
     expect(replay.body.data.replayed).toBe(true);
+  });
+
+  test('rejects oversized json payload early with 413', async () => {
+    const veryLarge = 'x'.repeat(1_100_000);
+    const res = await request(app)
+      .post('/api/orders')
+      .set('Authorization', `Bearer ${token('customer', '00000000-0000-0000-0000-000000000123', false)}`)
+      .set('content-type', 'application/json')
+      .send({
+        ...validCheckoutPayload,
+        idempotencyKey: 'idem-too-large-payload-12345',
+        address: {
+          ...validCheckoutPayload.address,
+          line1: veryLarge,
+        },
+      });
+
+    expect(res.status).toBe(413);
+    expect(res.body.error.code).toBe('PAYLOAD_TOO_LARGE');
+  });
+
+  test('paypal webhook rejects malformed JSON body', async () => {
+    const res = await request(app)
+      .post('/api/webhooks/paypal')
+      .set('x-webhook-secret', process.env.PAYPAL_WEBHOOK_SECRET)
+      .set('content-type', 'application/json')
+      .send('{"broken_json"');
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
   test('orders create rejects any userId field from client payload', async () => {
@@ -457,6 +622,31 @@ describe('runtime business routes', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
+
+  test('orders internal webhook requires shared secret', async () => {
+    jest.spyOn(orderRepository, 'processPaymentWebhookEvent').mockResolvedValue({ replayed: false, orderMarkedPaid: true });
+
+    const payload = {
+      provider: 'stripe',
+      eventId: 'evt_internal_1',
+      orderId: '00000000-0000-0000-0000-000000000777',
+      payload: {},
+    };
+
+    const unauthorized = await request(app)
+      .post('/api/orders/webhooks/payments')
+      .send(payload);
+
+    expect(unauthorized.status).toBe(401);
+
+    const ok = await request(app)
+      .post('/api/orders/webhooks/payments')
+      .set('x-webhook-secret', process.env.PAYMENT_WEBHOOK_SECRET)
+      .send(payload);
+
+    expect(ok.status).toBe(200);
+  });
+  
   test('orders route validates uuid params', async () => {
     const res = await request(app)
       .get('/api/orders/not-uuid')

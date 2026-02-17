@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<<<<<<< HEAD
 <coverage generated="1771307350179" clover="3.2.0">
   <project timestamp="1771307350179" name="All files">
     <metrics statements="93" coveredstatements="91" conditionals="75" coveredconditionals="68" methods="16" coveredmethods="16" elements="184" coveredelements="175" complexity="0" loc="93" ncloc="93" packages="4" files="14" classes="14"/>
+=======
+<coverage generated="1771311835479" clover="3.2.0">
+  <project timestamp="1771311835480" name="All files">
+    <metrics statements="89" coveredstatements="88" conditionals="70" coveredconditionals="64" methods="15" coveredmethods="15" elements="174" coveredelements="167" complexity="0" loc="89" ncloc="89" packages="4" files="14" classes="14"/>
+>>>>>>> hotfix/epic-1-phase-1-register-fix
     <package name="errors">
       <metrics statements="8" coveredstatements="7" conditionals="9" coveredconditionals="6" methods="4" coveredmethods="4"/>
       <file name="validation-error.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\errors\validation-error.js">

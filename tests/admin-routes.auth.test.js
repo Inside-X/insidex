@@ -372,18 +372,29 @@ describe('JWT misconfiguration handling', () => {
 });
 
 describe('Auth rate limiter payload consistency', () => {
-  test('renvoie le schéma standardisé avec requestId après dépassement du seuil', () => {
+  test('renvoie le schéma standardisé avec requestId après dépassement du seuil', async () => {
     let deniedResponse = null;
 
-    for (let attempt = 1; attempt <= 21; attempt += 1) {
+    async function runRateLimitAttempt(attempt) {
       const req = {
         ip: '203.0.113.10',
         requestId: `rate-limit-req-${attempt}`,
+        method: 'POST',
+        baseUrl: '/api/auth',
+        path: '/login',
+        originalUrl: '/api/auth/login',
       };
       const res = createMockResponse();
       const next = jest.fn();
 
       authRateLimiter(req, res, next);
+      await new Promise((resolve) => setImmediate(resolve));
+
+      return { res, next };
+    }
+
+    for (let attempt = 1; attempt <= 21; attempt += 1) {
+      const { res, next } = await runRateLimitAttempt(attempt);
 
       if (attempt <= 20) {
         expect(next).toHaveBeenCalledTimes(1);

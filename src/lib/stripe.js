@@ -18,10 +18,19 @@ function parseStripeSignature(signatureHeader) {
   };
 }
 
-function verifySignature({ rawBody, signature, secret }) {
+function verifySignature({ rawBody, signature, secret, toleranceSeconds = 300, nowSeconds = Math.floor(Date.now() / 1000) }) {
   const { timestamp, signaturesV1 } = parseStripeSignature(signature);
   if (!timestamp || signaturesV1.length === 0) {
     throw new Error('No signatures found matching the expected scheme');
+  }
+
+  const parsedTimestamp = Number(timestamp);
+  if (!Number.isFinite(parsedTimestamp)) {
+    throw new Error('Invalid stripe signature timestamp');
+  }
+
+  if (Math.abs(nowSeconds - parsedTimestamp) > toleranceSeconds) {
+    throw new Error('Stripe signature timestamp outside tolerance window');
   }
 
   const payloadToSign = `${timestamp}.${rawBody.toString('utf8')}`;
@@ -46,12 +55,12 @@ function verifySignature({ rawBody, signature, secret }) {
   }
 }
 
-function constructEvent(rawBody, signature, secret) {
+function constructEvent(rawBody, signature, secret, options = {}) {
   if (!Buffer.isBuffer(rawBody)) {
     throw new Error('Webhook payload must be provided as a Buffer');
   }
 
-  verifySignature({ rawBody, signature, secret });
+  verifySignature({ rawBody, signature, secret, toleranceSeconds: options.toleranceSeconds, nowSeconds: options.nowSeconds });
   return JSON.parse(rawBody.toString('utf8'));
 }
 

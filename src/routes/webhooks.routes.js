@@ -20,7 +20,8 @@ router.post('/stripe', async (req, res, next) => {
 
     let payload;
     try {
-      payload = stripe.webhooks.constructEvent(rawBody, signature, secret);
+      const toleranceSeconds = Number(process.env.STRIPE_WEBHOOK_TOLERANCE_SECONDS || 300);
+      payload = stripe.webhooks.constructEvent(rawBody, signature, secret, { toleranceSeconds });
     } catch (_error) {
       return sendApiError(req, res, 400, 'VALIDATION_ERROR', 'Invalid stripe signature');
     }
@@ -56,10 +57,24 @@ router.post('/stripe', async (req, res, next) => {
 
 router.post('/paypal', async (req, res, next) => {
   try {
-    const payload = paymentsSchemas.paypalWebhook.parse(req.body);
+    const secret = process.env.PAYPAL_WEBHOOK_SECRET;
+    if (!secret || req.get('x-webhook-secret') !== secret) {
+      return sendApiError(req, res, 401, 'UNAUTHORIZED', 'Invalid paypal webhook secret');
+    }
+
+    let parsedBody = req.body;
+    if (Buffer.isBuffer(req.body)) {
+      try {
+        parsedBody = JSON.parse(req.body.toString('utf8'));
+      } catch {
+        return sendApiError(req, res, 400, 'VALIDATION_ERROR', 'Invalid JSON payload');
+      }
+    }
+
+    const payload = paymentsSchemas.paypalWebhook.parse(parsedBody);
     const verification = await paypal.webhooks.verifyWebhookSignature({
       getHeader: (name) => req.get(name),
-      webhookEvent: req.body,
+      webhookEvent: parsedBody,
     });
 
     if (!verification.verified) {

@@ -16,7 +16,12 @@
     "db:import": "node scripts/import-json-to-db.js",
     "db:verify:integration": "node scripts/verify-db-integration.js",
     "epic:1.4:verify": "node scripts/verify-epic-1.4.js",
+<<<<<<< HEAD
     "admin:bootstrap": "node scripts/bootstrap-admin.js"
+=======
+    "test:fast": "node node_modules/prisma/build/index.js generate && cross-env NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js --runInBand",
+    "test:quality": "node node_modules/prisma/build/index.js generate && cross-env NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js --coverage --runInBand"
+>>>>>>> hotfix/epic-1-phase-1-register-fix
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",

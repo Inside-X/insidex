@@ -139,6 +139,22 @@ describe('Order repository fintech audit', () => {
     expect(second.replayed).toBe(true);
     expect(state.orders).toHaveLength(1);
     expect(state.products[0].stock).toBe(3);
+    expect(state.orders[0].totalAmount).toBe('20.00');
+    expect(state.orderItems[0].unitPrice).toBe('10.00');
+  });
+
+  test('stores totals with deterministic decimal string from minor units', async () => {
+    state.products[0].price = '10.005';
+
+    await orderRepository.createPendingPaymentOrder({
+      userId: '00000000-0000-0000-0000-000000000010',
+      idempotencyKey: 'idem-money-minor-units-10005',
+      stripePaymentIntentId: 'pi_minor_10005',
+      items: [{ productId: state.products[0].id, quantity: 3 }],
+    });
+
+    expect(state.orders[0].totalAmount).toBe('30.03');
+    expect(state.orderItems[0].unitPrice).toBe('10.01');
   });
 
   test('oversell under contention never decrements below zero and rejects extra orders', async () => {

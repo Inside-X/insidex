@@ -1,10 +1,6 @@
 import { getJwtConfigValidationErrors } from '../security/jwt-config.js';
 import { logger } from '../utils/logger.js';
 
-function isProduction(env = process.env) {
-  return env.NODE_ENV === 'production';
-}
-
 function parseBoolean(value) {
   if (value == null) return false;
   const normalized = String(value).trim().toLowerCase();
@@ -44,8 +40,20 @@ export function validateBootConfig(env = process.env) {
     errors.push('STRIPE_WEBHOOK_SECRET is required');
   }
 
+  if (!env.PAYMENT_WEBHOOK_SECRET) {
+    errors.push('PAYMENT_WEBHOOK_SECRET is required');
+  }
+
   if (paypalEnabled && !env.PAYPAL_CLIENT_SECRET) {
     errors.push('PAYPAL_CLIENT_SECRET is required when PAYPAL_ENABLED=true');
+  }
+
+  if (paypalEnabled && !env.PAYPAL_WEBHOOK_SECRET) {
+    errors.push('PAYPAL_WEBHOOK_SECRET is required when PAYPAL_ENABLED=true');
+  }
+
+  if (!env.REDIS_URL) {
+    errors.push('REDIS_URL is required for distributed rate limiting');
   }
 
   const corsOrigins = parseCorsWhitelist(env.CORS_ORIGIN);
@@ -65,9 +73,7 @@ export function validateBootConfig(env = process.env) {
   };
 }
 
-export function assertProductionBootConfigOrExit(env = process.env) {
-  if (!isProduction(env)) return;
-
+export function assertBootConfigOrExit(env = process.env) {
   const result = validateBootConfig(env);
   if (result.valid) return;
 
@@ -76,6 +82,11 @@ export function assertProductionBootConfigOrExit(env = process.env) {
   });
 
   process.exit(1);
+}
+
+export function assertProductionBootConfigOrExit(env = process.env) {
+  if (env.NODE_ENV !== 'production') return;
+  assertBootConfigOrExit(env);
 }
 
 export default validateBootConfig;

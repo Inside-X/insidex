@@ -48,7 +48,7 @@ router.post(
 router.post('/webhooks/payments', strictValidate(ordersSchemas.paymentWebhook), async (req, res, next) => {
   try {
     const expectedSecret = process.env.PAYMENT_WEBHOOK_SECRET;
-    if (expectedSecret && req.get('x-webhook-secret') !== expectedSecret) {
+    if (!expectedSecret || req.get('x-webhook-secret') !== expectedSecret) {
       return sendApiError(req, res, 401, 'UNAUTHORIZED', 'Invalid webhook secret');
     }
 

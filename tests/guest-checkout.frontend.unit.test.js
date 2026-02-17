@@ -4,7 +4,9 @@ import {
   confirmStripePayment,
   createPaymentIntent,
   generateIdempotencyKey,
+  normalizeMinorAmount,
   storeGuestSession,
+  getGuestAccessToken,
 } from '../js/modules/guestCheckoutApi.js';
 
 describe('guest checkout frontend api helpers', () => {
@@ -44,7 +46,7 @@ describe('guest checkout frontend api helpers', () => {
   test('stores guest jwt session emitted by backend', () => {
     storeGuestSession({ guestSessionToken: 'jwt_guest_token' }, 'guest@x.com');
 
-    expect(localStorage.getItem('insidex_access_token')).toBe('jwt_guest_token');
+    expect(getGuestAccessToken()).toBe('jwt_guest_token');
     const user = JSON.parse(localStorage.getItem('insidex_auth_user'));
     expect(user.role).toBe('customer');
     expect(user.isGuest).toBe(true);
@@ -54,18 +56,28 @@ describe('guest checkout frontend api helpers', () => {
   test('creates payment intent with bearer token', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ data: { clientSecret: 'cs_123' } }),
+      json: async () => ({ data: { clientSecret: 'cs_123', amount: 12345 } }),
     });
 
     const response = await createPaymentIntent({ idempotencyKey: 'idem_123' }, 'jwt_123');
 
     expect(response.data.clientSecret).toBe('cs_123');
+    expect(response.data.amount).toBe(12345);
+    expect(response.data.amountDecimal).toBe(123.45);
     expect(fetch).toHaveBeenCalledWith('/api/payments/create-intent', expect.objectContaining({
       method: 'POST',
+      credentials: 'include',
       headers: expect.objectContaining({ Authorization: 'Bearer jwt_123' }),
     }));
   });
 
+  test('normalizeMinorAmount rejects non integer amounts', () => {
+    expect(() => normalizeMinorAmount('12.3')).toThrow('Montant de paiement invalide');
+    expect(() => normalizeMinorAmount(-1)).toThrow('Montant de paiement invalide');
+    expect(normalizeMinorAmount(0)).toBe(0);
+    expect(normalizeMinorAmount(999)).toBe(999);
+  });
+  
   test('confirms stripe payment through sdk when available', async () => {
     global.window = {
       INSIDEX_STRIPE_PUBLIC_KEY: 'pk_test_x',

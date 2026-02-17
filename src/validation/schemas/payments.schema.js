@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { checkoutCustomerSchema, checkoutItemSchema } from './checkout.schema.js';
+import { boundedSecondaryPayloadSchema } from './common.schema.js';
 
 const uuidSchema = z.string().uuid('id must be a valid UUID');
 
@@ -35,7 +36,7 @@ export const paymentsSchemas = {
       userId: uuidSchema,
       idempotencyKey: z.string().min(10).max(128),
     }).strict(),
-    payload: z.record(z.any()).optional(),
+    payload: boundedSecondaryPayloadSchema.optional(),
   }).strict({ message: 'unknown field in paypal webhook payload' }),
 };
 
