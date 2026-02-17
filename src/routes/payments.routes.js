@@ -10,13 +10,30 @@ import { orderRepository } from '../repositories/order.repository.js';
 import { sendApiError } from '../utils/api-error.js';
 
 const router = express.Router();
+const SUPPORTED_CURRENCIES = new Set(['EUR', 'USD']);
 
 function normalizeCurrency(currency) {
   return String(currency || 'EUR').trim().toUpperCase();
 }
 
+function toMinorUnits(value) {
+  const normalized = Number.parseFloat(String(value));
+  if (!Number.isFinite(normalized) || normalized < 0) {
+    const error = new Error(`Invalid monetary amount: ${value}`);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return Math.round(normalized * 100);
+}
+
 router.post('/create-intent', strictValidate(paymentsSchemas.createIntent), ensureCheckoutSessionJWT, authenticateJWT, checkoutCustomerAccess, async (req, res, next) => {
   try {
+    const currency = normalizeCurrency(req.body.currency);
+    if (!SUPPORTED_CURRENCIES.has(currency)) {
+      return sendApiError(req, res, 400, 'VALIDATION_ERROR', 'Unsupported currency');
+    }
+
     const requestedItems = req.body.items;
     const productIds = requestedItems.map((item) => item.id);
     const products = await prisma.product.findMany({
@@ -28,14 +45,14 @@ router.post('/create-intent', strictValidate(paymentsSchemas.createIntent), ensu
       return sendApiError(req, res, 404, 'NOT_FOUND', 'One or more products were not found');
     }
 
-    const productMap = new Map(products.map((product) => [product.id, Number(product.price)]));
+    const productMap = new Map(products.map((product) => [product.id, toMinorUnits(product.price)]));
     const lineItems = requestedItems.map((item) => ({
       productId: item.id,
       quantity: item.quantity,
-      dbUnitPrice: productMap.get(item.id),
+      dbUnitPriceMinor: productMap.get(item.id),
     }));
 
-    const totalAmount = lineItems.reduce((sum, item) => sum + (item.dbUnitPrice * item.quantity), 0);
+    const totalAmountMinor = lineItems.reduce((sum, item) => sum + (item.dbUnitPriceMinor * item.quantity), 0);
     const candidateIntentId = `pi_${crypto.randomUUID().replace(/-/g, '')}`;
 
     const orderResult = await orderRepository.createPendingPaymentOrder({
@@ -43,19 +60,18 @@ router.post('/create-intent', strictValidate(paymentsSchemas.createIntent), ensu
       items: lineItems.map((item) => ({ productId: item.productId, quantity: item.quantity })),
       idempotencyKey: req.body.idempotencyKey,
       stripePaymentIntentId: candidateIntentId,
-      expectedTotalAmount: totalAmount,
+      expectedTotalAmount: Number((totalAmountMinor / 100).toFixed(2)),
     });
 
     const orderId = orderResult.order.id;
     const paymentIntentId = orderResult.order.stripePaymentIntentId || candidateIntentId;
-    const amount = Math.round(totalAmount * 100);
 
     return res.status(orderResult.replayed ? 200 : 201).json({
       data: {
         paymentIntentId,
         clientSecret: `cs_${paymentIntentId}`,
-        amount,
-        currency: normalizeCurrency(req.body.currency),
+        amount: totalAmountMinor,
+        currency,
         customer_email: req.body.email,
         metadata: {
           orderId,

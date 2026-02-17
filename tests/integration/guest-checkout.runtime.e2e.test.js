@@ -31,10 +31,10 @@ const checkoutPayload = {
 describe('guest checkout runtime e2e', () => {
   beforeEach(() => {
     process.env.API_RATE_MAX = '200';
-    process.env.STRIPE_WEBHOOK_SECRET = 'test_stripe_secret';
+    process.env.PAYMENT_WEBHOOK_SECRET = 'test_stripe_secret';
     process.env.PAYPAL_WEBHOOK_ID = 'WH-TEST';
     process.env.PAYPAL_CLIENT_ID = 'paypal-client-id';
-    process.env.PAYPAL_CLIENT_SECRET = 'paypal-client-secret';
+    process.env.PAYPAL_SECRET = 'paypal-client-secret';
   });
 
   afterEach(() => {
@@ -239,7 +239,7 @@ describe('guest checkout runtime e2e', () => {
         },
       },
     };
-    const sig = createStripeSignatureHeader(stripeBody, process.env.STRIPE_WEBHOOK_SECRET);
+    const sig = createStripeSignatureHeader(stripeBody, process.env.PAYMENT_WEBHOOK_SECRET);
 
     const stripeFirst = await request(app).post('/api/webhooks/stripe').set('stripe-signature', sig).send(stripeBody);
     const stripeReplay = await request(app).post('/api/webhooks/stripe').set('stripe-signature', sig).send(stripeBody);

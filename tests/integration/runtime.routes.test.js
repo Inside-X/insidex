@@ -31,10 +31,10 @@ describe('runtime business routes', () => {
   beforeEach(() => {
     process.env.AUTH_RATE_MAX = '2';
     process.env.API_RATE_MAX = '200';
-    process.env.STRIPE_WEBHOOK_SECRET = 'test_stripe_secret';
+    process.env.PAYMENT_WEBHOOK_SECRET = 'test_stripe_secret';
     process.env.PAYPAL_WEBHOOK_ID = 'WH-TEST';
     process.env.PAYPAL_CLIENT_ID = 'paypal-client-id';
-    process.env.PAYPAL_CLIENT_SECRET = 'paypal-client-secret';
+    process.env.PAYPAL_SECRET = 'paypal-client-secret';
   });
 
   afterEach(() => {
@@ -247,7 +247,7 @@ describe('runtime business routes', () => {
       },
     };
 
-    const signature = createStripeSignatureHeader(body, process.env.STRIPE_WEBHOOK_SECRET);
+    const signature = createStripeSignatureHeader(body, process.env.PAYMENT_WEBHOOK_SECRET);
     jest.spyOn(orderRepository, 'markPaidFromWebhook').mockResolvedValue({ replayed: false, orderMarkedPaid: true });
 
     const res = await request(app)
@@ -301,7 +301,7 @@ describe('runtime business routes', () => {
       },
     };
 
-    const signature = createStripeSignatureHeader(body, process.env.STRIPE_WEBHOOK_SECRET);
+    const signature = createStripeSignatureHeader(body, process.env.PAYMENT_WEBHOOK_SECRET);
     jest.spyOn(orderRepository, 'markPaidFromWebhook')
       .mockResolvedValueOnce({ replayed: false, orderMarkedPaid: true })
       .mockResolvedValueOnce({ replayed: true, orderMarkedPaid: false });

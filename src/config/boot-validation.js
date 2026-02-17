@@ -36,16 +36,24 @@ export function validateBootConfig(env = process.env) {
 
   errors.push(...getJwtConfigValidationErrors(env));
 
+  if (!env.STRIPE_SECRET) {
+    errors.push('STRIPE_SECRET is required');
+  }
+
+  if (!env.PAYMENT_WEBHOOK_SECRET) {
+    errors.push('PAYMENT_WEBHOOK_SECRET is required');
+  }
+
+  if (!env.PAYPAL_SECRET) {
+    errors.push('PAYPAL_SECRET is required');
+  }
+
   if (paymentsEnabled && !env.STRIPE_SECRET) {
     errors.push('STRIPE_SECRET is required when PAYMENTS_ENABLED=true');
   }
 
-  if (!env.STRIPE_WEBHOOK_SECRET) {
-    errors.push('STRIPE_WEBHOOK_SECRET is required');
-  }
-
-  if (paypalEnabled && !env.PAYPAL_CLIENT_SECRET) {
-    errors.push('PAYPAL_CLIENT_SECRET is required when PAYPAL_ENABLED=true');
+  if (paypalEnabled && !env.PAYPAL_SECRET) {
+    errors.push('PAYPAL_SECRET is required when PAYPAL_ENABLED=true');
   }
 
   const corsOrigins = parseCorsWhitelist(env.CORS_ORIGIN);

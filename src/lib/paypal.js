@@ -13,7 +13,7 @@ function getRequiredEnv(name) {
 
 async function getAccessToken() {
   const clientId = getRequiredEnv('PAYPAL_CLIENT_ID');
-  const clientSecret = getRequiredEnv('PAYPAL_CLIENT_SECRET');
+  const clientSecret = getRequiredEnv('PAYPAL_SECRET');
   const baseUrl = process.env.PAYPAL_API_BASE_URL || DEFAULT_PAYPAL_API_BASE_URL;
 
   const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
@@ -61,13 +61,7 @@ function assertVerificationHeaders(headers) {
     'transmission_sig',
   ];
 
-  for (const key of required) {
-    if (!headers[key]) {
-      return false;
-    }
-  }
-
-  return true;
+  return required.every((key) => Boolean(headers[key]));
 }
 
 async function verifyWebhookSignature({ getHeader, webhookEvent }) {

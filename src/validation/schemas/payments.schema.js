@@ -18,6 +18,9 @@ export const paymentsSchemas = {
     data: z.object({
       object: z.object({
         id: z.string().min(1),
+        status: z.string().min(1),
+        amount_received: z.number().int().nonnegative(),
+        currency: z.string().min(3).max(3),
         metadata: z.object({
           orderId: uuidSchema,
           userId: uuidSchema,
