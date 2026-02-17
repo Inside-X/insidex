@@ -26,6 +26,12 @@ export function issueAccessToken({ id, role, isGuest = false, expiresIn } = {}) 
   assertGuestTokenClaims({ role, isGuest });
 
   const accessConfig = getAccessTokenConfig();
+    if (!accessConfig.secret || !accessConfig.issuer || !accessConfig.audience || !accessConfig.expiry) {
+    const error = new Error('JWT access token configuration is incomplete');
+    error.statusCode = 500;
+    error.code = 'JWT_MISCONFIGURED';
+    throw error;
+  }
  
   return jwt.sign(
     { sub: id, role, isGuest },

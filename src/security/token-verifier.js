@@ -6,13 +6,25 @@ function verifyToken(token, config) {
     return { ok: false, reason: 'misconfigured' };
   }
 
+  if (typeof token !== 'string' || !token.trim()) {
+    return { ok: false, reason: 'invalid' };
+  }
+
   try {
     const payload = jwt.verify(token, config.secret, {
       algorithms: ['HS256'],
       issuer: config.issuer,
       audience: config.audience,
+      maxAge: config.expiry,
+      clockTolerance: 5,
+      ignoreExpiration: false,
+      complete: false,
     });
 
+    if (!payload || typeof payload !== 'object' || typeof payload.exp !== 'number') {
+      return { ok: false, reason: 'invalid' };
+    }
+    
     return { ok: true, payload };
   } catch {
     return { ok: false, reason: 'invalid' };

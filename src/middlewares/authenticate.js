@@ -67,7 +67,7 @@ export function authenticate(req, res, next) {
   // Backward compatibility for existing handlers.
   req.user = {
     id,
-    role: decoded?.role,
+    role: req.auth.role,
     isGuest: decoded?.isGuest === true,
   };
 

@@ -15,6 +15,7 @@ import errorHandler from './middlewares/error-handler.js';
 import { securityHeaders } from './middlewares/securityHeaders.js';
 import { corsMiddleware } from './middlewares/cors.js';
 import { apiRateLimiter } from './middlewares/rateLimit.js';
+import { cookieParser } from './middlewares/cookieParser.js';
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use(securityHeaders);
 app.use(corsMiddleware);
 app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
 app.use(express.json());
+app.use(cookieParser);
 app.use(requestContext);
 app.use(requestLogger);
 

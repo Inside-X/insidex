@@ -25,8 +25,10 @@ export function corsMiddleware(req, res, next) {
       return sendApiError(req, res, 403, 'CORS_FORBIDDEN', 'Origin not allowed');
     }
 
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Vary', 'Origin');
+    if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+    }
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Request-Id');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');

@@ -20,10 +20,8 @@ export const registerSchema = z
     email: emailSchema,
     // Limites explicites pour réduire les payloads abusifs.
     password: passwordSchema,
-    // Enum fermée compatible colonne SQL CHECK / ENUM.
-    role: z.enum(['admin', 'customer'], {
-      invalid_type_error: 'role must be either admin or customer'
-    }).default('customer')
+    // Blocage explicite de l'escalade de privilège à l'inscription.
+    role: z.literal('customer').optional().default('customer')
   })
   .strict({ message: 'unknown field in register payload' });
 
@@ -37,8 +35,8 @@ export const loginSchema = z
 export const authSchemas = {
   register: registerSchema,
   login: loginSchema,
-  refresh: z.object({ refreshToken: z.string().min(1).max(2048) }).strict({ message: 'unknown field in refresh payload' }),
-  logout: z.object({ refreshToken: z.string().min(1).max(2048) }).strict({ message: 'unknown field in logout payload' }),
+  refresh: z.object({ refreshToken: z.string().min(1).max(2048).optional() }).strict({ message: 'unknown field in refresh payload' }),
+  logout: z.object({ refreshToken: z.string().min(1).max(2048).optional() }).strict({ message: 'unknown field in logout payload' }),
   forgot: z.object({ email: emailSchema }).strict({ message: 'unknown field in forgot payload' }),
   reset: z.object({
     email: emailSchema,
