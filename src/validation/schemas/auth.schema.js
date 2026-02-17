@@ -14,18 +14,27 @@ const passwordSchema = z.string({ required_error: 'password is required' })
   .min(PASSWORD_MIN, `password must contain at least ${PASSWORD_MIN} characters`)
   .max(PASSWORD_MAX, `password must contain at most ${PASSWORD_MAX} characters`);
 
+function stripRoleField(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    return input;
+  }
+
+  const { role: _ignoredRole, ...sanitizedPayload } = input;
+  return sanitizedPayload;
+}
+
 export const registerSchema = z
-  .object({
-    // Normalise l'email pour unicité et indexation future en base PostgreSQL.
-    email: emailSchema,
-    // Limites explicites pour réduire les payloads abusifs.
-    password: passwordSchema,
-    // Enum fermée compatible colonne SQL CHECK / ENUM.
-    role: z.enum(['admin', 'customer'], {
-      invalid_type_error: 'role must be either admin or customer'
-    }).default('customer')
-  })
-  .strict({ message: 'unknown field in register payload' });
+  .preprocess(
+    stripRoleField,
+    z
+      .object({
+        // Normalise l'email pour unicité et indexation future en base PostgreSQL.
+        email: emailSchema,
+        // Limites explicites pour réduire les payloads abusifs.
+        password: passwordSchema
+      })
+      .strict({ message: 'unknown field in register payload' })
+  );
 
 export const loginSchema = z
   .object({
