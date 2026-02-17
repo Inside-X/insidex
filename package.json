@@ -15,7 +15,9 @@
     "prisma:seed": "node prisma/seed.js",
     "db:import": "node scripts/import-json-to-db.js",
     "db:verify:integration": "node scripts/verify-db-integration.js",
-    "epic:1.4:verify": "node scripts/verify-epic-1.4.js"
+    "epic:1.4:verify": "node scripts/verify-epic-1.4.js",
+    "test:fast": "node node_modules/prisma/build/index.js generate && cross-env NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js --runInBand",
+    "test:quality": "node node_modules/prisma/build/index.js generate && cross-env NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js --coverage --runInBand"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
