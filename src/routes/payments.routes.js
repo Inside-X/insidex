@@ -43,6 +43,7 @@ router.post('/create-intent', strictValidate(paymentsSchemas.createIntent), ensu
       items: lineItems.map((item) => ({ productId: item.productId, quantity: item.quantity })),
       idempotencyKey: req.body.idempotencyKey,
       stripePaymentIntentId: candidateIntentId,
+      expectedTotalAmount: totalAmount,
     });
 
     const orderId = orderResult.order.id;

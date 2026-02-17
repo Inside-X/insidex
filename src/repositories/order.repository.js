@@ -13,6 +13,34 @@ function uniqueProductItems(items) {
     .sort((a, b) => a.productId.localeCompare(b.productId));
 }
 
+function assertExpectedAmountMatches({ expectedTotalAmount, totalAmount }) {
+  if (expectedTotalAmount === undefined || expectedTotalAmount === null) {
+    return;
+  }
+
+  const expected = Number(expectedTotalAmount);
+  const computed = Number(totalAmount);
+  if (!Number.isFinite(expected) || expected < 0) {
+    const error = new Error('Invalid expected total amount');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (Math.abs(expected - computed) > 0.000001) {
+    const error = new Error(`Amount mismatch: expected ${expected}, computed ${computed}`);
+    error.statusCode = 400;
+    throw error;
+  }
+}
+
+function assertOrderNotAlreadyPaid(order) {
+  if (order.status === 'paid') {
+    const error = new Error(`Order already paid: ${order.id}`);
+    error.statusCode = 409;
+    throw error;
+  }
+}
+
 export const orderRepository = {
   async create(data) {
     try { return await prisma.order.create({ data }); } catch (error) { normalizeDbError(error, { repository: 'order', operation: 'create' }); }
@@ -117,7 +145,7 @@ export const orderRepository = {
    * - idempotencyKey unique => replay-safe
    * - all stock updates occur in one transaction with rollback on first failure
    */
-  async createPendingPaymentOrder({ userId, items, idempotencyKey, stripePaymentIntentId }) {
+  async createPendingPaymentOrder({ userId, items, idempotencyKey, stripePaymentIntentId, expectedTotalAmount = undefined }) {
     const normalizedItems = uniqueProductItems(items);
 
     try {
@@ -138,6 +166,8 @@ export const orderRepository = {
 
         const productMap = new Map(products.map((product) => [product.id, product]));
         const totalAmount = normalizedItems.reduce((sum, item) => sum + (Number(productMap.get(item.productId).price) * item.quantity), 0);
+
+        assertExpectedAmountMatches({ expectedTotalAmount, totalAmount });
 
         let order;
         try {
@@ -226,6 +256,8 @@ export const orderRepository = {
           throw error;
         }
 
+        assertOrderNotAlreadyPaid(order);
+
         const updateResult = await tx.order.updateMany({
           where: { id: orderId, status: { not: 'paid' } },
           data: {
@@ -267,6 +299,8 @@ export const orderRepository = {
             error.statusCode = 400;
             throw error;
           }
+
+          assertOrderNotAlreadyPaid(existingOrder);
         }
         
         const where = orderId
