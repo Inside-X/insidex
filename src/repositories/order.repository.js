@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma.js';
 import { normalizeDbError } from '../lib/db-error.js';
+import { moneyToMinorUnits, minorUnitsToDecimalString, multiplyMinorUnits, sumMinorUnits } from '../lib/money.js';
 
 function uniqueProductItems(items) {
   const byProduct = new Map();
@@ -52,10 +53,10 @@ export const orderRepository = {
 
         const productMap = new Map(products.map((product) => [product.id, product]));
 
-        const totalAmount = normalizedItems.reduce((sum, item) => {
+        const totalAmountMinor = sumMinorUnits(normalizedItems.map((item) => {
           const product = productMap.get(item.productId);
-          return sum + Number(product.price) * item.quantity;
-        }, 0);
+          return multiplyMinorUnits(moneyToMinorUnits(product.price), item.quantity);
+        }));
 
         let order;
         try {
@@ -65,7 +66,7 @@ export const orderRepository = {
               status,
               idempotencyKey,
               stripePaymentIntentId,
-              totalAmount,
+              totalAmount: minorUnitsToDecimalString(totalAmountMinor),
             },
           });
         } catch (error) {
@@ -99,7 +100,7 @@ export const orderRepository = {
             orderId: order.id,
             productId: item.productId,
             quantity: item.quantity,
-            unitPrice: productMap.get(item.productId).price,
+            unitPrice: minorUnitsToDecimalString(moneyToMinorUnits(productMap.get(item.productId).price)),
           })),
         });
 
@@ -137,7 +138,10 @@ export const orderRepository = {
         }
 
         const productMap = new Map(products.map((product) => [product.id, product]));
-        const totalAmount = normalizedItems.reduce((sum, item) => sum + (Number(productMap.get(item.productId).price) * item.quantity), 0);
+        const totalAmountMinor = sumMinorUnits(normalizedItems.map((item) => multiplyMinorUnits(
+          moneyToMinorUnits(productMap.get(item.productId).price),
+          item.quantity,
+        )));
 
         let order;
         try {
@@ -147,7 +151,7 @@ export const orderRepository = {
               status: 'pending',
               idempotencyKey,
               stripePaymentIntentId,
-              totalAmount,
+              totalAmount: minorUnitsToDecimalString(totalAmountMinor),
             },
           });
         } catch (error) {
@@ -182,7 +186,7 @@ export const orderRepository = {
             orderId: order.id,
             productId: item.productId,
             quantity: item.quantity,
-            unitPrice: productMap.get(item.productId).price,
+            unitPrice: minorUnitsToDecimalString(moneyToMinorUnits(productMap.get(item.productId).price)),
           })),
         });
 

@@ -1,7 +1,9 @@
+import { jest } from '@jest/globals';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import app from '../../src/app.js';
 import { resetRateLimiters } from '../../src/middlewares/rateLimit.js';
+import { userRepository } from '../../src/repositories/user.repository.js';
 
 let prisma = null;
 
@@ -44,8 +46,14 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  resetRateLimiters();
+  await resetRateLimiters();
   await cleanupDatabase();
+  jest.spyOn(userRepository, 'findById').mockImplementation(async (id) => ({
+    id,
+    email: 'runtime@example.com',
+    role: 'customer',
+    isGuest: false,
+  }));
 });
 
 afterAll(async () => {
@@ -126,7 +134,8 @@ describe('sensitive auth runtime endpoints', () => {
     const res = await request(app).post('/api/auth/refresh').send({ refreshToken: refreshToken() });
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ data: { refreshed: true } });
+    expect(res.body.data.user).toBeDefined();
+    expect(res.headers['set-cookie']).toBeDefined();
   });
 
   test('POST /api/auth/refresh returns 400 on invalid payload', async () => {

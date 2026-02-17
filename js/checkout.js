@@ -6,7 +6,7 @@ import { showToast } from './modules/toast.js';
 import { renderTexts } from './modules/renderTexts.js';
 import { addAddress, addOrder, setActiveEmail, upsertProfile } from './modules/accountData.js';
 import { initAnalytics, trackAnalyticsEvent } from './modules/analytics.js';
-import { buildCheckoutPayload, confirmStripePayment, createPaymentIntent, generateIdempotencyKey, storeGuestSession } from './modules/guestCheckoutApi.js';
+import { buildCheckoutPayload, confirmStripePayment, createPaymentIntent, generateIdempotencyKey, storeGuestSession, getGuestAccessToken } from './modules/guestCheckoutApi.js';
 
 const currency = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 
@@ -241,7 +241,7 @@ async function handleSubmit(event) {
     idempotencyKey: generateIdempotencyKey(),
   });
 
-  const accessToken = localStorage.getItem('insidex_access_token');
+  const accessToken = getGuestAccessToken();
   let paymentIntent;
 
   try {

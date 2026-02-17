@@ -2,6 +2,7 @@ import { normalizeRole } from '../security/rbac-policy.js';
 import { verifyAccessToken } from '../security/token-verifier.js';
 import { sendApiError } from '../utils/api-error.js';
 import { logger } from '../utils/logger.js';
+import { readCookie, authCookieNames } from '../security/auth-cookies.js';
 
 const BEARER_REGEX = /^Bearer\s+(.+)$/i;
 
@@ -23,17 +24,22 @@ function logAuthenticationFailure(reason, error) {
  */
 export function authenticate(req, res, next) {
   const authorizationHeader = req.get('authorization');
+  const cookieToken = readCookie(req, authCookieNames.ACCESS_COOKIE);
 
-  if (!authorizationHeader) {
-    return unauthorized(req, res, 'Authentication required');
+  let token = null;
+  if (authorizationHeader) {
+    const bearerMatch = authorizationHeader.match(BEARER_REGEX);
+    if (!bearerMatch || !bearerMatch[1]) {
+      return unauthorized(req, res, 'Authorization header must be in the format: Bearer <token>');
+    }
+
+    token = bearerMatch[1].trim();
   }
 
-  const bearerMatch = authorizationHeader.match(BEARER_REGEX);
-  if (!bearerMatch || !bearerMatch[1]) {
-    return unauthorized(req, res, 'Authorization header must be in the format: Bearer <token>');
+  if (!token) {
+    token = cookieToken;
   }
 
-  const token = bearerMatch[1].trim();
   if (!token) {
     return unauthorized(req, res, 'Authentication required');
   }

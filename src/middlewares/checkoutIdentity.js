@@ -1,6 +1,7 @@
 import { sendApiError } from '../utils/api-error.js';
 import { userRepository } from '../repositories/user.repository.js';
 import { issueAccessToken } from '../security/access-token.js';
+import { authCookieNames, buildAccessCookieOptions } from '../security/auth-cookies.js';
 
 /**
  * Ensure a checkout JWT exists before authenticate middleware:
@@ -37,6 +38,7 @@ export async function ensureCheckoutSessionJWT(req, res, next) {
   // Make downstream authenticate middleware the single source of truth for req.auth.
   req.headers.authorization = `Bearer ${guestToken}`;
   res.locals.implicitGuestToken = guestToken;
+  res.cookie(authCookieNames.ACCESS_COOKIE, guestToken, buildAccessCookieOptions());
   return next();
 }
 

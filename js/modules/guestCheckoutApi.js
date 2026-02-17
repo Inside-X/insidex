@@ -1,5 +1,6 @@
-const ACCESS_TOKEN_KEY = 'insidex_access_token';
 const USER_KEY = 'insidex_auth_user';
+
+let inMemoryGuestAccessToken = null;
 
 export function generateIdempotencyKey() {
   const randomPart = Math.random().toString(36).slice(2);
@@ -15,12 +16,24 @@ export function buildCheckoutPayload({ email, address, items, idempotencyKey }) 
   };
 }
 
+export function getGuestAccessToken() {
+  return inMemoryGuestAccessToken;
+}
+
+export function normalizeMinorAmount(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 0) {
+    throw new Error('Montant de paiement invalide (minor units attendues).');
+  }
+  return parsed;
+}
+
 export function storeGuestSession(meta, email) {
   if (!meta?.guestSessionToken) {
     return;
   }
 
-  localStorage.setItem(ACCESS_TOKEN_KEY, meta.guestSessionToken);
+  inMemoryGuestAccessToken = meta.guestSessionToken;
   localStorage.setItem(USER_KEY, JSON.stringify({
     id: null,
     email,
@@ -48,6 +61,7 @@ export async function createPaymentIntent(payload, accessToken = null) {
 
   const response = await fetch('/api/payments/create-intent', {
     method: 'POST',
+    credentials: 'include',
     headers,
     body: JSON.stringify(payload),
   });
@@ -57,7 +71,15 @@ export async function createPaymentIntent(payload, accessToken = null) {
     throw new Error(body?.error?.message || 'Impossible de créer le paiement.');
   }
 
-  return body;
+  const amountMinor = normalizeMinorAmount(body?.data?.amount);
+  return {
+    ...body,
+    data: {
+      ...body.data,
+      amount: amountMinor,
+      amountDecimal: amountMinor / 100,
+    },
+  };
 }
 
 export async function confirmStripePayment({ clientSecret, testOutcome }) {

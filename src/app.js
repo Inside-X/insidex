@@ -15,13 +15,18 @@ import errorHandler from './middlewares/error-handler.js';
 import { securityHeaders } from './middlewares/securityHeaders.js';
 import { corsMiddleware } from './middlewares/cors.js';
 import { apiRateLimiter } from './middlewares/rateLimit.js';
+import { cookieParserMiddleware } from './middlewares/cookieParser.js';
+import { payloadGuard } from './middlewares/payloadGuard.js';
 
 const app = express();
 
 app.use(securityHeaders);
 app.use(corsMiddleware);
-app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
-app.use(express.json());
+app.use(payloadGuard);
+app.use('/api/webhooks/stripe', express.raw({ type: 'application/json', limit: process.env.STRIPE_RAW_BODY_LIMIT || '512kb' }));
+app.use('/api/webhooks/paypal', express.raw({ type: 'application/json', limit: process.env.PAYPAL_RAW_BODY_LIMIT || '512kb' }));
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '1mb', strict: true }));
+app.use(cookieParserMiddleware);
 app.use(requestContext);
 app.use(requestLogger);
 

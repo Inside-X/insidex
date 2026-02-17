@@ -35,6 +35,7 @@ describe('guest checkout runtime e2e', () => {
     process.env.PAYPAL_WEBHOOK_ID = 'WH-TEST';
     process.env.PAYPAL_CLIENT_ID = 'paypal-client-id';
     process.env.PAYPAL_CLIENT_SECRET = 'paypal-client-secret';
+    process.env.PAYPAL_WEBHOOK_SECRET = 'paypal_webhook_secret';
   });
 
   afterEach(() => {
@@ -263,15 +264,15 @@ describe('guest checkout runtime e2e', () => {
       },
     };
 
-    const paypalFirst = await request(app).post('/api/webhooks/paypal').send(paypalPayload);
-    const paypalReplay = await request(app).post('/api/webhooks/paypal').send(paypalPayload);
+    const paypalFirst = await request(app).post('/api/webhooks/paypal').set('x-webhook-secret', process.env.PAYPAL_WEBHOOK_SECRET).send(paypalPayload);
+    const paypalReplay = await request(app).post('/api/webhooks/paypal').set('x-webhook-secret', process.env.PAYPAL_WEBHOOK_SECRET).send(paypalPayload);
 
     expect(paypalFirst.status).toBe(200);
     expect(paypalReplay.status).toBe(200);
     expect(paypalReplay.body.data.replayed).toBe(true);
 
     verifyPaypalSignature.mockResolvedValueOnce({ verified: false, reason: 'FAILURE' });
-    const paypalInvalid = await request(app).post('/api/webhooks/paypal').send(paypalPayload);
+    const paypalInvalid = await request(app).post('/api/webhooks/paypal').set('x-webhook-secret', process.env.PAYPAL_WEBHOOK_SECRET).send(paypalPayload);
     expect(paypalInvalid.status).toBe(400);
 
     const badSig = await request(app)

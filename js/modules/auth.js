@@ -1,14 +1,10 @@
 import { showToast } from './toast.js';
 import { clearUserId, setUserId, syncCartToUser, updateBadge } from './cart.js';
 
-const ACCESS_TOKEN_KEY = 'insidex_access_token';
-const REFRESH_TOKEN_KEY = 'insidex_refresh_token';
 const USER_KEY = 'insidex_auth_user';
 
 const state = {
   user: null,
-  accessToken: null,
-  refreshToken: null,
   loading: true,
   error: null
 };
@@ -35,41 +31,25 @@ function emitAuthState() {
   }));
 }
 
-function setStoredTokens({ accessToken, refreshToken, user }) {
-  if (accessToken) {
-    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-    state.accessToken = accessToken;
-  }
-  if (refreshToken) {
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-    state.refreshToken = refreshToken;
-  }
+function applyAuthPayload(payload) {
+  const user = sanitizeUser(payload?.user || payload);
   if (user) {
-    const safeUser = sanitizeUser(user);
-    localStorage.setItem(USER_KEY, JSON.stringify(safeUser));
-    state.user = safeUser;
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    state.user = user;
   }
   emitAuthState();
 }
 
-function clearStoredTokens() {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
+function clearStoredSession() {
   localStorage.removeItem(USER_KEY);
-  state.accessToken = null;
-  state.refreshToken = null;
   state.user = null;
   state.error = null;
   emitAuthState();
 }
 
 function loadStoredSession() {
-  const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
   const userRaw = localStorage.getItem(USER_KEY);
 
-  state.accessToken = accessToken;
-  state.refreshToken = refreshToken;
   state.user = null;
 
   if (userRaw) {
@@ -81,9 +61,10 @@ function loadStoredSession() {
   }
 }
 
-async function authRequest(url, payload) {
+async function authRequest(url, payload = {}) {
   const response = await fetch(url, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
@@ -94,12 +75,10 @@ async function authRequest(url, payload) {
   return data;
 }
 
-async function fetchProfile(accessToken) {
+async function fetchProfile() {
   const response = await fetch('/api/auth/me', {
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${accessToken}`
-    }
+    credentials: 'include'
   });
 
   const data = await response.json().catch(() => ({}));
@@ -156,29 +135,18 @@ function setStatus(modal, message, tone = 'info') {
 }
 
 async function resolveAuthenticatedUser() {
-  if (!state.accessToken && !state.refreshToken) {
-    return null;
-  }
-
-  if (state.accessToken) {
-    try {
-      return await fetchProfile(state.accessToken);
-    } catch (error) {
-      if (error.status !== 401 && error.status !== 403) {
-        throw error;
-      }
+  try {
+    return await fetchProfile();
+  } catch (error) {
+    if (error.status !== 401 && error.status !== 403) {
+      throw error;
     }
   }
 
-  if (!state.refreshToken) {
-    return null;
-  }
-
   try {
-    const data = await authRequest('/api/auth/refresh', { refreshToken: state.refreshToken });
-    setStoredTokens({ accessToken: data.accessToken, user: data.user });
-    return await fetchProfile(data.accessToken);
-  } catch (error) {
+    await authRequest('/api/auth/refresh', {});
+    return await fetchProfile();
+  } catch (_error) {
     return null;
   }
 }
@@ -192,7 +160,7 @@ async function refreshSession(modal) {
     const profile = await resolveAuthenticatedUser();
 
     if (!profile) {
-      clearStoredTokens();
+      clearStoredSession();
       clearUserId();
       updateAccountButton(document.getElementById('accountBtn'));
       if (modal) {
@@ -214,7 +182,7 @@ async function refreshSession(modal) {
     }
   } catch (error) {
     state.error = error.message;
-    clearStoredTokens();
+    clearStoredSession();
     clearUserId();
     updateAccountButton(document.getElementById('accountBtn'));
   } finally {
@@ -227,7 +195,7 @@ async function handleLogin(form, modal) {
   const formData = new FormData(form);
   const payload = Object.fromEntries(formData.entries());
   const data = await authRequest('/api/auth/login', payload);
-  setStoredTokens(data);
+  applyAuthPayload(data.data);
   await refreshSession(modal);
   if (!state.user) {
     throw new Error('Session invalide après connexion.');
@@ -246,7 +214,7 @@ async function handleRegister(form, modal) {
   const formData = new FormData(form);
   const payload = Object.fromEntries(formData.entries());
   const data = await authRequest('/api/auth/register', payload);
-  setStoredTokens(data);
+  applyAuthPayload(data.data);
   await refreshSession(modal);
   if (!state.user) {
     throw new Error('Session invalide après inscription.');
@@ -282,14 +250,12 @@ async function handleReset(form, modal) {
 }
 
 async function handleLogout(modal) {
-  if (state.refreshToken) {
-    try {
-      await authRequest('/api/auth/logout', { refreshToken: state.refreshToken });
-    } catch (error) {
-      console.error(error);
-    }
+  try {
+    await authRequest('/api/auth/logout', {});
+  } catch (error) {
+    console.error(error);
   }
-  clearStoredTokens();
+  clearStoredSession();
   clearUserId();
   await updateBadge();
   setStatus(modal, 'Déconnexion effectuée.', 'info');

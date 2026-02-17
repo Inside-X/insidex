@@ -8,6 +8,7 @@ import authenticateJWT from '../middlewares/authenticate.js';
 import checkoutCustomerAccess from '../middlewares/checkoutCustomerAccess.js';
 import { orderRepository } from '../repositories/order.repository.js';
 import { sendApiError } from '../utils/api-error.js';
+import { moneyToMinorUnits, multiplyMinorUnits, sumMinorUnits } from '../lib/money.js';
 
 const router = express.Router();
 
@@ -28,14 +29,14 @@ router.post('/create-intent', strictValidate(paymentsSchemas.createIntent), ensu
       return sendApiError(req, res, 404, 'NOT_FOUND', 'One or more products were not found');
     }
 
-    const productMap = new Map(products.map((product) => [product.id, Number(product.price)]));
+    const productMap = new Map(products.map((product) => [product.id, moneyToMinorUnits(product.price)]));
     const lineItems = requestedItems.map((item) => ({
       productId: item.id,
       quantity: item.quantity,
-      dbUnitPrice: productMap.get(item.id),
+      dbUnitPriceMinor: productMap.get(item.id),
     }));
 
-    const totalAmount = lineItems.reduce((sum, item) => sum + (item.dbUnitPrice * item.quantity), 0);
+    const totalAmountMinor = sumMinorUnits(lineItems.map((item) => multiplyMinorUnits(item.dbUnitPriceMinor, item.quantity)));
     const candidateIntentId = `pi_${crypto.randomUUID().replace(/-/g, '')}`;
 
     const orderResult = await orderRepository.createPendingPaymentOrder({
@@ -47,7 +48,7 @@ router.post('/create-intent', strictValidate(paymentsSchemas.createIntent), ensu
 
     const orderId = orderResult.order.id;
     const paymentIntentId = orderResult.order.stripePaymentIntentId || candidateIntentId;
-    const amount = Math.round(totalAmount * 100);
+    const amount = totalAmountMinor;
 
     return res.status(orderResult.replayed ? 200 : 201).json({
       data: {
