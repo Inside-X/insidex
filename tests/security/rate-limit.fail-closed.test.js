@@ -41,6 +41,24 @@ describe('rate-limit fail-closed hardening', () => {
     expect(res.status).toBe(503);
   });
 
+  test('returns 503 on webhook routes when redis is down', async () => {
+    setRateLimitRedisClient(null);
+
+    const stripe = await request(app)
+      .post('/api/webhooks/stripe')
+      .set('stripe-signature', 't=1,v1=bad')
+      .set('Content-Type', 'application/json')
+      .send('{"id":"evt_1"}');
+
+    const paypal = await request(app)
+      .post('/api/webhooks/paypal')
+      .set('Content-Type', 'application/json')
+      .send('{"id":"WH-1"}');
+
+    expect(stripe.status).toBe(503);
+    expect(paypal.status).toBe(503);
+  });
+
   test('logs rate_limit_backend_down as structured error', async () => {
     setRateLimitRedisClient(null);
     const spy = jest.spyOn(logger, 'error').mockImplementation(() => undefined);

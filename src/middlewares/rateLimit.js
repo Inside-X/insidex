@@ -1,6 +1,7 @@
 import net from 'node:net';
 import { sendApiError } from '../utils/api-error.js';
 import { createRateLimitRedisStore } from '../lib/rate-limit-redis-store.js';
+import { logger } from '../utils/logger.js';
 
 let rateLimitRedisClient = null;
 
@@ -87,6 +88,10 @@ function createRateLimiter({ windowMs, max, code, message, keyBuilder, store }) 
       }
       return next();
     } catch {
+      logger.error('rate_limit_backend_down', {
+        level: 'error',
+        event: 'rate_limit_backend_down',
+      });
       return sendApiError(req, res, 503, 'RATE_LIMIT_BACKEND_UNAVAILABLE', 'Service temporarily unavailable');
     }
   }
