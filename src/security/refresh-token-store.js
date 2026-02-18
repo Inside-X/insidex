@@ -54,7 +54,6 @@ local oldSessionKey = KEYS[1]
 local newSessionKey = KEYS[2]
 local newSessionRaw = ARGV[1]
 local ttlMs = tonumber(ARGV[2])
-local newSessionId = ARGV[3]
 
 local oldRaw = redis.call('GET', oldSessionKey)
 if not oldRaw then
@@ -66,9 +65,7 @@ if oldSession.revoked == true then
   return {0, 'revoked'}
 end
 
-oldSession.revoked = true
-oldSession.replacedBy = newSessionId
-redis.call('SET', oldSessionKey, cjson.encode(oldSession), 'KEEPTTL')
+redis.call('DEL', oldSessionKey)
 
 local setNew = redis.call('SET', newSessionKey, newSessionRaw, 'NX', 'PX', ttlMs)
 if not setNew then
@@ -177,7 +174,7 @@ export async function rotateRefreshSession({ oldSessionId, newSessionId, userId,
 
   const result = await client.eval(LUA_ROTATE, {
     keys: [sessionKey(oldSessionId), sessionKey(newSessionId)],
-    arguments: [newPayload, String(ttlMs), newSessionId],
+    arguments: [newPayload, String(ttlMs)],
   });
 
   const ok = Number(result?.[0]) === 1;

@@ -42,14 +42,14 @@ export function toMinorUnits(amountDecimalString, currency = 'EUR') {
 
   const padded = frac.padEnd(exponent + 1, '0');
   const kept = exponent === 0 ? '' : padded.slice(0, exponent);
-  const roundingDigit = Number(padded.charAt(exponent) || '0');
+  const roundingDigit = BigInt(padded.charAt(exponent) || '0');
 
   let minor = BigInt(whole) * (10n ** BigInt(exponent));
   if (kept) {
     minor += BigInt(kept);
   }
 
-  if (roundingDigit >= 5) {
+  if (roundingDigit >= 5n) {
     minor += 1n;
   }
 
@@ -59,7 +59,7 @@ export function toMinorUnits(amountDecimalString, currency = 'EUR') {
     throw error;
   }
 
-  return Number(minor);
+  return parseInt(minor.toString(), 10);
 }
 
 export function fromMinorUnits(minorUnits, currency = 'EUR') {

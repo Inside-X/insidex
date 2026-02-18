@@ -21,7 +21,7 @@ describe('refresh token store redis strict semantics', () => {
     expect(second).toEqual({ ok: false, reason: 'duplicate' });
   });
 
-  test('rotation atomically revokes old and writes new session', async () => {
+  test('rotation atomically deletes old and writes new session', async () => {
     const expiresAt = Date.now() + 60_000;
     await storeRefreshSession({ sessionId: 'sid-old', userId: 'u-1', token: 'old.token', expiresAt });
     await validateAndConsumeRefreshSession({ sessionId: 'sid-old', userId: 'u-1', token: 'old.token', minRefreshIntervalMs: 0 });
@@ -38,8 +38,7 @@ describe('refresh token store redis strict semantics', () => {
     const oldSession = await getRefreshSession('sid-old');
     const newSession = await getRefreshSession('sid-new');
 
-    expect(oldSession.revoked).toBe(true);
-    expect(oldSession.replacedBy).toBe('sid-new');
+    expect(oldSession).toBeNull();
     expect(newSession.revoked).toBe(false);
   });
 });

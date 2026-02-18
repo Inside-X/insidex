@@ -123,7 +123,7 @@ export function createFakeRedisClient({ sharedState } = {}) {
 
       if (script.includes('refresh_rotate_v1')) {
         const [oldSessionKey, newSessionKey] = keys;
-        const [newSessionRaw, ttlMsRaw, newSessionId] = args;
+        const [newSessionRaw, ttlMsRaw] = args;
         const ttlMs = Number(ttlMsRaw);
 
         const oldEntry = readKey(oldSessionKey);
@@ -132,11 +132,10 @@ export function createFakeRedisClient({ sharedState } = {}) {
         const oldSession = decode(oldEntry.value);
         if (oldSession.revoked === true) return [0, 'revoked'];
 
+        state.delete(oldSessionKey);
+
         if (readKey(newSessionKey)) return [0, 'conflict'];
 
-        oldSession.revoked = true;
-        oldSession.replacedBy = newSessionId;
-        writeKey(oldSessionKey, encode(oldSession), oldEntry.expiresAt);
         writeKey(newSessionKey, newSessionRaw, now() + ttlMs);
         return [1, 'ok'];
       }

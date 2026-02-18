@@ -49,6 +49,13 @@ describe('Auth logout consistency', () => {
     expect(second.status).toBe(204);
   });
 
+
+  test('logout with malformed refresh token returns 204 without leaking state', async () => {
+    const res = await request(app).post('/api/auth/logout').send({ refreshToken: 'not-a-jwt-token' });
+    expect(res.status).toBe(204);
+    expect(res.text).toBe('');
+  });
+  
   test('logout with malformed token injection returns 204', async () => {
     const res = await request(app)
       .post('/api/auth/logout')

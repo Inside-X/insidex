@@ -52,6 +52,10 @@ export function validateBootConfig(env = process.env) {
     errors.push('REDIS_URL is required');
   }
 
+  if (!env.JWT_SECRET) {
+    errors.push('JWT_SECRET is required');
+  }
+  
   if (!env.DATABASE_URL) {
     errors.push('DATABASE_URL is required');
   }
