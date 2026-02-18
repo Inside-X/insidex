@@ -1,76 +1,1497 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1771274185018" clover="3.2.0">
-  <project timestamp="1771274185018" name="All files">
-    <metrics statements="89" coveredstatements="88" conditionals="70" coveredconditionals="64" methods="15" coveredmethods="15" elements="174" coveredelements="167" complexity="0" loc="89" ncloc="89" packages="4" files="14" classes="14"/>
-    <package name="errors">
-      <metrics statements="8" coveredstatements="7" conditionals="9" coveredconditionals="6" methods="4" coveredmethods="4"/>
+<coverage generated="1771420419159" clover="3.2.0">
+  <project timestamp="1771420419160" name="All files">
+    <metrics statements="1339" coveredstatements="1218" conditionals="883" coveredconditionals="743" methods="289" coveredmethods="248" elements="2511" coveredelements="2209" complexity="0" loc="1339" ncloc="1339" packages="11" files="64" classes="64"/>
+    <package name="src">
+      <metrics statements="27" coveredstatements="27" conditionals="4" coveredconditionals="4" methods="2" coveredmethods="2"/>
+      <file name="app.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\app.js">
+        <metrics statements="27" coveredstatements="27" conditionals="4" coveredconditionals="4" methods="2" coveredmethods="2"/>
+        <line num="20" count="23" type="stmt"/>
+        <line num="22" count="23" type="stmt"/>
+        <line num="23" count="23" type="stmt"/>
+        <line num="24" count="23" type="stmt"/>
+        <line num="25" count="23" type="stmt"/>
+        <line num="26" count="23" type="stmt"/>
+        <line num="27" count="23" type="stmt"/>
+        <line num="28" count="23" type="stmt"/>
+        <line num="29" count="23" type="stmt"/>
+        <line num="31" count="23" type="stmt"/>
+        <line num="32" count="1" type="stmt"/>
+        <line num="40" count="23" type="stmt"/>
+        <line num="41" count="2" type="stmt"/>
+        <line num="42" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="43" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="53" count="23" type="stmt"/>
+        <line num="54" count="23" type="stmt"/>
+        <line num="55" count="23" type="stmt"/>
+        <line num="56" count="23" type="stmt"/>
+        <line num="57" count="23" type="stmt"/>
+        <line num="58" count="23" type="stmt"/>
+        <line num="59" count="23" type="stmt"/>
+        <line num="60" count="23" type="stmt"/>
+        <line num="61" count="23" type="stmt"/>
+        <line num="62" count="23" type="stmt"/>
+        <line num="63" count="23" type="stmt"/>
+        <line num="65" count="23" type="stmt"/>
+      </file>
+    </package>
+    <package name="src.config">
+      <metrics statements="66" coveredstatements="58" conditionals="60" coveredconditionals="40" methods="11" coveredmethods="10"/>
+      <file name="boot-infrastructure.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\config\boot-infrastructure.js">
+        <metrics statements="23" coveredstatements="17" conditionals="21" coveredconditionals="9" methods="4" coveredmethods="3"/>
+        <line num="7" count="3" type="stmt"/>
+        <line num="11" count="2" type="cond" truecount="4" falsecount="1"/>
+        <line num="12" count="2" type="stmt"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="23" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="31" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="32" count="1" type="stmt"/>
+        <line num="35" count="2" type="stmt"/>
+        <line num="36" count="2" type="stmt"/>
+        <line num="37" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="38" count="1" type="stmt"/>
+        <line num="41" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="42" count="0" type="stmt"/>
+        <line num="45" count="1" type="stmt"/>
+        <line num="46" count="1" type="stmt"/>
+        <line num="48" count="0" type="stmt"/>
+        <line num="50" count="2" type="stmt"/>
+        <line num="51" count="2" type="stmt"/>
+        <line num="56" count="2" type="stmt"/>
+        <line num="57" count="2" type="stmt"/>
+        <line num="58" count="2" type="stmt"/>
+      </file>
+      <file name="boot-validation.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\config\boot-validation.js">
+        <metrics statements="43" coveredstatements="41" conditionals="39" coveredconditionals="31" methods="7" coveredmethods="7"/>
+        <line num="5" count="4" type="stmt"/>
+        <line num="9" count="10" type="cond" truecount="2" falsecount="0"/>
+        <line num="10" count="2" type="stmt"/>
+        <line num="11" count="2" type="stmt"/>
+        <line num="15" count="5" type="cond" truecount="1" falsecount="1"/>
+        <line num="17" count="5" type="stmt"/>
+        <line num="22" count="5" type="cond" truecount="4" falsecount="0"/>
+        <line num="24" count="4" type="stmt"/>
+        <line num="25" count="4" type="stmt"/>
+        <line num="26" count="4" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="33" count="5" type="stmt"/>
+        <line num="34" count="5" type="stmt"/>
+        <line num="35" count="5" type="stmt"/>
+        <line num="37" count="5" type="stmt"/>
+        <line num="39" count="5" type="cond" truecount="1" falsecount="1"/>
+        <line num="40" count="5" type="stmt"/>
+        <line num="43" count="5" type="cond" truecount="2" falsecount="0"/>
+        <line num="44" count="2" type="stmt"/>
+        <line num="47" count="5" type="cond" truecount="1" falsecount="1"/>
+        <line num="48" count="5" type="stmt"/>
+        <line num="51" count="5" type="cond" truecount="2" falsecount="0"/>
+        <line num="52" count="1" type="stmt"/>
+        <line num="55" count="5" type="cond" truecount="2" falsecount="0"/>
+        <line num="56" count="1" type="stmt"/>
+        <line num="59" count="5" type="cond" truecount="2" falsecount="0"/>
+        <line num="60" count="1" type="stmt"/>
+        <line num="63" count="5" type="cond" truecount="4" falsecount="0"/>
+        <line num="64" count="1" type="stmt"/>
+        <line num="67" count="5" type="cond" truecount="4" falsecount="0"/>
+        <line num="68" count="1" type="stmt"/>
+        <line num="71" count="5" type="stmt"/>
+        <line num="72" count="5" type="cond" truecount="1" falsecount="1"/>
+        <line num="73" count="0" type="stmt"/>
+        <line num="76" count="5" type="stmt"/>
+        <line num="77" count="5" type="cond" truecount="2" falsecount="0"/>
+        <line num="78" count="1" type="stmt"/>
+        <line num="82" count="5" type="stmt"/>
+        <line num="89" count="4" type="cond" truecount="2" falsecount="0"/>
+        <line num="91" count="3" type="stmt"/>
+        <line num="92" count="3" type="cond" truecount="1" falsecount="1"/>
+        <line num="94" count="3" type="stmt"/>
+        <line num="98" count="3" type="stmt"/>
+      </file>
+    </package>
+    <package name="src.errors">
+      <metrics statements="17" coveredstatements="17" conditionals="24" coveredconditionals="24" methods="9" coveredmethods="9"/>
+      <file name="app-error.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\errors\app-error.js">
+        <metrics statements="9" coveredstatements="9" conditionals="15" coveredconditionals="15" methods="5" coveredmethods="5"/>
+        <line num="8" count="39" type="stmt"/>
+        <line num="9" count="39" type="stmt"/>
+        <line num="10" count="39" type="stmt"/>
+        <line num="11" count="39" type="stmt"/>
+        <line num="12" count="39" type="cond" truecount="2" falsecount="0"/>
+        <line num="18" count="2" type="stmt"/>
+        <line num="24" count="2" type="stmt"/>
+        <line num="30" count="2" type="stmt"/>
+        <line num="36" count="2" type="stmt"/>
+      </file>
       <file name="validation-error.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\errors\validation-error.js">
-        <metrics statements="8" coveredstatements="7" conditionals="9" coveredconditionals="6" methods="4" coveredmethods="4"/>
-        <line num="5" count="20" type="cond" truecount="4" falsecount="0"/>
-        <line num="6" count="2" type="stmt"/>
-        <line num="8" count="18" type="stmt"/>
-        <line num="13" count="18" type="stmt"/>
-        <line num="22" count="15" type="cond" truecount="1" falsecount="1"/>
+        <metrics statements="8" coveredstatements="8" conditionals="9" coveredconditionals="9" methods="4" coveredmethods="4"/>
+        <line num="5" count="26" type="cond" truecount="4" falsecount="0"/>
+        <line num="6" count="5" type="stmt"/>
+        <line num="8" count="21" type="stmt"/>
+        <line num="13" count="26" type="stmt"/>
+        <line num="22" count="21" type="cond" truecount="2" falsecount="0"/>
+        <line num="23" count="2" type="stmt"/>
+        <line num="26" count="26" type="stmt"/>
+        <line num="31" count="19" type="stmt"/>
+      </file>
+    </package>
+    <package name="src.lib">
+      <metrics statements="244" coveredstatements="220" conditionals="142" coveredconditionals="115" methods="61" coveredmethods="56"/>
+      <file name="db-error.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\lib\db-error.js">
+        <metrics statements="21" coveredstatements="21" conditionals="10" coveredconditionals="10" methods="2" coveredmethods="2"/>
+        <line num="4" count="74" type="stmt"/>
+        <line num="13" count="74" type="cond" truecount="5" falsecount="0"/>
+        <line num="14" count="60" type="stmt"/>
+        <line num="15" count="60" type="stmt"/>
+        <line num="18" count="14" type="cond" truecount="2" falsecount="0"/>
+        <line num="19" count="3" type="stmt"/>
+        <line num="21" count="3" type="stmt"/>
+        <line num="22" count="3" type="stmt"/>
+        <line num="23" count="3" type="stmt"/>
+        <line num="24" count="3" type="stmt"/>
+        <line num="27" count="11" type="cond" truecount="2" falsecount="0"/>
+        <line num="28" count="2" type="stmt"/>
+        <line num="30" count="2" type="stmt"/>
+        <line num="31" count="2" type="stmt"/>
+        <line num="32" count="2" type="stmt"/>
+        <line num="33" count="2" type="stmt"/>
+        <line num="36" count="9" type="stmt"/>
+        <line num="38" count="9" type="stmt"/>
+        <line num="39" count="9" type="stmt"/>
+        <line num="40" count="9" type="stmt"/>
+        <line num="41" count="9" type="stmt"/>
+      </file>
+      <file name="paypal.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\lib\paypal.js">
+        <metrics statements="38" coveredstatements="38" conditionals="16" coveredconditionals="16" methods="6" coveredmethods="6"/>
+        <line num="1" count="24" type="stmt"/>
+        <line num="4" count="23" type="stmt"/>
+        <line num="5" count="23" type="cond" truecount="2" falsecount="0"/>
+        <line num="6" count="1" type="stmt"/>
+        <line num="7" count="1" type="stmt"/>
+        <line num="8" count="1" type="stmt"/>
+        <line num="11" count="22" type="stmt"/>
+        <line num="15" count="7" type="stmt"/>
+        <line num="16" count="7" type="stmt"/>
+        <line num="17" count="7" type="cond" truecount="2" falsecount="0"/>
+        <line num="19" count="7" type="stmt"/>
+        <line num="20" count="7" type="stmt"/>
+        <line num="29" count="7" type="cond" truecount="2" falsecount="0"/>
+        <line num="30" count="1" type="stmt"/>
+        <line num="31" count="1" type="stmt"/>
+        <line num="32" count="1" type="stmt"/>
+        <line num="35" count="6" type="stmt"/>
+        <line num="36" count="6" type="cond" truecount="2" falsecount="0"/>
+        <line num="37" count="1" type="stmt"/>
+        <line num="38" count="1" type="stmt"/>
+        <line num="39" count="1" type="stmt"/>
+        <line num="42" count="5" type="stmt"/>
+        <line num="46" count="8" type="stmt"/>
+        <line num="56" count="8" type="stmt"/>
+        <line num="64" count="36" type="stmt"/>
+        <line num="68" count="9" type="stmt"/>
+        <line num="69" count="8" type="cond" truecount="2" falsecount="0"/>
+        <line num="70" count="8" type="stmt"/>
+        <line num="72" count="8" type="cond" truecount="2" falsecount="0"/>
+        <line num="73" count="1" type="stmt"/>
+        <line num="80" count="7" type="stmt"/>
+        <line num="82" count="5" type="stmt"/>
+        <line num="95" count="5" type="cond" truecount="2" falsecount="0"/>
+        <line num="96" count="1" type="stmt"/>
+        <line num="103" count="4" type="stmt"/>
+        <line num="104" count="4" type="cond" truecount="2" falsecount="0"/>
+        <line num="106" count="4" type="stmt"/>
+        <line num="113" count="24" type="stmt"/>
+      </file>
+      <file name="prisma.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\lib\prisma.js">
+        <metrics statements="35" coveredstatements="35" conditionals="26" coveredconditionals="26" methods="18" coveredmethods="18"/>
+        <line num="3" count="35" type="stmt"/>
+        <line num="6" count="28" type="stmt"/>
+        <line num="8" count="1" type="stmt"/>
+        <line num="9" count="3" type="stmt"/>
+        <line num="10" count="1" type="stmt"/>
+        <line num="11" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="12" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="13" count="1" type="stmt"/>
+        <line num="14" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="15" count="1" type="stmt"/>
+        <line num="16" count="1" type="stmt"/>
+        <line num="17" count="113" type="stmt"/>
+        <line num="18" count="1" type="stmt"/>
+        <line num="22" count="158" type="cond" truecount="2" falsecount="0"/>
+        <line num="23" count="1" type="stmt"/>
+        <line num="26" count="157" type="cond" truecount="2" falsecount="0"/>
+        <line num="27" count="1" type="stmt"/>
+        <line num="30" count="157" type="stmt"/>
+        <line num="35" count="28" type="stmt"/>
+        <line num="38" count="2" type="stmt"/>
+        <line num="41" count="1" type="stmt"/>
+        <line num="44" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="45" count="1" type="stmt"/>
+        <line num="47" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="48" count="1" type="stmt"/>
+        <line num="50" count="1" type="stmt"/>
+        <line num="55" count="241" type="cond" truecount="2" falsecount="0"/>
+        <line num="56" count="106" type="stmt"/>
+        <line num="59" count="135" type="cond" truecount="2" falsecount="0"/>
+        <line num="60" count="1" type="stmt"/>
+        <line num="63" count="134" type="stmt"/>
+        <line num="69" count="35" type="cond" truecount="2" falsecount="0"/>
+        <line num="72" count="35" type="cond" truecount="2" falsecount="0"/>
+        <line num="79" count="35" type="cond" truecount="2" falsecount="0"/>
+        <line num="80" count="34" type="stmt"/>
+      </file>
+      <file name="rate-limit-redis-store.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\lib\rate-limit-redis-store.js">
+        <metrics statements="20" coveredstatements="20" conditionals="15" coveredconditionals="11" methods="4" coveredmethods="4"/>
+        <line num="3" count="63" type="stmt"/>
+        <line num="13" count="408" type="stmt"/>
+        <line num="17" count="71" type="cond" truecount="2" falsecount="0"/>
+        <line num="18" count="1" type="stmt"/>
+        <line num="22" count="417" type="stmt"/>
+        <line num="24" count="417" type="cond" truecount="2" falsecount="0"/>
+        <line num="25" count="8" type="stmt"/>
+        <line num="26" count="8" type="stmt"/>
+        <line num="31" count="8" type="stmt"/>
+        <line num="34" count="409" type="stmt"/>
+        <line num="35" count="409" type="stmt"/>
+        <line num="39" count="408" type="cond" truecount="1" falsecount="1"/>
+        <line num="40" count="408" type="cond" truecount="1" falsecount="1"/>
+        <line num="41" count="408" type="stmt"/>
+        <line num="47" count="1" type="stmt"/>
+        <line num="52" count="1" type="stmt"/>
+        <line num="56" count="70" type="stmt"/>
+        <line num="59" count="118" type="stmt"/>
+        <line num="60" count="118" type="cond" truecount="3" falsecount="1"/>
+        <line num="61" count="118" type="stmt"/>
+      </file>
+      <file name="refresh-token-redis-client.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\lib\refresh-token-redis-client.js">
+        <metrics statements="19" coveredstatements="1" conditionals="13" coveredconditionals="0" methods="5" coveredmethods="0"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="7" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="8" count="0" type="stmt"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="14" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="18" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="19" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="20" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="21" count="0" type="stmt"/>
         <line num="23" count="0" type="stmt"/>
-        <line num="26" count="20" type="stmt"/>
-        <line num="31" count="15" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="32" count="0" type="stmt"/>
+        <line num="37" count="0" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="42" count="0" type="stmt"/>
       </file>
-    </package>
-    <package name="middlewares">
-      <metrics statements="27" coveredstatements="27" conditionals="36" coveredconditionals="34" methods="4" coveredmethods="4"/>
-      <file name="error-handler.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\middlewares\error-handler.js">
-        <metrics statements="27" coveredstatements="27" conditionals="36" coveredconditionals="34" methods="4" coveredmethods="4"/>
-        <line num="5" count="24" type="cond" truecount="2" falsecount="0"/>
-        <line num="7" count="5" type="cond" truecount="5" falsecount="0"/>
-        <line num="8" count="4" type="stmt"/>
-        <line num="11" count="1" type="stmt"/>
-        <line num="15" count="24" type="stmt"/>
-        <line num="16" count="24" type="stmt"/>
-        <line num="17" count="24" type="stmt"/>
-        <line num="18" count="24" type="cond" truecount="4" falsecount="0"/>
-        <line num="20" count="24" type="stmt"/>
-        <line num="21" count="24" type="cond" truecount="2" falsecount="0"/>
-        <line num="22" count="19" type="stmt"/>
-        <line num="23" count="5" type="cond" truecount="2" falsecount="0"/>
-        <line num="24" count="2" type="cond" truecount="1" falsecount="1"/>
-        <line num="25" count="3" type="cond" truecount="2" falsecount="0"/>
-        <line num="26" count="2" type="cond" truecount="1" falsecount="1"/>
-        <line num="29" count="24" type="cond" truecount="4" falsecount="0"/>
-        <line num="30" count="24" type="stmt"/>
-        <line num="32" count="24" type="cond" truecount="5" falsecount="0"/>
+      <file name="simple-redis-client.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\lib\simple-redis-client.js">
+        <metrics statements="49" coveredstatements="48" conditionals="10" coveredconditionals="9" methods="15" coveredmethods="15"/>
+        <line num="3" count="2" type="stmt"/>
+        <line num="12" count="1" type="stmt"/>
+        <line num="16" count="6" type="stmt"/>
+        <line num="17" count="6" type="stmt"/>
+        <line num="18" count="1" type="stmt"/>
+        <line num="21" count="6" type="stmt"/>
+        <line num="23" count="2" type="stmt"/>
+        <line num="24" count="2" type="stmt"/>
+        <line num="27" count="3" type="stmt"/>
+        <line num="28" count="3" type="stmt"/>
+        <line num="34" count="1" type="stmt"/>
+        <line num="38" count="8" type="stmt"/>
+        <line num="47" count="8" type="stmt"/>
+        <line num="49" count="8" type="cond" truecount="2" falsecount="0"/>
+        <line num="50" count="1" type="stmt"/>
+        <line num="53" count="7" type="stmt"/>
+        <line num="54" count="7" type="stmt"/>
+        <line num="56" count="7" type="cond" truecount="1" falsecount="0"/>
+        <line num="57" count="4" type="stmt"/>
+        <line num="58" count="4" type="stmt"/>
+        <line num="61" count="7" type="stmt"/>
+        <line num="62" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="63" count="1" type="stmt"/>
+        <line num="66" count="7" type="stmt"/>
+        <line num="67" count="1" type="stmt"/>
+        <line num="71" count="5" type="stmt"/>
+        <line num="72" count="5" type="stmt"/>
+        <line num="73" count="6" type="stmt"/>
+        <line num="74" count="6" type="stmt"/>
+        <line num="75" count="6" type="stmt"/>
+        <line num="80" count="2" type="stmt"/>
+        <line num="81" count="2" type="stmt"/>
+        <line num="82" count="2" type="stmt"/>
+        <line num="84" count="4" type="stmt"/>
+        <line num="85" count="4" type="stmt"/>
+        <line num="86" count="4" type="cond" truecount="2" falsecount="0"/>
+        <line num="87" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="88" count="2" type="stmt"/>
+        <line num="90" count="1" type="stmt"/>
+        <line num="92" count="1" type="stmt"/>
+        <line num="95" count="0" type="stmt"/>
+        <line num="99" count="2" type="stmt"/>
+        <line num="100" count="2" type="stmt"/>
+        <line num="101" count="1" type="stmt"/>
+        <line num="102" count="1" type="stmt"/>
+        <line num="104" count="1" type="stmt"/>
+        <line num="105" count="1" type="stmt"/>
+        <line num="109" count="7" type="stmt"/>
+        <line num="113" count="2" type="stmt"/>
+      </file>
+      <file name="stripe.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\lib\stripe.js">
+        <metrics statements="39" coveredstatements="38" conditionals="32" coveredconditionals="29" methods="5" coveredmethods="5"/>
+        <line num="3" count="24" type="stmt"/>
+        <line num="6" count="43" type="cond" truecount="4" falsecount="0"/>
+        <line num="7" count="1" type="stmt"/>
+        <line num="10" count="42" type="stmt"/>
+        <line num="12" count="42" type="stmt"/>
+        <line num="13" count="81" type="stmt"/>
+        <line num="14" count="81" type="cond" truecount="4" falsecount="0"/>
+        <line num="15" count="79" type="cond" truecount="1" falsecount="1"/>
+        <line num="16" count="79" type="stmt"/>
+        <line num="19" count="42" type="stmt"/>
+        <line num="26" count="39" type="stmt"/>
+        <line num="27" count="39" type="cond" truecount="2" falsecount="0"/>
+        <line num="28" count="1" type="stmt"/>
+        <line num="31" count="38" type="stmt"/>
+        <line num="32" count="38" type="cond" truecount="2" falsecount="0"/>
         <line num="33" count="4" type="stmt"/>
-        <line num="36" count="24" type="cond" truecount="2" falsecount="0"/>
-        <line num="37" count="4" type="stmt"/>
+        <line num="38" count="43" type="stmt"/>
+        <line num="39" count="42" type="cond" truecount="4" falsecount="0"/>
+        <line num="40" count="3" type="stmt"/>
+        <line num="43" count="39" type="stmt"/>
+        <line num="45" count="34" type="stmt"/>
+        <line num="46" count="34" type="stmt"/>
+        <line num="51" count="34" type="stmt"/>
+        <line num="52" count="34" type="stmt"/>
+        <line num="53" count="34" type="stmt"/>
+        <line num="55" count="34" type="cond" truecount="1" falsecount="1"/>
+        <line num="56" count="0" type="stmt"/>
+        <line num="59" count="34" type="stmt"/>
+        <line num="62" count="34" type="cond" truecount="2" falsecount="0"/>
+        <line num="63" count="1" type="stmt"/>
+        <line num="68" count="45" type="cond" truecount="2" falsecount="0"/>
+        <line num="69" count="1" type="stmt"/>
+        <line num="72" count="44" type="cond" truecount="2" falsecount="0"/>
+        <line num="73" count="1" type="stmt"/>
+        <line num="76" count="43" type="stmt"/>
+        <line num="83" count="33" type="stmt"/>
+        <line num="84" count="33" type="stmt"/>
+        <line num="86" count="2" type="stmt"/>
+        <line num="90" count="24" type="stmt"/>
+      </file>
+      <file name="webhook-idempotency-store.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\lib\webhook-idempotency-store.js">
+        <metrics statements="23" coveredstatements="19" conditionals="20" coveredconditionals="14" methods="6" coveredmethods="6"/>
+        <line num="1" count="23" type="stmt"/>
+        <line num="4" count="24" type="stmt"/>
+        <line num="8" count="9" type="stmt"/>
+        <line num="11" count="24" type="stmt"/>
+        <line num="12" count="24" type="stmt"/>
+        <line num="13" count="31" type="cond" truecount="1" falsecount="1"/>
+        <line num="14" count="0" type="stmt"/>
+        <line num="19" count="9" type="stmt"/>
+        <line num="21" count="24" type="stmt"/>
+        <line num="22" count="24" type="cond" truecount="2" falsecount="0"/>
+        <line num="23" count="8" type="stmt"/>
+        <line num="26" count="16" type="stmt"/>
+        <line num="27" count="16" type="stmt"/>
+        <line num="33" count="9" type="stmt"/>
+        <line num="36" count="24" type="cond" truecount="4" falsecount="1"/>
+        <line num="37" count="0" type="stmt"/>
         <line num="40" count="24" type="stmt"/>
-        <line num="44" count="24" type="cond" truecount="2" falsecount="0"/>
-        <line num="48" count="24" type="stmt"/>
+        <line num="42" count="24" type="cond" truecount="1" falsecount="1"/>
+        <line num="43" count="0" type="stmt"/>
+        <line num="44" count="0" type="cond" truecount="0" falsecount="2"/>
         <line num="49" count="24" type="stmt"/>
-        <line num="51" count="24" type="stmt"/>
-        <line num="60" count="24" type="stmt"/>
+        <line num="50" count="24" type="cond" truecount="2" falsecount="0"/>
+        <line num="55" count="9" type="stmt"/>
       </file>
     </package>
-    <package name="validation">
+    <package name="src.middlewares">
+      <metrics statements="232" coveredstatements="217" conditionals="198" coveredconditionals="183" methods="49" coveredmethods="48"/>
+      <file name="authRateLimiter.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\middlewares\authRateLimiter.js">
+        <metrics statements="1" coveredstatements="1" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
+        <line num="3" count="2" type="stmt"/>
+      </file>
+      <file name="authenticate.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\middlewares\authenticate.js">
+        <metrics statements="26" coveredstatements="25" conditionals="18" coveredconditionals="17" methods="3" coveredmethods="3"/>
+        <line num="6" count="28" type="stmt"/>
+        <line num="9" count="16" type="stmt"/>
+        <line num="13" count="9" type="stmt"/>
+        <line num="25" count="59" type="stmt"/>
+        <line num="27" count="59" type="cond" truecount="2" falsecount="0"/>
+        <line num="28" count="5" type="stmt"/>
+        <line num="31" count="54" type="stmt"/>
+        <line num="32" count="54" type="cond" truecount="4" falsecount="0"/>
+        <line num="33" count="2" type="stmt"/>
+        <line num="36" count="52" type="stmt"/>
+        <line num="37" count="52" type="cond" truecount="1" falsecount="1"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="41" count="52" type="stmt"/>
+        <line num="42" count="52" type="cond" truecount="4" falsecount="0"/>
+        <line num="43" count="3" type="stmt"/>
+        <line num="46" count="49" type="cond" truecount="2" falsecount="0"/>
+        <line num="47" count="7" type="stmt"/>
+        <line num="51" count="7" type="stmt"/>
+        <line num="54" count="42" type="stmt"/>
+        <line num="55" count="42" type="cond" truecount="2" falsecount="0"/>
+        <line num="56" count="42" type="cond" truecount="2" falsecount="0"/>
+        <line num="57" count="2" type="stmt"/>
+        <line num="58" count="2" type="stmt"/>
+        <line num="61" count="40" type="stmt"/>
+        <line num="68" count="40" type="stmt"/>
+        <line num="74" count="40" type="stmt"/>
+      </file>
+      <file name="authorizeRole.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\middlewares\authorizeRole.js">
+        <metrics statements="11" coveredstatements="10" conditionals="14" coveredconditionals="13" methods="4" coveredmethods="4"/>
+        <line num="12" count="98" type="cond" truecount="2" falsecount="0"/>
+        <line num="14" count="120" type="cond" truecount="6" falsecount="0"/>
+        <line num="15" count="1" type="stmt"/>
+        <line num="18" count="120" type="stmt"/>
+        <line num="20" count="97" type="stmt"/>
+        <line num="21" count="6" type="cond" truecount="1" falsecount="1"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="25" count="6" type="stmt"/>
+        <line num="27" count="6" type="cond" truecount="4" falsecount="0"/>
+        <line num="28" count="3" type="stmt"/>
+        <line num="31" count="3" type="stmt"/>
+      </file>
+      <file name="checkoutCustomerAccess.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\middlewares\checkoutCustomerAccess.js">
+        <metrics statements="10" coveredstatements="10" conditionals="10" coveredconditionals="9" methods="2" coveredmethods="2"/>
+        <line num="19" count="28" type="cond" truecount="2" falsecount="0"/>
+        <line num="20" count="1" type="stmt"/>
+        <line num="23" count="27" type="cond" truecount="2" falsecount="0"/>
+        <line num="24" count="6" type="stmt"/>
+        <line num="27" count="21" type="stmt"/>
+        <line num="34" count="11" type="cond" truecount="2" falsecount="0"/>
+        <line num="35" count="1" type="stmt"/>
+        <line num="38" count="10" type="cond" truecount="3" falsecount="1"/>
+        <line num="39" count="1" type="stmt"/>
+        <line num="42" count="9" type="stmt"/>
+      </file>
+      <file name="checkoutIdentity.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\middlewares\checkoutIdentity.js">
+        <metrics statements="12" coveredstatements="10" conditionals="12" coveredconditionals="10" methods="1" coveredmethods="1"/>
+        <line num="11" count="24" type="cond" truecount="2" falsecount="0"/>
+        <line num="12" count="21" type="stmt"/>
+        <line num="15" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="16" count="3" type="cond" truecount="3" falsecount="1"/>
+        <line num="17" count="0" type="stmt"/>
+        <line num="20" count="3" type="stmt"/>
+        <line num="25" count="3" type="cond" truecount="3" falsecount="1"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="29" count="3" type="stmt"/>
+        <line num="38" count="3" type="stmt"/>
+        <line num="39" count="3" type="stmt"/>
+        <line num="40" count="3" type="stmt"/>
+      </file>
+      <file name="cookieParser.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\middlewares\cookieParser.js">
+        <metrics statements="14" coveredstatements="13" conditionals="4" coveredconditionals="3" methods="2" coveredmethods="2"/>
+        <line num="2" count="8" type="stmt"/>
+        <line num="3" count="8" type="stmt"/>
+        <line num="5" count="0" type="stmt"/>
+        <line num="10" count="247" type="stmt"/>
+        <line num="11" count="247" type="stmt"/>
+        <line num="13" count="247" type="cond" truecount="2" falsecount="0"/>
+        <line num="14" count="3" type="stmt"/>
+        <line num="15" count="3" type="stmt"/>
+        <line num="16" count="8" type="stmt"/>
+        <line num="17" count="8" type="cond" truecount="1" falsecount="1"/>
+        <line num="18" count="8" type="stmt"/>
+        <line num="19" count="8" type="stmt"/>
+        <line num="23" count="247" type="stmt"/>
+        <line num="24" count="247" type="stmt"/>
+      </file>
+      <file name="cors.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\middlewares\cors.js">
+        <metrics statements="20" coveredstatements="14" conditionals="17" coveredconditionals="12" methods="4" coveredmethods="4"/>
+        <line num="4" count="249" type="cond" truecount="2" falsecount="0"/>
+        <line num="6" count="249" type="stmt"/>
+        <line num="11" count="3" type="cond" truecount="1" falsecount="1"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="16" count="249" type="stmt"/>
+        <line num="17" count="249" type="stmt"/>
+        <line num="19" count="249" type="cond" truecount="4" falsecount="1"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="23" count="249" type="cond" truecount="2" falsecount="0"/>
+        <line num="24" count="3" type="cond" truecount="1" falsecount="1"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="28" count="3" type="cond" truecount="1" falsecount="1"/>
+        <line num="29" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="32" count="3" type="stmt"/>
+        <line num="33" count="3" type="stmt"/>
+        <line num="34" count="3" type="stmt"/>
+        <line num="37" count="249" type="cond" truecount="1" falsecount="1"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="41" count="249" type="stmt"/>
+      </file>
+      <file name="error-handler.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\middlewares\error-handler.js">
+        <metrics statements="29" coveredstatements="29" conditionals="41" coveredconditionals="41" methods="4" coveredmethods="4"/>
+        <line num="5" count="39" type="cond" truecount="2" falsecount="0"/>
+        <line num="7" count="19" type="cond" truecount="5" falsecount="0"/>
+        <line num="8" count="12" type="stmt"/>
+        <line num="11" count="7" type="cond" truecount="5" falsecount="0"/>
+        <line num="12" count="1" type="stmt"/>
+        <line num="15" count="6" type="stmt"/>
+        <line num="19" count="39" type="stmt"/>
+        <line num="20" count="39" type="stmt"/>
+        <line num="21" count="39" type="stmt"/>
+        <line num="22" count="39" type="cond" truecount="4" falsecount="0"/>
+        <line num="24" count="39" type="stmt"/>
+        <line num="25" count="39" type="cond" truecount="2" falsecount="0"/>
+        <line num="26" count="20" type="stmt"/>
+        <line num="27" count="19" type="cond" truecount="2" falsecount="0"/>
+        <line num="28" count="9" type="cond" truecount="2" falsecount="0"/>
+        <line num="29" count="10" type="cond" truecount="2" falsecount="0"/>
+        <line num="30" count="8" type="cond" truecount="2" falsecount="0"/>
+        <line num="33" count="39" type="cond" truecount="4" falsecount="0"/>
+        <line num="34" count="39" type="stmt"/>
+        <line num="36" count="39" type="cond" truecount="5" falsecount="0"/>
+        <line num="37" count="15" type="stmt"/>
+        <line num="40" count="39" type="cond" truecount="2" falsecount="0"/>
+        <line num="41" count="13" type="stmt"/>
+        <line num="44" count="39" type="stmt"/>
+        <line num="48" count="39" type="cond" truecount="2" falsecount="0"/>
+        <line num="52" count="39" type="stmt"/>
+        <line num="53" count="39" type="stmt"/>
+        <line num="55" count="39" type="stmt"/>
+        <line num="64" count="39" type="stmt"/>
+      </file>
+      <file name="rateLimit.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\middlewares\rateLimit.js">
+        <metrics statements="58" coveredstatements="55" conditionals="51" coveredconditionals="49" methods="17" coveredmethods="16"/>
+        <line num="6" count="63" type="stmt"/>
+        <line num="9" count="86" type="cond" truecount="2" falsecount="0"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="17" count="2" type="cond" truecount="4" falsecount="0"/>
+        <line num="18" count="1" type="stmt"/>
+        <line num="21" count="1" type="stmt"/>
+        <line num="22" count="1" type="stmt"/>
+        <line num="23" count="1" type="stmt"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="30" count="396" type="cond" truecount="4" falsecount="0"/>
+        <line num="31" count="394" type="stmt"/>
+        <line num="32" count="394" type="cond" truecount="2" falsecount="0"/>
+        <line num="36" count="394" type="stmt"/>
+        <line num="37" count="394" type="stmt"/>
+        <line num="39" count="394" type="cond" truecount="4" falsecount="0"/>
+        <line num="40" count="1" type="stmt"/>
+        <line num="43" count="393" type="cond" truecount="4" falsecount="0"/>
+        <line num="44" count="2" type="stmt"/>
+        <line num="45" count="2" type="stmt"/>
+        <line num="46" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="47" count="1" type="stmt"/>
+        <line num="51" count="392" type="cond" truecount="2" falsecount="0"/>
+        <line num="52" count="392" type="cond" truecount="2" falsecount="0"/>
+        <line num="53" count="2" type="stmt"/>
+        <line num="55" count="390" type="stmt"/>
+        <line num="59" count="248" type="cond" truecount="2" falsecount="1"/>
+        <line num="60" count="248" type="stmt"/>
+        <line num="61" count="248" type="cond" truecount="2" falsecount="0"/>
+        <line num="65" count="133" type="cond" truecount="3" falsecount="1"/>
+        <line num="66" count="0" type="stmt"/>
+        <line num="70" count="397" type="cond" truecount="2" falsecount="0"/>
+        <line num="71" count="397" type="cond" truecount="2" falsecount="0"/>
+        <line num="74" count="397" type="stmt"/>
+        <line num="75" count="397" type="stmt"/>
+        <line num="77" count="2" type="stmt"/>
+        <line num="80" count="395" type="stmt"/>
+        <line num="81" count="395" type="stmt"/>
+        <line num="82" count="387" type="stmt"/>
+        <line num="83" count="387" type="cond" truecount="2" falsecount="0"/>
+        <line num="84" count="365" type="stmt"/>
+        <line num="86" count="387" type="cond" truecount="2" falsecount="0"/>
+        <line num="87" count="18" type="stmt"/>
+        <line num="89" count="369" type="stmt"/>
+        <line num="91" count="8" type="stmt"/>
+        <line num="95" count="8" type="stmt"/>
+        <line num="99" count="133" type="stmt"/>
+        <line num="101" count="133" type="stmt"/>
+        <line num="104" count="506" type="stmt"/>
+        <line num="106" count="63" type="stmt"/>
+        <line num="107" count="246" type="cond" truecount="2" falsecount="0"/>
+        <line num="108" count="246" type="cond" truecount="2" falsecount="0"/>
+        <line num="111" count="246" type="stmt"/>
+        <line num="115" count="63" type="stmt"/>
+        <line num="116" count="142" type="cond" truecount="2" falsecount="0"/>
+        <line num="117" count="142" type="cond" truecount="2" falsecount="0"/>
+        <line num="120" count="142" type="stmt"/>
+        <line num="125" count="59" type="stmt"/>
+        <line num="126" count="59" type="stmt"/>
+      </file>
+      <file name="rbac.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\middlewares\rbac.js">
+        <metrics statements="12" coveredstatements="11" conditionals="10" coveredconditionals="9" methods="3" coveredmethods="3"/>
+        <line num="5" count="61" type="cond" truecount="2" falsecount="0"/>
+        <line num="6" count="4" type="stmt"/>
+        <line num="7" count="4" type="stmt"/>
+        <line num="10" count="57" type="stmt"/>
+        <line num="14" count="51" type="stmt"/>
+        <line num="18" count="30" type="stmt"/>
+        <line num="19" count="30" type="stmt"/>
+        <line num="21" count="30" type="cond" truecount="1" falsecount="1"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="25" count="30" type="cond" truecount="2" falsecount="0"/>
+        <line num="26" count="30" type="cond" truecount="2" falsecount="0"/>
+        <line num="27" count="30" type="cond" truecount="2" falsecount="0"/>
+      </file>
+      <file name="requestContext.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\middlewares\requestContext.js">
+        <metrics statements="5" coveredstatements="5" conditionals="3" coveredconditionals="3" methods="1" coveredmethods="1"/>
+        <line num="4" count="247" type="stmt"/>
+        <line num="5" count="247" type="cond" truecount="3" falsecount="0"/>
+        <line num="7" count="247" type="stmt"/>
+        <line num="8" count="247" type="stmt"/>
+        <line num="10" count="247" type="stmt"/>
+      </file>
+      <file name="requestLogger.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\middlewares\requestLogger.js">
+        <metrics statements="12" coveredstatements="12" conditionals="6" coveredconditionals="6" methods="2" coveredmethods="2"/>
+        <line num="4" count="247" type="stmt"/>
+        <line num="6" count="247" type="stmt"/>
+        <line num="7" count="247" type="stmt"/>
+        <line num="8" count="247" type="stmt"/>
+        <line num="16" count="247" type="cond" truecount="4" falsecount="0"/>
+        <line num="17" count="1" type="stmt"/>
+        <line num="18" count="1" type="stmt"/>
+        <line num="21" count="246" type="cond" truecount="2" falsecount="0"/>
+        <line num="22" count="16" type="stmt"/>
+        <line num="23" count="16" type="stmt"/>
+        <line num="26" count="230" type="stmt"/>
+        <line num="29" count="247" type="stmt"/>
+      </file>
+      <file name="requirePermission.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\middlewares\requirePermission.js">
+        <metrics statements="12" coveredstatements="12" conditionals="12" coveredconditionals="11" methods="5" coveredmethods="5"/>
+        <line num="10" count="71" type="cond" truecount="1" falsecount="1"/>
+        <line num="12" count="71" type="cond" truecount="6" falsecount="0"/>
+        <line num="13" count="1" type="stmt"/>
+        <line num="16" count="70" type="stmt"/>
+        <line num="18" count="70" type="stmt"/>
+        <line num="19" count="15" type="cond" truecount="2" falsecount="0"/>
+        <line num="20" count="1" type="stmt"/>
+        <line num="23" count="14" type="stmt"/>
+        <line num="24" count="14" type="stmt"/>
+        <line num="26" count="14" type="cond" truecount="2" falsecount="0"/>
+        <line num="27" count="7" type="stmt"/>
+        <line num="30" count="7" type="stmt"/>
+      </file>
+      <file name="securityHeaders.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\middlewares\securityHeaders.js">
+        <metrics statements="10" coveredstatements="10" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
+        <line num="2" count="249" type="stmt"/>
+        <line num="3" count="249" type="stmt"/>
+        <line num="4" count="249" type="stmt"/>
+        <line num="5" count="249" type="stmt"/>
+        <line num="6" count="249" type="stmt"/>
+        <line num="7" count="249" type="stmt"/>
+        <line num="8" count="249" type="stmt"/>
+        <line num="9" count="249" type="stmt"/>
+        <line num="10" count="249" type="stmt"/>
+        <line num="11" count="249" type="stmt"/>
+      </file>
+    </package>
+    <package name="src.repositories">
+      <metrics statements="217" coveredstatements="177" conditionals="100" coveredconditionals="72" methods="60" coveredmethods="39"/>
+      <file name="analytics.repository.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\repositories\analytics.repository.js">
+        <metrics statements="7" coveredstatements="0" conditionals="5" coveredconditionals="0" methods="5" coveredmethods="0"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="18" count="0" type="cond" truecount="0" falsecount="4"/>
+        <line num="19" count="0" type="stmt"/>
+      </file>
+      <file name="cart.repository.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\repositories\cart.repository.js">
+        <metrics statements="10" coveredstatements="0" conditionals="5" coveredconditionals="0" methods="6" coveredmethods="0"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="18" count="0" type="cond" truecount="0" falsecount="4"/>
+        <line num="19" count="0" type="stmt"/>
+        <line num="23" count="0" type="stmt"/>
+        <line num="24" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+      </file>
+      <file name="lead.repository.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\repositories\lead.repository.js">
+        <metrics statements="7" coveredstatements="0" conditionals="5" coveredconditionals="0" methods="5" coveredmethods="0"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="18" count="0" type="cond" truecount="0" falsecount="4"/>
+        <line num="19" count="0" type="stmt"/>
+      </file>
+      <file name="order.repository.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\repositories\order.repository.js">
+        <metrics statements="144" coveredstatements="135" conditionals="69" coveredconditionals="61" methods="30" coveredmethods="30"/>
+        <line num="6" count="74" type="stmt"/>
+        <line num="7" count="74" type="stmt"/>
+        <line num="8" count="77" type="cond" truecount="2" falsecount="0"/>
+        <line num="9" count="77" type="stmt"/>
+        <line num="12" count="74" type="stmt"/>
+        <line num="13" count="77" type="stmt"/>
+        <line num="14" count="3" type="stmt"/>
+        <line num="18" count="15" type="cond" truecount="2" falsecount="2"/>
+        <line num="19" count="0" type="cond" truecount="0" falsecount="4"/>
+        <line num="20" count="0" type="stmt"/>
+        <line num="21" count="0" type="stmt"/>
+        <line num="22" count="0" type="stmt"/>
+        <line num="25" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="27" count="0" type="stmt"/>
+        <line num="28" count="0" type="stmt"/>
+        <line num="30" count="0" type="stmt"/>
+        <line num="33" count="15" type="cond" truecount="4" falsecount="0"/>
+        <line num="34" count="11" type="stmt"/>
+        <line num="38" count="4" type="stmt"/>
+        <line num="39" count="4" type="stmt"/>
+        <line num="41" count="1" type="stmt"/>
+        <line num="42" count="1" type="stmt"/>
+        <line num="43" count="1" type="stmt"/>
+        <line num="46" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="47" count="1" type="stmt"/>
+        <line num="48" count="1" type="stmt"/>
+        <line num="49" count="1" type="stmt"/>
+        <line num="54" count="6" type="cond" truecount="2" falsecount="0"/>
+        <line num="55" count="3" type="stmt"/>
+        <line num="56" count="3" type="stmt"/>
+        <line num="57" count="3" type="stmt"/>
+        <line num="61" count="26" type="stmt"/>
+        <line num="63" count="2" type="stmt"/>
+        <line num="66" count="3" type="stmt"/>
+        <line num="69" count="1" type="stmt"/>
+        <line num="72" count="1" type="stmt"/>
+        <line num="75" count="2" type="cond" truecount="4" falsecount="0"/>
+        <line num="76" count="2" type="stmt"/>
+        <line num="80" count="58" type="stmt"/>
+        <line num="82" count="58" type="stmt"/>
+        <line num="83" count="58" type="stmt"/>
+        <line num="84" count="60" type="stmt"/>
+        <line num="85" count="58" type="stmt"/>
+        <line num="90" count="58" type="cond" truecount="2" falsecount="0"/>
+        <line num="91" count="1" type="stmt"/>
+        <line num="92" count="2" type="stmt"/>
+        <line num="93" count="1" type="stmt"/>
+        <line num="94" count="1" type="stmt"/>
+        <line num="95" count="1" type="stmt"/>
+        <line num="98" count="58" type="stmt"/>
+        <line num="100" count="57" type="stmt"/>
+        <line num="101" count="58" type="stmt"/>
+        <line num="102" count="58" type="stmt"/>
+        <line num="103" count="58" type="stmt"/>
+        <line num="107" count="57" type="stmt"/>
+        <line num="108" count="57" type="stmt"/>
+        <line num="118" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="119" count="2" type="stmt"/>
+        <line num="120" count="2" type="stmt"/>
+        <line num="122" count="1" type="stmt"/>
+        <line num="125" count="54" type="stmt"/>
+        <line num="126" count="55" type="stmt"/>
+        <line num="136" count="55" type="cond" truecount="2" falsecount="0"/>
+        <line num="137" count="46" type="stmt"/>
+        <line num="138" count="46" type="stmt"/>
+        <line num="139" count="46" type="stmt"/>
+        <line num="143" count="8" type="stmt"/>
+        <line num="144" count="8" type="stmt"/>
+        <line num="152" count="8" type="stmt"/>
+        <line num="154" count="8" type="stmt"/>
+        <line num="157" count="48" type="stmt"/>
+        <line num="167" count="16" type="stmt"/>
+        <line num="169" count="16" type="stmt"/>
+        <line num="170" count="16" type="stmt"/>
+        <line num="171" count="17" type="stmt"/>
+        <line num="172" count="16" type="stmt"/>
+        <line num="177" count="16" type="cond" truecount="2" falsecount="0"/>
+        <line num="178" count="1" type="stmt"/>
+        <line num="179" count="2" type="stmt"/>
+        <line num="180" count="1" type="stmt"/>
+        <line num="181" count="1" type="stmt"/>
+        <line num="182" count="1" type="stmt"/>
+        <line num="185" count="15" type="stmt"/>
+        <line num="186" count="15" type="stmt"/>
+        <line num="187" count="15" type="stmt"/>
+        <line num="188" count="15" type="stmt"/>
+        <line num="191" count="15" type="stmt"/>
+        <line num="194" count="13" type="stmt"/>
+        <line num="195" count="13" type="stmt"/>
+        <line num="205" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="206" count="1" type="stmt"/>
+        <line num="207" count="1" type="stmt"/>
+        <line num="209" count="1" type="stmt"/>
+        <line num="213" count="11" type="stmt"/>
+        <line num="214" count="11" type="stmt"/>
+        <line num="224" count="10" type="cond" truecount="2" falsecount="0"/>
+        <line num="225" count="3" type="stmt"/>
+        <line num="226" count="3" type="stmt"/>
+        <line num="227" count="3" type="stmt"/>
+        <line num="231" count="7" type="stmt"/>
+        <line num="232" count="7" type="stmt"/>
+        <line num="240" count="6" type="stmt"/>
+        <line num="241" count="6" type="stmt"/>
+        <line num="244" count="9" type="stmt"/>
+        <line num="249" count="9" type="stmt"/>
+        <line num="250" count="9" type="stmt"/>
+        <line num="251" count="9" type="stmt"/>
+        <line num="252" count="9" type="stmt"/>
+        <line num="261" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="262" count="1" type="stmt"/>
+        <line num="264" count="1" type="stmt"/>
+        <line num="267" count="7" type="stmt"/>
+        <line num="268" count="7" type="cond" truecount="2" falsecount="0"/>
+        <line num="269" count="1" type="stmt"/>
+        <line num="270" count="1" type="stmt"/>
+        <line num="271" count="1" type="stmt"/>
+        <line num="274" count="6" type="cond" truecount="4" falsecount="0"/>
+        <line num="275" count="1" type="stmt"/>
+        <line num="276" count="1" type="stmt"/>
+        <line num="277" count="1" type="stmt"/>
+        <line num="280" count="5" type="stmt"/>
+        <line num="282" count="3" type="stmt"/>
+        <line num="290" count="3" type="stmt"/>
+        <line num="293" count="5" type="stmt"/>
+        <line num="298" count="9" type="stmt"/>
+        <line num="299" count="9" type="stmt"/>
+        <line num="300" count="9" type="stmt"/>
+        <line num="301" count="9" type="stmt"/>
+        <line num="310" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="311" count="2" type="stmt"/>
+        <line num="313" count="1" type="stmt"/>
+        <line num="316" count="6" type="cond" truecount="2" falsecount="0"/>
+        <line num="317" count="2" type="stmt"/>
+        <line num="318" count="2" type="cond" truecount="4" falsecount="0"/>
+        <line num="319" count="1" type="stmt"/>
+        <line num="320" count="1" type="stmt"/>
+        <line num="321" count="1" type="stmt"/>
+        <line num="324" count="1" type="stmt"/>
+        <line num="327" count="4" type="cond" truecount="2" falsecount="0"/>
+        <line num="331" count="4" type="stmt"/>
+        <line num="336" count="4" type="stmt"/>
+        <line num="338" count="4" type="stmt"/>
+        <line num="344" count="3" type="stmt"/>
+      </file>
+      <file name="product.repository.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\repositories\product.repository.js">
+        <metrics statements="7" coveredstatements="0" conditionals="5" coveredconditionals="0" methods="5" coveredmethods="0"/>
+        <line num="4" count="0" type="stmt"/>
+        <line num="6" count="0" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="15" count="0" type="stmt"/>
+        <line num="18" count="0" type="cond" truecount="0" falsecount="4"/>
+        <line num="19" count="0" type="stmt"/>
+      </file>
+      <file name="user.repository.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\repositories\user.repository.js">
+        <metrics statements="42" coveredstatements="42" conditionals="11" coveredconditionals="11" methods="9" coveredmethods="9"/>
+        <line num="5" count="11" type="stmt"/>
+        <line num="6" count="11" type="stmt"/>
+        <line num="10" count="6" type="stmt"/>
+        <line num="11" count="11" type="stmt"/>
+        <line num="12" count="11" type="stmt"/>
+        <line num="14" count="10" type="cond" truecount="4" falsecount="0"/>
+        <line num="15" count="1" type="stmt"/>
+        <line num="16" count="1" type="stmt"/>
+        <line num="17" count="1" type="stmt"/>
+        <line num="18" count="1" type="stmt"/>
+        <line num="21" count="9" type="cond" truecount="2" falsecount="0"/>
+        <line num="22" count="3" type="stmt"/>
+        <line num="26" count="1" type="stmt"/>
+        <line num="27" count="1" type="stmt"/>
+        <line num="28" count="1" type="stmt"/>
+        <line num="29" count="1" type="stmt"/>
+        <line num="32" count="42" type="stmt"/>
+        <line num="34" count="2" type="stmt"/>
+        <line num="35" count="2" type="stmt"/>
+        <line num="37" count="1" type="stmt"/>
+        <line num="46" count="6" type="stmt"/>
+        <line num="47" count="6" type="stmt"/>
+        <line num="48" count="6" type="stmt"/>
+        <line num="49" count="6" type="stmt"/>
+        <line num="51" count="3" type="stmt"/>
+        <line num="60" count="4" type="stmt"/>
+        <line num="65" count="2" type="stmt"/>
+        <line num="66" count="2" type="stmt"/>
+        <line num="68" count="1" type="stmt"/>
+        <line num="73" count="2" type="stmt"/>
+        <line num="74" count="2" type="stmt"/>
+        <line num="76" count="1" type="stmt"/>
+        <line num="81" count="2" type="stmt"/>
+        <line num="82" count="2" type="stmt"/>
+        <line num="84" count="1" type="stmt"/>
+        <line num="89" count="2" type="stmt"/>
+        <line num="90" count="2" type="stmt"/>
+        <line num="92" count="1" type="stmt"/>
+        <line num="97" count="3" type="cond" truecount="4" falsecount="0"/>
+        <line num="99" count="3" type="stmt"/>
+        <line num="100" count="3" type="stmt"/>
+        <line num="102" count="1" type="stmt"/>
+      </file>
+    </package>
+    <package name="src.routes">
+      <metrics statements="268" coveredstatements="247" conditionals="165" coveredconditionals="136" methods="43" coveredmethods="31"/>
+      <file name="admin-example.routes.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\routes\admin-example.routes.js">
+        <metrics statements="5" coveredstatements="4" conditionals="0" coveredconditionals="0" methods="2" coveredmethods="1"/>
+        <line num="5" count="23" type="stmt"/>
+        <line num="8" count="23" type="stmt"/>
+        <line num="9" count="0" type="stmt"/>
+        <line num="17" count="23" type="stmt"/>
+        <line num="18" count="1" type="stmt"/>
+      </file>
+      <file name="admin-routes.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\routes\admin-routes.js">
+        <metrics statements="4" coveredstatements="4" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
+        <line num="5" count="23" type="stmt"/>
+        <line num="8" count="23" type="stmt"/>
+        <line num="11" count="23" type="stmt"/>
+        <line num="12" count="5" type="stmt"/>
+      </file>
+      <file name="analytics.routes.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\routes\analytics.routes.js">
+        <metrics statements="3" coveredstatements="3" conditionals="0" coveredconditionals="0" methods="2" coveredmethods="1"/>
+        <line num="8" count="23" type="stmt"/>
+        <line num="10" count="23" type="stmt"/>
+        <line num="11" count="23" type="stmt"/>
+      </file>
+      <file name="auth.routes.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\routes\auth.routes.js">
+        <metrics statements="81" coveredstatements="73" conditionals="44" coveredconditionals="37" methods="10" coveredmethods="10"/>
+        <line num="17" count="23" type="stmt"/>
+        <line num="19" count="23" type="stmt"/>
+        <line num="22" count="65" type="stmt"/>
+        <line num="23" count="65" type="stmt"/>
+        <line num="25" count="65" type="stmt"/>
+        <line num="36" count="42" type="stmt"/>
+        <line num="37" count="42" type="cond" truecount="4" falsecount="0"/>
+        <line num="38" count="36" type="stmt"/>
+        <line num="41" count="6" type="stmt"/>
+        <line num="42" count="6" type="cond" truecount="4" falsecount="0"/>
+        <line num="43" count="3" type="stmt"/>
+        <line num="46" count="3" type="stmt"/>
+        <line num="50" count="14" type="stmt"/>
+        <line num="51" count="14" type="stmt"/>
+        <line num="52" count="14" type="stmt"/>
+        <line num="56" count="42" type="stmt"/>
+        <line num="57" count="40" type="stmt"/>
+        <line num="59" count="40" type="cond" truecount="1" falsecount="1"/>
+        <line num="60" count="0" type="stmt"/>
+        <line num="63" count="40" type="stmt"/>
+        <line num="70" count="40" type="cond" truecount="1" falsecount="1"/>
+        <line num="71" count="0" type="stmt"/>
+        <line num="74" count="40" type="stmt"/>
+        <line num="76" count="40" type="stmt"/>
+        <line num="83" count="23" type="stmt"/>
+        <line num="84" count="3" type="stmt"/>
+        <line num="85" count="3" type="stmt"/>
+        <line num="86" count="3" type="stmt"/>
+        <line num="88" count="2" type="cond" truecount="1" falsecount="1"/>
+        <line num="89" count="0" type="stmt"/>
+        <line num="92" count="2" type="stmt"/>
+        <line num="102" count="1" type="stmt"/>
+        <line num="106" count="23" type="stmt"/>
+        <line num="107" count="39" type="stmt"/>
+        <line num="108" count="39" type="stmt"/>
+        <line num="109" count="39" type="stmt"/>
+        <line num="111" count="38" type="cond" truecount="1" falsecount="1"/>
+        <line num="112" count="0" type="stmt"/>
+        <line num="115" count="38" type="stmt"/>
+        <line num="123" count="1" type="stmt"/>
+        <line num="127" count="23" type="stmt"/>
+        <line num="128" count="8" type="stmt"/>
+        <line num="131" count="23" type="stmt"/>
+        <line num="132" count="8" type="stmt"/>
+        <line num="135" count="23" type="stmt"/>
+        <line num="136" count="28" type="stmt"/>
+        <line num="137" count="28" type="stmt"/>
+        <line num="138" count="28" type="stmt"/>
+        <line num="140" count="28" type="cond" truecount="4" falsecount="0"/>
+        <line num="141" count="1" type="stmt"/>
+        <line num="144" count="27" type="cond" truecount="2" falsecount="0"/>
+        <line num="145" count="6" type="stmt"/>
+        <line num="148" count="21" type="stmt"/>
+        <line num="149" count="21" type="stmt"/>
+        <line num="156" count="21" type="cond" truecount="2" falsecount="0"/>
+        <line num="157" count="10" type="cond" truecount="2" falsecount="0"/>
+        <line num="158" count="10" type="cond" truecount="2" falsecount="0"/>
+        <line num="159" count="10" type="cond" truecount="2" falsecount="0"/>
+        <line num="160" count="10" type="stmt"/>
+        <line num="163" count="11" type="stmt"/>
+        <line num="164" count="11" type="cond" truecount="1" falsecount="1"/>
+        <line num="165" count="0" type="stmt"/>
+        <line num="168" count="11" type="stmt"/>
+        <line num="176" count="11" type="cond" truecount="1" falsecount="1"/>
+        <line num="177" count="0" type="stmt"/>
+        <line num="180" count="11" type="cond" truecount="2" falsecount="0"/>
+        <line num="181" count="11" type="stmt"/>
+        <line num="183" count="11" type="stmt"/>
+        <line num="191" count="0" type="stmt"/>
+        <line num="195" count="23" type="stmt"/>
+        <line num="196" count="14" type="stmt"/>
+        <line num="197" count="14" type="stmt"/>
+        <line num="198" count="14" type="stmt"/>
+        <line num="200" count="14" type="cond" truecount="2" falsecount="0"/>
+        <line num="201" count="2" type="stmt"/>
+        <line num="204" count="12" type="stmt"/>
+        <line num="205" count="12" type="cond" truecount="2" falsecount="0"/>
+        <line num="206" count="3" type="stmt"/>
+        <line num="209" count="9" type="stmt"/>
+        <line num="211" count="9" type="stmt"/>
+        <line num="213" count="0" type="stmt"/>
+      </file>
+      <file name="cart.routes.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\routes\cart.routes.js">
+        <metrics statements="5" coveredstatements="5" conditionals="0" coveredconditionals="0" methods="4" coveredmethods="0"/>
+        <line num="7" count="23" type="stmt"/>
+        <line num="9" count="23" type="stmt"/>
+        <line num="10" count="23" type="stmt"/>
+        <line num="11" count="23" type="stmt"/>
+        <line num="12" count="23" type="stmt"/>
+      </file>
+      <file name="leads.routes.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\routes\leads.routes.js">
+        <metrics statements="3" coveredstatements="3" conditionals="0" coveredconditionals="0" methods="2" coveredmethods="0"/>
+        <line num="7" count="23" type="stmt"/>
+        <line num="9" count="23" type="stmt"/>
+        <line num="10" count="23" type="stmt"/>
+      </file>
+      <file name="orders.routes.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\routes\orders.routes.js">
+        <metrics statements="18" coveredstatements="11" conditionals="10" coveredconditionals="6" methods="3" coveredmethods="1"/>
+        <line num="11" count="23" type="stmt"/>
+        <line num="13" count="23" type="stmt"/>
+        <line num="21" count="8" type="stmt"/>
+        <line num="22" count="8" type="stmt"/>
+        <line num="29" count="6" type="stmt"/>
+        <line num="37" count="6" type="cond" truecount="2" falsecount="0"/>
+        <line num="38" count="1" type="stmt"/>
+        <line num="41" count="6" type="cond" truecount="2" falsecount="0"/>
+        <line num="43" count="2" type="stmt"/>
+        <line num="48" count="23" type="stmt"/>
+        <line num="49" count="0" type="stmt"/>
+        <line num="50" count="0" type="stmt"/>
+        <line num="51" count="0" type="cond" truecount="0" falsecount="4"/>
+        <line num="52" count="0" type="stmt"/>
+        <line num="55" count="0" type="stmt"/>
+        <line num="56" count="0" type="stmt"/>
+        <line num="58" count="0" type="stmt"/>
+        <line num="62" count="23" type="stmt"/>
+      </file>
+      <file name="payments.routes.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\routes\payments.routes.js">
+        <metrics statements="23" coveredstatements="23" conditionals="12" coveredconditionals="10" methods="7" coveredmethods="7"/>
+        <line num="13" count="23" type="stmt"/>
+        <line num="14" count="23" type="stmt"/>
+        <line num="17" count="11" type="cond" truecount="1" falsecount="1"/>
+        <line num="22" count="23" type="stmt"/>
+        <line num="23" count="11" type="stmt"/>
+        <line num="24" count="11" type="stmt"/>
+        <line num="25" count="11" type="cond" truecount="2" falsecount="0"/>
+        <line num="26" count="1" type="stmt"/>
+        <line num="29" count="10" type="stmt"/>
+        <line num="30" count="10" type="stmt"/>
+        <line num="31" count="10" type="stmt"/>
+        <line num="36" count="10" type="cond" truecount="2" falsecount="0"/>
+        <line num="37" count="1" type="stmt"/>
+        <line num="40" count="9" type="stmt"/>
+        <line num="41" count="9" type="stmt"/>
+        <line num="47" count="9" type="stmt"/>
+        <line num="48" count="9" type="stmt"/>
+        <line num="50" count="9" type="stmt"/>
+        <line num="52" count="9" type="stmt"/>
+        <line num="58" count="7" type="stmt"/>
+        <line num="59" count="7" type="cond" truecount="1" falsecount="1"/>
+        <line num="61" count="7" type="cond" truecount="2" falsecount="0"/>
+        <line num="81" count="2" type="stmt"/>
+      </file>
+      <file name="products.routes.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\routes\products.routes.js">
+        <metrics statements="4" coveredstatements="4" conditionals="0" coveredconditionals="0" methods="3" coveredmethods="1"/>
+        <line num="8" count="23" type="stmt"/>
+        <line num="10" count="23" type="stmt"/>
+        <line num="11" count="23" type="stmt"/>
+        <line num="12" count="23" type="stmt"/>
+      </file>
+      <file name="webhooks.routes.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\routes\webhooks.routes.js">
+        <metrics statements="122" coveredstatements="117" conditionals="99" coveredconditionals="83" methods="9" coveredmethods="9"/>
+        <line num="12" count="23" type="stmt"/>
+        <line num="13" count="23" type="stmt"/>
+        <line num="14" count="23" type="stmt"/>
+        <line num="17" count="30" type="cond" truecount="1" falsecount="1"/>
+        <line num="23" count="102" type="cond" truecount="1" falsecount="2"/>
+        <line num="27" count="21" type="cond" truecount="2" falsecount="0"/>
+        <line num="28" count="1" type="stmt"/>
+        <line num="29" count="1" type="stmt"/>
+        <line num="30" count="1" type="stmt"/>
+        <line num="33" count="20" type="cond" truecount="1" falsecount="1"/>
+        <line num="34" count="0" type="stmt"/>
+        <line num="35" count="0" type="stmt"/>
+        <line num="36" count="0" type="stmt"/>
+        <line num="39" count="20" type="stmt"/>
+        <line num="40" count="20" type="stmt"/>
+        <line num="42" count="1" type="stmt"/>
+        <line num="43" count="1" type="stmt"/>
+        <line num="44" count="1" type="stmt"/>
+        <line num="49" count="44" type="cond" truecount="2" falsecount="0"/>
+        <line num="50" count="4" type="stmt"/>
+        <line num="52" count="44" type="stmt"/>
+        <line num="56" count="24" type="stmt"/>
+        <line num="60" count="44" type="stmt"/>
+        <line num="61" count="44" type="stmt"/>
+        <line num="62" count="44" type="stmt"/>
+        <line num="64" count="44" type="cond" truecount="2" falsecount="0"/>
+        <line num="65" count="10" type="stmt"/>
+        <line num="73" count="10" type="cond" truecount="2" falsecount="0"/>
+        <line num="74" count="1" type="stmt"/>
+        <line num="77" count="9" type="stmt"/>
+        <line num="80" count="34" type="stmt"/>
+        <line num="83" count="23" type="stmt"/>
+        <line num="84" count="37" type="stmt"/>
+        <line num="85" count="37" type="stmt"/>
+        <line num="86" count="37" type="stmt"/>
+        <line num="87" count="37" type="stmt"/>
+        <line num="88" count="37" type="stmt"/>
+        <line num="90" count="37" type="stmt"/>
+        <line num="96" count="37" type="cond" truecount="5" falsecount="0"/>
+        <line num="97" count="2" type="stmt"/>
+        <line num="103" count="2" type="stmt"/>
+        <line num="107" count="35" type="stmt"/>
+        <line num="108" count="35" type="stmt"/>
+        <line num="110" count="6" type="stmt"/>
+        <line num="114" count="6" type="stmt"/>
+        <line num="117" count="29" type="stmt"/>
+        <line num="118" count="27" type="stmt"/>
+        <line num="125" count="27" type="cond" truecount="2" falsecount="0"/>
+        <line num="126" count="2" type="stmt"/>
+        <line num="129" count="25" type="stmt"/>
+        <line num="130" count="25" type="stmt"/>
+        <line num="131" count="25" type="stmt"/>
+        <line num="133" count="25" type="stmt"/>
+        <line num="140" count="25" type="cond" truecount="2" falsecount="0"/>
+        <line num="142" count="19" type="cond" truecount="2" falsecount="0"/>
+        <line num="143" count="1" type="stmt"/>
+        <line num="146" count="18" type="stmt"/>
+        <line num="147" count="17" type="cond" truecount="2" falsecount="0"/>
+        <line num="148" count="2" type="stmt"/>
+        <line num="154" count="2" type="stmt"/>
+        <line num="157" count="15" type="cond" truecount="2" falsecount="0"/>
+        <line num="158" count="4" type="stmt"/>
+        <line num="165" count="4" type="stmt"/>
+        <line num="168" count="11" type="cond" truecount="1" falsecount="1"/>
+        <line num="169" count="11" type="cond" truecount="2" falsecount="0"/>
+        <line num="170" count="1" type="stmt"/>
+        <line num="178" count="1" type="stmt"/>
+        <line num="181" count="10" type="cond" truecount="3" falsecount="1"/>
+        <line num="182" count="1" type="stmt"/>
+        <line num="190" count="1" type="stmt"/>
+        <line num="193" count="9" type="stmt"/>
+        <line num="203" count="9" type="stmt"/>
+        <line num="205" count="3" type="cond" truecount="4" falsecount="0"/>
+        <line num="206" count="2" type="stmt"/>
+        <line num="211" count="2" type="cond" truecount="2" falsecount="0"/>
+        <line num="214" count="1" type="stmt"/>
+        <line num="218" count="23" type="stmt"/>
+        <line num="219" count="21" type="stmt"/>
+        <line num="220" count="21" type="stmt"/>
+        <line num="221" count="21" type="stmt"/>
+        <line num="222" count="21" type="cond" truecount="1" falsecount="1"/>
+        <line num="224" count="21" type="cond" truecount="1" falsecount="1"/>
+        <line num="225" count="0" type="stmt"/>
+        <line num="228" count="21" type="stmt"/>
+        <line num="230" count="19" type="stmt"/>
+        <line num="236" count="19" type="stmt"/>
+        <line num="237" count="19" type="stmt"/>
+        <line num="244" count="19" type="cond" truecount="2" falsecount="0"/>
+        <line num="246" count="15" type="stmt"/>
+        <line num="247" count="5" type="stmt"/>
+        <line num="251" count="15" type="cond" truecount="4" falsecount="0"/>
+        <line num="252" count="3" type="stmt"/>
+        <line num="257" count="3" type="stmt"/>
+        <line num="260" count="12" type="cond" truecount="2" falsecount="0"/>
+        <line num="261" count="1" type="stmt"/>
+        <line num="264" count="11" type="stmt"/>
+        <line num="265" count="11" type="cond" truecount="2" falsecount="0"/>
+        <line num="266" count="2" type="stmt"/>
+        <line num="272" count="2" type="stmt"/>
+        <line num="275" count="9" type="cond" truecount="2" falsecount="0"/>
+        <line num="276" count="1" type="stmt"/>
+        <line num="283" count="1" type="stmt"/>
+        <line num="286" count="8" type="cond" truecount="2" falsecount="0"/>
+        <line num="287" count="8" type="cond" truecount="1" falsecount="1"/>
+        <line num="288" count="8" type="stmt"/>
+        <line num="289" count="8" type="cond" truecount="4" falsecount="0"/>
+        <line num="290" count="6" type="stmt"/>
+        <line num="291" count="6" type="cond" truecount="1" falsecount="2"/>
+        <line num="293" count="0" type="stmt"/>
+        <line num="297" count="8" type="cond" truecount="4" falsecount="0"/>
+        <line num="298" count="1" type="stmt"/>
+        <line num="306" count="1" type="stmt"/>
+        <line num="309" count="7" type="cond" truecount="5" falsecount="1"/>
+        <line num="310" count="1" type="stmt"/>
+        <line num="318" count="1" type="stmt"/>
+        <line num="321" count="6" type="cond" truecount="4" falsecount="0"/>
+        <line num="322" count="1" type="stmt"/>
+        <line num="325" count="5" type="stmt"/>
+        <line num="335" count="5" type="stmt"/>
+        <line num="337" count="2" type="cond" truecount="4" falsecount="0"/>
+        <line num="338" count="1" type="cond" truecount="1" falsecount="1"/>
+        <line num="341" count="1" type="stmt"/>
+      </file>
+    </package>
+    <package name="src.security">
+      <metrics statements="139" coveredstatements="136" conditionals="117" coveredconditionals="108" methods="33" coveredmethods="33"/>
+      <file name="access-token.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\security\access-token.js">
+        <metrics statements="19" coveredstatements="19" conditionals="20" coveredconditionals="20" methods="2" coveredmethods="2"/>
+        <line num="5" count="76" type="cond" truecount="2" falsecount="0"/>
+        <line num="7" count="76" type="cond" truecount="4" falsecount="0"/>
+        <line num="8" count="2" type="stmt"/>
+        <line num="9" count="2" type="stmt"/>
+        <line num="10" count="2" type="stmt"/>
+        <line num="11" count="2" type="stmt"/>
+        <line num="14" count="74" type="cond" truecount="4" falsecount="0"/>
+        <line num="15" count="3" type="stmt"/>
+        <line num="16" count="3" type="stmt"/>
+        <line num="17" count="3" type="stmt"/>
+        <line num="18" count="3" type="stmt"/>
+        <line num="26" count="76" type="stmt"/>
+        <line num="28" count="71" type="stmt"/>
+        <line num="29" count="71" type="cond" truecount="6" falsecount="0"/>
+        <line num="30" count="7" type="stmt"/>
+        <line num="31" count="7" type="stmt"/>
+        <line num="32" count="7" type="stmt"/>
+        <line num="33" count="7" type="stmt"/>
+        <line num="36" count="64" type="stmt"/>
+      </file>
+      <file name="jwt-config.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\security\jwt-config.js">
+        <metrics statements="29" coveredstatements="29" conditionals="23" coveredconditionals="21" methods="7" coveredmethods="7"/>
+        <line num="1" count="30" type="stmt"/>
+        <line num="4" count="880" type="stmt"/>
+        <line num="5" count="880" type="cond" truecount="2" falsecount="0"/>
+        <line num="7" count="872" type="stmt"/>
+        <line num="8" count="872" type="cond" truecount="2" falsecount="0"/>
+        <line num="12" count="220" type="stmt"/>
+        <line num="21" count="10" type="stmt"/>
+        <line num="23" count="10" type="cond" truecount="2" falsecount="0"/>
+        <line num="24" count="10" type="cond" truecount="2" falsecount="0"/>
+        <line num="25" count="10" type="cond" truecount="2" falsecount="0"/>
+        <line num="26" count="10" type="cond" truecount="2" falsecount="0"/>
+        <line num="28" count="10" type="stmt"/>
+        <line num="32" count="10" type="cond" truecount="4" falsecount="0"/>
+        <line num="34" count="2" type="stmt"/>
+        <line num="38" count="124" type="stmt"/>
+        <line num="42" count="96" type="stmt"/>
+        <line num="46" count="5" type="stmt"/>
+        <line num="47" count="5" type="stmt"/>
+        <line num="48" count="5" type="stmt"/>
+        <line num="50" count="5" type="stmt"/>
+        <line num="51" count="6" type="stmt"/>
+        <line num="54" count="5" type="stmt"/>
+        <line num="55" count="6" type="stmt"/>
+        <line num="58" count="5" type="stmt"/>
+        <line num="59" count="5" type="cond" truecount="2" falsecount="0"/>
+        <line num="61" count="5" type="stmt"/>
+        <line num="62" count="5" type="cond" truecount="2" falsecount="0"/>
+        <line num="64" count="5" type="stmt"/>
+        <line num="67" count="30" type="stmt"/>
+      </file>
+      <file name="rbac-policy.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\security\rbac-policy.js">
+        <metrics statements="13" coveredstatements="13" conditionals="12" coveredconditionals="12" methods="3" coveredmethods="3"/>
+        <line num="1" count="31" type="stmt"/>
+        <line num="14" count="150" type="cond" truecount="2" falsecount="0"/>
+        <line num="15" count="10" type="stmt"/>
+        <line num="18" count="140" type="stmt"/>
+        <line num="19" count="140" type="cond" truecount="2" falsecount="0"/>
+        <line num="23" count="47" type="stmt"/>
+        <line num="24" count="47" type="cond" truecount="2" falsecount="0"/>
+        <line num="25" count="7" type="stmt"/>
+        <line num="28" count="40" type="cond" truecount="2" falsecount="0"/>
+        <line num="32" count="43" type="cond" truecount="4" falsecount="0"/>
+        <line num="33" count="6" type="stmt"/>
+        <line num="36" count="37" type="stmt"/>
+        <line num="37" count="37" type="stmt"/>
+      </file>
+      <file name="refresh-token-store.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\security\refresh-token-store.js">
+        <metrics statements="51" coveredstatements="51" conditionals="27" coveredconditionals="27" methods="16" coveredmethods="16"/>
+        <line num="3" count="63" type="stmt"/>
+        <line num="51" count="63" type="stmt"/>
+        <line num="78" count="63" type="stmt"/>
+        <line num="81" count="89" type="stmt"/>
+        <line num="85" count="125" type="stmt"/>
+        <line num="89" count="26" type="stmt"/>
+        <line num="93" count="152" type="cond" truecount="2" falsecount="0"/>
+        <line num="94" count="7" type="stmt"/>
+        <line num="96" count="145" type="stmt"/>
+        <line num="100" count="63" type="stmt"/>
+        <line num="114" count="65" type="stmt"/>
+        <line num="115" count="65" type="cond" truecount="2" falsecount="0"/>
+        <line num="119" count="115" type="cond" truecount="2" falsecount="0"/>
+        <line num="123" count="3" type="stmt"/>
+        <line num="127" count="3" type="stmt"/>
+        <line num="128" count="2" type="stmt"/>
+        <line num="132" count="50" type="stmt"/>
+        <line num="133" count="49" type="stmt"/>
+        <line num="134" count="49" type="cond" truecount="2" falsecount="0"/>
+        <line num="135" count="1" type="stmt"/>
+        <line num="138" count="48" type="stmt"/>
+        <line num="139" count="48" type="stmt"/>
+        <line num="141" count="47" type="cond" truecount="2" falsecount="0"/>
+        <line num="142" count="2" type="stmt"/>
+        <line num="145" count="45" type="stmt"/>
+        <line num="149" count="27" type="stmt"/>
+        <line num="150" count="26" type="stmt"/>
+        <line num="155" count="25" type="stmt"/>
+        <line num="156" count="25" type="cond" truecount="2" falsecount="0"/>
+        <line num="158" count="25" type="cond" truecount="2" falsecount="0"/>
+        <line num="162" count="17" type="stmt"/>
+        <line num="163" count="16" type="stmt"/>
+        <line num="164" count="16" type="cond" truecount="2" falsecount="0"/>
+        <line num="165" count="1" type="stmt"/>
+        <line num="168" count="15" type="stmt"/>
+        <line num="175" count="15" type="stmt"/>
+        <line num="180" count="14" type="stmt"/>
+        <line num="181" count="14" type="cond" truecount="2" falsecount="0"/>
+        <line num="182" count="14" type="cond" truecount="2" falsecount="0"/>
+        <line num="186" count="14" type="stmt"/>
+        <line num="187" count="13" type="stmt"/>
+        <line num="188" count="12" type="stmt"/>
+        <line num="192" count="1" type="stmt"/>
+        <line num="196" count="32" type="stmt"/>
+        <line num="197" count="31" type="cond" truecount="2" falsecount="0"/>
+        <line num="198" count="30" type="stmt"/>
+        <line num="199" count="30" type="stmt"/>
+        <line num="202" count="1" type="stmt"/>
+        <line num="206" count="9" type="stmt"/>
+        <line num="207" count="8" type="stmt"/>
+        <line num="208" count="7" type="cond" truecount="2" falsecount="0"/>
+      </file>
+      <file name="refresh-token.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\security\refresh-token.js">
+        <metrics statements="15" coveredstatements="13" conditionals="19" coveredconditionals="13" methods="2" coveredmethods="2"/>
+        <line num="6" count="51" type="cond" truecount="1" falsecount="1"/>
+        <line num="7" count="51" type="stmt"/>
+        <line num="8" count="51" type="cond" truecount="1" falsecount="1"/>
+        <line num="10" count="51" type="stmt"/>
+        <line num="11" count="51" type="stmt"/>
+        <line num="12" count="51" type="stmt"/>
+        <line num="19" count="51" type="cond" truecount="3" falsecount="1"/>
+        <line num="23" count="51" type="stmt"/>
+        <line num="25" count="51" type="cond" truecount="5" falsecount="1"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="29" count="51" type="stmt"/>
+        <line num="30" count="51" type="cond" truecount="1" falsecount="1"/>
+        <line num="31" count="0" type="stmt"/>
+        <line num="34" count="51" type="stmt"/>
+        <line num="45" count="51" type="stmt"/>
+      </file>
+      <file name="token-verifier.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\security\token-verifier.js">
+        <metrics statements="12" coveredstatements="11" conditionals="16" coveredconditionals="15" methods="3" coveredmethods="3"/>
+        <line num="5" count="100" type="cond" truecount="5" falsecount="0"/>
+        <line num="6" count="5" type="stmt"/>
+        <line num="9" count="95" type="cond" truecount="4" falsecount="0"/>
+        <line num="10" count="1" type="stmt"/>
+        <line num="13" count="94" type="stmt"/>
+        <line num="14" count="94" type="stmt"/>
+        <line num="24" count="73" type="cond" truecount="4" falsecount="1"/>
+        <line num="25" count="0" type="stmt"/>
+        <line num="28" count="73" type="stmt"/>
+        <line num="30" count="21" type="stmt"/>
+        <line num="35" count="60" type="stmt"/>
+        <line num="39" count="40" type="stmt"/>
+      </file>
+    </package>
+    <package name="src.utils">
+      <metrics statements="75" coveredstatements="65" conditionals="48" coveredconditionals="37" methods="14" coveredmethods="13"/>
+      <file name="api-error.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\utils\api-error.js">
+        <metrics statements="1" coveredstatements="1" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
+        <line num="2" count="105" type="stmt"/>
+      </file>
+      <file name="logger.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\utils\logger.js">
+        <metrics statements="24" coveredstatements="22" conditionals="14" coveredconditionals="9" methods="8" coveredmethods="8"/>
+        <line num="1" count="63" type="stmt"/>
+        <line num="9" count="63" type="cond" truecount="1" falsecount="1"/>
+        <line num="10" count="0" type="stmt"/>
+        <line num="12" count="63" type="cond" truecount="1" falsecount="1"/>
+        <line num="15" count="63" type="cond" truecount="1" falsecount="1"/>
+        <line num="18" count="499" type="stmt"/>
+        <line num="22" count="499" type="cond" truecount="1" falsecount="1"/>
+        <line num="23" count="499" type="stmt"/>
+        <line num="24" count="499" type="stmt"/>
+        <line num="26" count="0" type="stmt"/>
+        <line num="31" count="499" type="cond" truecount="1" falsecount="1"/>
+        <line num="32" count="499" type="stmt"/>
+        <line num="34" count="499" type="cond" truecount="2" falsecount="0"/>
+        <line num="35" count="61" type="stmt"/>
+        <line num="36" count="61" type="stmt"/>
+        <line num="39" count="438" type="cond" truecount="2" falsecount="0"/>
+        <line num="40" count="120" type="stmt"/>
+        <line num="41" count="120" type="stmt"/>
+        <line num="44" count="318" type="stmt"/>
+        <line num="47" count="63" type="stmt"/>
+        <line num="49" count="230" type="stmt"/>
+        <line num="52" count="88" type="stmt"/>
+        <line num="55" count="120" type="stmt"/>
+        <line num="58" count="61" type="stmt"/>
+      </file>
+      <file name="minor-units.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\utils\minor-units.js">
+        <metrics statements="50" coveredstatements="42" conditionals="34" coveredconditionals="28" methods="5" coveredmethods="4"/>
+        <line num="1" count="27" type="stmt"/>
+        <line num="9" count="194" type="cond" truecount="1" falsecount="1"/>
+        <line num="10" count="194" type="cond" truecount="3" falsecount="1"/>
+        <line num="11" count="0" type="stmt"/>
+        <line num="12" count="0" type="stmt"/>
+        <line num="13" count="0" type="stmt"/>
+        <line num="15" count="194" type="stmt"/>
+        <line num="19" count="120" type="cond" truecount="1" falsecount="1"/>
+        <line num="20" count="120" type="cond" truecount="2" falsecount="0"/>
+        <line num="21" count="1" type="stmt"/>
+        <line num="22" count="1" type="stmt"/>
+        <line num="23" count="1" type="stmt"/>
+        <line num="26" count="119" type="cond" truecount="2" falsecount="0"/>
+        <line num="27" count="119" type="stmt"/>
+        <line num="28" count="119" type="cond" truecount="1" falsecount="0"/>
+        <line num="29" count="119" type="stmt"/>
+        <line num="33" count="120" type="stmt"/>
+        <line num="34" count="120" type="stmt"/>
+        <line num="35" count="120" type="stmt"/>
+        <line num="37" count="119" type="cond" truecount="2" falsecount="0"/>
+        <line num="38" count="2" type="stmt"/>
+        <line num="39" count="2" type="stmt"/>
+        <line num="40" count="2" type="stmt"/>
+        <line num="43" count="117" type="stmt"/>
+        <line num="44" count="117" type="cond" truecount="2" falsecount="0"/>
+        <line num="45" count="117" type="cond" truecount="1" falsecount="1"/>
+        <line num="47" count="117" type="stmt"/>
+        <line num="48" count="117" type="cond" truecount="2" falsecount="0"/>
+        <line num="49" count="116" type="stmt"/>
+        <line num="52" count="117" type="cond" truecount="2" falsecount="0"/>
+        <line num="53" count="2" type="stmt"/>
+        <line num="56" count="117" type="cond" truecount="1" falsecount="1"/>
+        <line num="57" count="0" type="stmt"/>
+        <line num="58" count="0" type="stmt"/>
+        <line num="59" count="0" type="stmt"/>
+        <line num="62" count="117" type="stmt"/>
+        <line num="66" count="74" type="stmt"/>
+        <line num="67" count="74" type="stmt"/>
+        <line num="69" count="74" type="cond" truecount="4" falsecount="0"/>
+        <line num="70" count="1" type="stmt"/>
+        <line num="71" count="1" type="stmt"/>
+        <line num="72" count="1" type="stmt"/>
+        <line num="75" count="73" type="cond" truecount="2" falsecount="0"/>
+        <line num="76" count="1" type="stmt"/>
+        <line num="79" count="72" type="stmt"/>
+        <line num="80" count="72" type="stmt"/>
+        <line num="81" count="72" type="stmt"/>
+        <line num="82" count="72" type="stmt"/>
+        <line num="86" count="0" type="stmt"/>
+        <line num="87" count="0" type="stmt"/>
+      </file>
+    </package>
+    <package name="src.validation">
       <metrics statements="27" coveredstatements="27" conditionals="23" coveredconditionals="22" methods="5" coveredmethods="5"/>
       <file name="strict-validate.middleware.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\validation\strict-validate.middleware.js">
         <metrics statements="10" coveredstatements="10" conditionals="5" coveredconditionals="5" methods="2" coveredmethods="2"/>
-        <line num="3" count="5" type="stmt"/>
-        <line num="6" count="84" type="cond" truecount="2" falsecount="0"/>
+        <line num="3" count="24" type="stmt"/>
+        <line num="6" count="445" type="cond" truecount="2" falsecount="0"/>
         <line num="7" count="1" type="stmt"/>
-        <line num="10" count="83" type="stmt"/>
-        <line num="11" count="71" type="stmt"/>
-        <line num="12" count="71" type="stmt"/>
-        <line num="13" count="52" type="stmt"/>
+        <line num="10" count="444" type="stmt"/>
+        <line num="11" count="151" type="stmt"/>
+        <line num="12" count="151" type="stmt"/>
+        <line num="13" count="132" type="stmt"/>
         <line num="15" count="19" type="cond" truecount="2" falsecount="0"/>
         <line num="16" count="18" type="stmt"/>
         <line num="26" count="1" type="stmt"/>
       </file>
       <file name="validate.middleware.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\validation\validate.middleware.js">
         <metrics statements="17" coveredstatements="17" conditionals="18" coveredconditionals="17" methods="3" coveredmethods="3"/>
-        <line num="4" count="9" type="stmt"/>
+        <line num="4" count="28" type="stmt"/>
         <line num="7" count="17" type="cond" truecount="3" falsecount="0"/>
-        <line num="11" count="40" type="cond" truecount="2" falsecount="0"/>
+        <line num="11" count="116" type="cond" truecount="2" falsecount="0"/>
         <line num="12" count="1" type="stmt"/>
-        <line num="15" count="39" type="stmt"/>
+        <line num="15" count="115" type="stmt"/>
         <line num="16" count="20" type="stmt"/>
         <line num="17" count="20" type="cond" truecount="2" falsecount="0"/>
         <line num="18" count="19" type="cond" truecount="1" falsecount="1"/>
@@ -85,36 +1506,36 @@
         <line num="34" count="1" type="stmt"/>
       </file>
     </package>
-    <package name="validation.schemas">
+    <package name="src.validation.schemas">
       <metrics statements="27" coveredstatements="27" conditionals="2" coveredconditionals="2" methods="2" coveredmethods="2"/>
       <file name="analytics.schema.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\validation\schemas\analytics.schema.js">
         <metrics statements="1" coveredstatements="1" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
-        <line num="3" count="9" type="stmt"/>
+        <line num="3" count="28" type="stmt"/>
       </file>
       <file name="auth.schema.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\validation\schemas\auth.schema.js">
         <metrics statements="8" coveredstatements="8" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
-        <line num="3" count="9" type="stmt"/>
-        <line num="4" count="9" type="stmt"/>
-        <line num="5" count="9" type="stmt"/>
-        <line num="7" count="9" type="stmt"/>
-        <line num="13" count="9" type="stmt"/>
-        <line num="17" count="9" type="stmt"/>
-        <line num="30" count="9" type="stmt"/>
-        <line num="37" count="9" type="stmt"/>
+        <line num="3" count="28" type="stmt"/>
+        <line num="4" count="28" type="stmt"/>
+        <line num="5" count="28" type="stmt"/>
+        <line num="7" count="28" type="stmt"/>
+        <line num="13" count="28" type="stmt"/>
+        <line num="17" count="28" type="stmt"/>
+        <line num="28" count="28" type="stmt"/>
+        <line num="35" count="28" type="stmt"/>
       </file>
       <file name="cart.schema.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\validation\schemas\cart.schema.js">
         <metrics statements="5" coveredstatements="5" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
-        <line num="3" count="9" type="stmt"/>
-        <line num="8" count="9" type="stmt"/>
-        <line num="10" count="9" type="stmt"/>
-        <line num="22" count="9" type="stmt"/>
-        <line num="26" count="9" type="stmt"/>
+        <line num="3" count="28" type="stmt"/>
+        <line num="8" count="28" type="stmt"/>
+        <line num="10" count="28" type="stmt"/>
+        <line num="22" count="28" type="stmt"/>
+        <line num="26" count="28" type="stmt"/>
       </file>
       <file name="checkout.schema.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\validation\schemas\checkout.schema.js">
         <metrics statements="3" coveredstatements="3" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
-        <line num="3" count="10" type="stmt"/>
-        <line num="9" count="10" type="stmt"/>
-        <line num="17" count="10" type="stmt"/>
+        <line num="3" count="29" type="stmt"/>
+        <line num="9" count="29" type="stmt"/>
+        <line num="17" count="29" type="stmt"/>
       </file>
       <file name="common.schema.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\validation\schemas\common.schema.js">
         <metrics statements="0" coveredstatements="0" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
@@ -124,25 +1545,25 @@
       </file>
       <file name="leads.schema.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\validation\schemas\leads.schema.js">
         <metrics statements="2" coveredstatements="2" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
-        <line num="3" count="9" type="stmt"/>
-        <line num="22" count="9" type="stmt"/>
+        <line num="3" count="28" type="stmt"/>
+        <line num="22" count="28" type="stmt"/>
       </file>
       <file name="orders.schema.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\validation\schemas\orders.schema.js">
         <metrics statements="3" coveredstatements="3" conditionals="2" coveredconditionals="2" methods="1" coveredmethods="1"/>
-        <line num="4" count="10" type="stmt"/>
-        <line num="6" count="10" type="stmt"/>
+        <line num="4" count="29" type="stmt"/>
+        <line num="6" count="29" type="stmt"/>
         <line num="20" count="4" type="cond" truecount="2" falsecount="0"/>
       </file>
       <file name="payments.schema.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\validation\schemas\payments.schema.js">
         <metrics statements="2" coveredstatements="2" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
-        <line num="4" count="9" type="stmt"/>
-        <line num="6" count="9" type="stmt"/>
+        <line num="4" count="28" type="stmt"/>
+        <line num="6" count="28" type="stmt"/>
       </file>
       <file name="products.schema.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\validation\schemas\products.schema.js">
         <metrics statements="3" coveredstatements="3" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
-        <line num="3" count="9" type="stmt"/>
-        <line num="22" count="9" type="stmt"/>
-        <line num="24" count="9" type="stmt"/>
+        <line num="3" count="28" type="stmt"/>
+        <line num="22" count="28" type="stmt"/>
+        <line num="24" count="28" type="stmt"/>
       </file>
     </package>
   </project>
