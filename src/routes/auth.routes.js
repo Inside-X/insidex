@@ -202,11 +202,6 @@ router.post('/logout', strictValidate(authSchemas.logout), async (req, res, next
     }
 
     const verification = verifyRefreshToken(refreshToken);
-
-    if (!verification.ok && verification.reason === 'misconfigured') {
-      return sendApiError(req, res, 500, 'INTERNAL_ERROR', 'Authentication service misconfigured');
-    }
-
     if (!verification.ok) {
       return res.status(204).send();
     }
