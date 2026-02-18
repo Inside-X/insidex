@@ -52,7 +52,7 @@ function clearRefreshCookie(res) {
   res.clearCookie(REFRESH_COOKIE_NAME, clearOptions);
 }
 
-function issueAuthPair({ userId, role, res }) {
+async function issueAuthPair({ userId, role, res }) {
   const accessToken = issueAccessToken({ id: userId, role, expiresIn: '15m' });
   const refreshIssued = issueRefreshToken({ userId });
 
@@ -60,12 +60,16 @@ function issueAuthPair({ userId, role, res }) {
     return { ok: false };
   }
 
-  storeRefreshSession({
+  const stored = await storeRefreshSession({
     sessionId: refreshIssued.sessionId,
     userId,
     token: refreshIssued.token,
     expiresAt: refreshIssued.expiresAt,
   });
+
+  if (!stored.ok) {
+    return { ok: false };
+  }
 
   res.cookie(REFRESH_COOKIE_NAME, refreshIssued.token, refreshCookieConfig());
 
@@ -76,40 +80,48 @@ function issueAuthPair({ userId, role, res }) {
   };
 }
 
-router.post('/register', strictAuthRateLimiter, strictValidate(authSchemas.register), (req, res) => {
-  const id = crypto.randomUUID();
-  const auth = issueAuthPair({ userId: id, role: 'customer', res });
+router.post('/register', strictAuthRateLimiter, strictValidate(authSchemas.register), async (req, res, next) => {
+  try {
+    const id = crypto.randomUUID();
+    const auth = await issueAuthPair({ userId: id, role: 'customer', res });
 
-  if (!auth.ok) {
-    return sendApiError(req, res, 500, 'INTERNAL_ERROR', 'Authentication service misconfigured');
+    if (!auth.ok) {
+      return sendApiError(req, res, 500, 'INTERNAL_ERROR', 'Authentication service misconfigured');
+    }
+
+    return res.status(201).json({
+      data: {
+        id,
+        email: req.body.email,
+        role: 'customer',
+        accessToken: auth.accessToken,
+        refreshToken: auth.refreshToken,
+      },
+    });
+  } catch (error) {
+    return next(error);
   }
-
-  return res.status(201).json({
-    data: {
-      id,
-      email: req.body.email,
-      role: 'customer',
-      accessToken: auth.accessToken,
-      refreshToken: auth.refreshToken,
-    },
-  });
 });
 
-router.post('/login', strictAuthRateLimiter, strictValidate(authSchemas.login), (req, res) => {
-  const userId = '00000000-0000-0000-0000-000000000010';
-  const auth = issueAuthPair({ userId, role: 'customer', res });
+router.post('/login', strictAuthRateLimiter, strictValidate(authSchemas.login), async (req, res, next) => {
+  try {
+    const userId = '00000000-0000-0000-0000-000000000010';
+    const auth = await issueAuthPair({ userId, role: 'customer', res });
 
-  if (!auth.ok) {
-    return sendApiError(req, res, 500, 'INTERNAL_ERROR', 'Authentication service misconfigured');
+    if (!auth.ok) {
+      return sendApiError(req, res, 500, 'INTERNAL_ERROR', 'Authentication service misconfigured');
+    }
+
+    return res.status(200).json({
+      data: {
+        email: req.body.email,
+        accessToken: auth.accessToken,
+        refreshToken: auth.refreshToken,
+      },
+    });
+  } catch (error) {
+    return next(error);
   }
-
-  return res.status(200).json({
-    data: {
-      email: req.body.email,
-      accessToken: auth.accessToken,
-      refreshToken: auth.refreshToken,
-    },
-  });
 });
 
 router.post('/forgot', strictAuthRateLimiter, strictValidate(authSchemas.forgot), (_req, res) => {
@@ -120,76 +132,91 @@ router.post('/reset', strictAuthRateLimiter, strictValidate(authSchemas.reset), 
   return res.status(200).json({ data: { reset: true } });
 });
 
-router.post('/refresh', strictAuthRateLimiter, strictValidate(authSchemas.refresh), (req, res) => {
-  const refreshToken = readRefreshToken(req);
-  const verification = verifyRefreshToken(refreshToken);
+router.post('/refresh', strictAuthRateLimiter, strictValidate(authSchemas.refresh), async (req, res, next) => {
+  try {
+    const refreshToken = readRefreshToken(req);
+    const verification = verifyRefreshToken(refreshToken);
 
-  if (!verification.ok && verification.reason === 'misconfigured') {
-    return sendApiError(req, res, 500, 'INTERNAL_ERROR', 'Authentication service misconfigured');
+    if (!verification.ok && verification.reason === 'misconfigured') {
+      return sendApiError(req, res, 500, 'INTERNAL_ERROR', 'Authentication service misconfigured');
+    }
+
+    if (!verification.ok) {
+      return sendApiError(req, res, 401, 'UNAUTHORIZED', 'Invalid refresh token');
+    }
+
+    const payload = verification.payload;
+    const sessionCheck = await validateAndConsumeRefreshSession({
+      sessionId: payload.sid,
+      userId: payload.sub,
+      token: refreshToken,
+      minRefreshIntervalMs: Number(process.env.REFRESH_MIN_INTERVAL_MS || 750),
+    });
+
+    if (!sessionCheck.ok) {
+      const status = sessionCheck.reason === 'flood' ? 429 : 401;
+      const code = sessionCheck.reason === 'flood' ? 'RATE_LIMITED' : 'UNAUTHORIZED';
+      const message = sessionCheck.reason === 'flood' ? 'Too many refresh attempts' : 'Invalid refresh token';
+      return sendApiError(req, res, status, code, message);
+    }
+
+    const rotated = issueRefreshToken({ userId: payload.sub });
+    if (!rotated.ok) {
+      return sendApiError(req, res, 500, 'INTERNAL_ERROR', 'Authentication service misconfigured');
+    }
+
+    const rotation = await rotateRefreshSession({
+      oldSessionId: payload.sid,
+      newSessionId: rotated.sessionId,
+      userId: payload.sub,
+      newToken: rotated.token,
+      newExpiresAt: rotated.expiresAt,
+    });
+
+    if (!rotation.ok) {
+      return sendApiError(req, res, 401, 'UNAUTHORIZED', 'Invalid refresh token');
+    }
+
+    const accessToken = issueAccessToken({ id: payload.sub, role: payload.role || 'customer', expiresIn: '15m' });
+    res.cookie(REFRESH_COOKIE_NAME, rotated.token, refreshCookieConfig());
+
+    return res.status(200).json({
+      data: {
+        refreshed: true,
+        accessToken,
+        refreshToken: rotated.token,
+      },
+    });
+  } catch (error) {
+    return next(error);
   }
-
-  if (!verification.ok) {
-    return sendApiError(req, res, 401, 'UNAUTHORIZED', 'Invalid refresh token');
-  }
-
-  const payload = verification.payload;
-  const sessionCheck = validateAndConsumeRefreshSession({
-    sessionId: payload.sid,
-    userId: payload.sub,
-    token: refreshToken,
-    minRefreshIntervalMs: Number(process.env.REFRESH_MIN_INTERVAL_MS || 750),
-  });
-
-  if (!sessionCheck.ok) {
-    const status = sessionCheck.reason === 'flood' ? 429 : 401;
-    const code = sessionCheck.reason === 'flood' ? 'RATE_LIMITED' : 'UNAUTHORIZED';
-    const message = sessionCheck.reason === 'flood' ? 'Too many refresh attempts' : 'Invalid refresh token';
-    return sendApiError(req, res, status, code, message);
-  }
-
-  const rotated = issueRefreshToken({ userId: payload.sub });
-  if (!rotated.ok) {
-    return sendApiError(req, res, 500, 'INTERNAL_ERROR', 'Authentication service misconfigured');
-  }
-
-  rotateRefreshSession({
-    oldSessionId: payload.sid,
-    newSessionId: rotated.sessionId,
-    userId: payload.sub,
-    newToken: rotated.token,
-    newExpiresAt: rotated.expiresAt,
-  });
-
-  const accessToken = issueAccessToken({ id: payload.sub, role: payload.role || 'customer', expiresIn: '15m' });
-  res.cookie(REFRESH_COOKIE_NAME, rotated.token, refreshCookieConfig());
-
-  return res.status(200).json({
-    data: {
-      refreshed: true,
-      accessToken,
-      refreshToken: rotated.token,
-    },
-  });
 });
 
-router.post('/logout', strictValidate(authSchemas.logout), (req, res) => {
-  const refreshToken = readRefreshToken(req);
-  const verification = verifyRefreshToken(refreshToken);
-
-  if (!verification.ok) {
+router.post('/logout', strictValidate(authSchemas.logout), async (req, res, next) => {
+  try {
+    const refreshToken = readRefreshToken(req);
     clearRefreshCookie(res);
-    return sendApiError(req, res, 401, 'UNAUTHORIZED', 'Invalid refresh token');
+
+    if (!refreshToken) {
+      return res.status(204).send();
+    }
+
+    const verification = verifyRefreshToken(refreshToken);
+
+    if (!verification.ok && verification.reason === 'misconfigured') {
+      return sendApiError(req, res, 500, 'INTERNAL_ERROR', 'Authentication service misconfigured');
+    }
+
+    if (!verification.ok) {
+      return res.status(204).send();
+    }
+
+    await revokeRefreshSession(verification.payload.sid);
+
+    return res.status(204).send();
+  } catch (error) {
+    return next(error);
   }
-
-  const revoked = revokeRefreshSession(verification.payload.sid);
-  clearRefreshCookie(res);
-
-  if (!revoked) {
-    return sendApiError(req, res, 401, 'UNAUTHORIZED', 'Invalid refresh token');
-  }
-
-  return res.status(200).json({ data: { loggedOut: true } });
 });
-router.post('/logout', strictValidate(authSchemas.logout), (_req, res) => res.status(200).json({ data: { loggedOut: true } }));
 
 export default router;

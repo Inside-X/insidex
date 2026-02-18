@@ -40,7 +40,7 @@ describe('Auth integration hardening flow', () => {
 
     resetRateLimiters();
     const logout = await request(app).post('/api/auth/logout').send({ refreshToken: refresh.body.data.refreshToken });
-    expect(logout.status).toBe(200);
+    expect(logout.status).toBe(204);
 
     const reused = await request(app).post('/api/auth/refresh').send({ refreshToken: login.body.data.refreshToken });
     expect(reused.status).toBe(401);

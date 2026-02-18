@@ -4,12 +4,22 @@ import { fileURLToPath } from 'url';
 import app from './src/app.js';
 import { logger } from './src/utils/logger.js';
 import { assertProductionBootConfigOrExit } from './src/config/boot-validation.js';
+import { setRefreshTokenRedisClient } from './src/security/refresh-token-store.js';
+import { setRateLimitRedisClient } from './src/middlewares/rateLimit.js';
+import { assertProductionInfrastructureOrExit } from './src/config/boot-infrastructure.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 3000;
 
 assertProductionBootConfigOrExit();
+
+await assertProductionInfrastructureOrExit({
+  onRedisClient(redisClient) {
+    setRefreshTokenRedisClient(redisClient);
+    setRateLimitRedisClient(redisClient);
+  },
+});
 
 app.disable('x-powered-by');
 

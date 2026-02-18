@@ -48,8 +48,8 @@ describe('Cookie security flags', () => {
     expect(cookie).toContain('SameSite=Lax');
   });
 
-  test('missing refresh cookie/token is rejected', async () => {
+  test('missing refresh cookie/token returns no content', async () => {
     const res = await request(app).post('/api/auth/logout').send({});
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(204);
   });
 });

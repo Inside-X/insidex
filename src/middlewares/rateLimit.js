@@ -2,6 +2,29 @@ import net from 'node:net';
 import { sendApiError } from '../utils/api-error.js';
 import { createRateLimitRedisStore } from '../lib/rate-limit-redis-store.js';
 
+let rateLimitRedisClient = null;
+
+export function setRateLimitRedisClient(client) {
+  rateLimitRedisClient = client || null;
+}
+
+export function getRateLimitRedisClient() {
+  return rateLimitRedisClient;
+}
+
+export async function isRateLimitBackendHealthy() {
+  if (!rateLimitRedisClient || typeof rateLimitRedisClient.ping !== 'function') {
+    return false;
+  }
+
+  try {
+    await rateLimitRedisClient.ping();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function sanitizeIp(candidate) {
   if (!candidate || typeof candidate !== 'string') return null;
   const normalized = candidate.trim().replace(/^\[|\]$/g, '').replace(/^::ffff:/, '').split(':')[0];
@@ -37,28 +60,10 @@ function endpointToken(req) {
   return token || 'root';
 }
 
-function createMemoryStore() {
-  const buckets = new Map();
-  return {
-    async increment(key, windowMs) {
-      const now = Date.now();
-      const bucket = buckets.get(key) ?? { count: 0, resetAt: now + windowMs };
-      if (now > bucket.resetAt) {
-        bucket.count = 0;
-        bucket.resetAt = now + windowMs;
-      }
-      bucket.count += 1;
-      buckets.set(key, bucket);
-      return { totalHits: bucket.count, resetTime: new Date(bucket.resetAt), source: 'memory-local' };
-    },
-    reset() {
-      buckets.clear();
-    },
-  };
-}
-
-function createRateLimiter({ windowMs, max, code, message, keyBuilder, store, onStoreFailure = 'deny' }) {
-  const localStore = store ?? createMemoryStore();
+function createRateLimiter({ windowMs, max, code, message, keyBuilder, store }) {
+  if (!store || typeof store.increment !== 'function') {
+    throw new Error('createRateLimiter requires a store with increment(key, windowMs)');
+  }
 
   async function rateLimiter(req, res, next) {
     const resolvedWindowMs = typeof windowMs === 'function' ? windowMs() : windowMs;
@@ -72,7 +77,7 @@ function createRateLimiter({ windowMs, max, code, message, keyBuilder, store, on
     }
 
     try {
-      const result = await localStore.increment(key, resolvedWindowMs);
+      const result = await store.increment(key, resolvedWindowMs);
       const retryAfter = Math.max(0, Math.ceil((result.resetTime.getTime() - Date.now()) / 1000));
       if (typeof res.setHeader === 'function') {
         res.setHeader('Retry-After', retryAfter);
@@ -82,25 +87,16 @@ function createRateLimiter({ windowMs, max, code, message, keyBuilder, store, on
       }
       return next();
     } catch {
-      if (onStoreFailure === 'allow') {
-        return next();
-      }
-      return sendApiError(req, res, 503, 'RATE_LIMIT_BACKEND_UNAVAILABLE', 'Rate limiting backend unavailable');
+      return sendApiError(req, res, 503, 'RATE_LIMIT_BACKEND_UNAVAILABLE', 'Service temporarily unavailable');
     }
   }
 
-  rateLimiter.reset = () => localStore.reset?.();
+  rateLimiter.reset = () => store.reset?.();
 
   return rateLimiter;
 }
 
-const redisEnabled = String(process.env.REDIS_RATE_LIMIT_ENABLED || '').toLowerCase() === 'true';
-const apiStore = redisEnabled
-  ? createRateLimitRedisStore({ redisClient: null, fallbackMode: 'graceful' })
-  : createMemoryStore();
-const authStore = redisEnabled
-  ? createRateLimitRedisStore({ redisClient: null, fallbackMode: 'strict' })
-  : createMemoryStore();
+const redisStore = createRateLimitRedisStore({ getRedisClient: () => rateLimitRedisClient });
 
 export const apiRateLimiter = createRateLimiter({
   windowMs: () => Number(process.env.API_RATE_WINDOW_MS || 60_000),
@@ -108,8 +104,7 @@ export const apiRateLimiter = createRateLimiter({
   code: 'API_RATE_LIMITED',
   message: 'Too many requests',
   keyBuilder: (req) => `rate:${endpointToken(req)}:${resolveClientIp(req)}`,
-  store: apiStore,
-  onStoreFailure: 'allow',
+  store: redisStore,
 });
 
 export const strictAuthRateLimiter = createRateLimiter({
@@ -118,8 +113,7 @@ export const strictAuthRateLimiter = createRateLimiter({
   code: 'RATE_LIMITED',
   message: 'Too many authentication attempts',
   keyBuilder: (req) => `rate:auth:${resolveClientIp(req)}`,
-  store: authStore,
-  onStoreFailure: 'deny',
+  store: redisStore,
 });
 
 export function resetRateLimiters() {

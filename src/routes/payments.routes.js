@@ -8,6 +8,7 @@ import authenticateJWT from '../middlewares/authenticate.js';
 import checkoutCustomerAccess from '../middlewares/checkoutCustomerAccess.js';
 import { orderRepository } from '../repositories/order.repository.js';
 import { sendApiError } from '../utils/api-error.js';
+import { toMinorUnits } from '../utils/minor-units.js';
 
 const router = express.Router();
 const SUPPORTED_CURRENCIES = new Set(['EUR', 'USD']);
@@ -16,16 +17,7 @@ function normalizeCurrency(currency) {
   return String(currency || 'EUR').trim().toUpperCase();
 }
 
-function toMinorUnits(value) {
-  const normalized = Number.parseFloat(String(value));
-  if (!Number.isFinite(normalized) || normalized < 0) {
-    const error = new Error(`Invalid monetary amount: ${value}`);
-    error.statusCode = 400;
-    throw error;
-  }
 
-  return Math.round(normalized * 100);
-}
 
 router.post('/create-intent', strictValidate(paymentsSchemas.createIntent), ensureCheckoutSessionJWT, authenticateJWT, checkoutCustomerAccess, async (req, res, next) => {
   try {
@@ -60,7 +52,7 @@ router.post('/create-intent', strictValidate(paymentsSchemas.createIntent), ensu
       items: lineItems.map((item) => ({ productId: item.productId, quantity: item.quantity })),
       idempotencyKey: req.body.idempotencyKey,
       stripePaymentIntentId: candidateIntentId,
-      expectedTotalAmount: Number((totalAmountMinor / 100).toFixed(2)),
+      expectedTotalAmountMinor: totalAmountMinor,
     });
 
     const orderId = orderResult.order.id;

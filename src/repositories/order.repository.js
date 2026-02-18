@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma.js';
 import { normalizeDbError } from '../lib/db-error.js';
+import { fromMinorUnits, toMinorUnits } from '../utils/minor-units.js';
 
 function uniqueProductItems(items) {
   const byProduct = new Map();
@@ -13,21 +14,37 @@ function uniqueProductItems(items) {
     .sort((a, b) => a.productId.localeCompare(b.productId));
 }
 
-function assertExpectedAmountMatches({ expectedTotalAmount, totalAmount }) {
+function assertExpectedAmountMatches({ expectedTotalAmount, expectedTotalAmountMinor, totalAmountMinor, currency = 'EUR' }) {
+  if (expectedTotalAmountMinor !== undefined && expectedTotalAmountMinor !== null) {
+    if (!Number.isInteger(expectedTotalAmountMinor) || expectedTotalAmountMinor < 0) {
+      const error = new Error('Invalid expected total amount');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    if (expectedTotalAmountMinor !== totalAmountMinor) {
+      const error = new Error(`Amount mismatch: expected ${expectedTotalAmountMinor}, computed ${totalAmountMinor}`);
+      error.statusCode = 400;
+      throw error;
+    }
+    return;
+  }
+
   if (expectedTotalAmount === undefined || expectedTotalAmount === null) {
     return;
   }
 
-  const expected = Number(expectedTotalAmount);
-  const computed = Number(totalAmount);
-  if (!Number.isFinite(expected) || expected < 0) {
+  let expectedMinor;
+  try {
+    expectedMinor = toMinorUnits(String(expectedTotalAmount), currency);
+  } catch {
     const error = new Error('Invalid expected total amount');
     error.statusCode = 400;
     throw error;
   }
 
-  if (Math.abs(expected - computed) > 0.000001) {
-    const error = new Error(`Amount mismatch: expected ${expected}, computed ${computed}`);
+  if (expectedMinor !== totalAmountMinor) {
+    const error = new Error(`Amount mismatch: expected ${expectedMinor}, computed ${totalAmountMinor}`);
     error.statusCode = 400;
     throw error;
   }
@@ -80,9 +97,10 @@ export const orderRepository = {
 
         const productMap = new Map(products.map((product) => [product.id, product]));
 
-        const totalAmount = normalizedItems.reduce((sum, item) => {
+        const totalAmountMinor = normalizedItems.reduce((sum, item) => {
           const product = productMap.get(item.productId);
-          return sum + Number(product.price) * item.quantity;
+          const unitMinor = toMinorUnits(String(product.price));
+          return sum + unitMinor * item.quantity;
         }, 0);
 
         let order;
@@ -93,7 +111,7 @@ export const orderRepository = {
               status,
               idempotencyKey,
               stripePaymentIntentId,
-              totalAmount,
+              totalAmount: fromMinorUnits(totalAmountMinor),
             },
           });
         } catch (error) {
@@ -145,7 +163,7 @@ export const orderRepository = {
    * - idempotencyKey unique => replay-safe
    * - all stock updates occur in one transaction with rollback on first failure
    */
-  async createPendingPaymentOrder({ userId, items, idempotencyKey, stripePaymentIntentId, expectedTotalAmount = undefined }) {
+  async createPendingPaymentOrder({ userId, items, idempotencyKey, stripePaymentIntentId, expectedTotalAmount = undefined, expectedTotalAmountMinor = undefined }) {
     const normalizedItems = uniqueProductItems(items);
 
     try {
@@ -165,9 +183,12 @@ export const orderRepository = {
         }
 
         const productMap = new Map(products.map((product) => [product.id, product]));
-        const totalAmount = normalizedItems.reduce((sum, item) => sum + (Number(productMap.get(item.productId).price) * item.quantity), 0);
+        const totalAmountMinor = normalizedItems.reduce((sum, item) => {
+          const unitMinor = toMinorUnits(String(productMap.get(item.productId).price));
+          return sum + (unitMinor * item.quantity);
+        }, 0);
 
-        assertExpectedAmountMatches({ expectedTotalAmount, totalAmount });
+        assertExpectedAmountMatches({ expectedTotalAmount, expectedTotalAmountMinor, totalAmountMinor });
 
         let order;
         try {
@@ -177,7 +198,7 @@ export const orderRepository = {
               status: 'pending',
               idempotencyKey,
               stripePaymentIntentId,
-              totalAmount,
+              totalAmount: fromMinorUnits(totalAmountMinor),
             },
           });
         } catch (error) {

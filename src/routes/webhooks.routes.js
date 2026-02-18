@@ -7,6 +7,7 @@ import { sendApiError } from '../utils/api-error.js';
 import { orderRepository } from '../repositories/order.repository.js';
 import { logger } from '../utils/logger.js';
 import { createWebhookIdempotencyStore } from '../lib/webhook-idempotency-store.js';
+import { toMinorUnits } from '../utils/minor-units.js';
 
 const router = express.Router();
 const MAX_WEBHOOK_BODY_SIZE_BYTES = 1024 * 1024;
@@ -16,11 +17,7 @@ function normalizeCurrency(currency) {
   return String(currency || '').trim().toLowerCase();
 }
 
-function toMinorUnits(amount) {
-  const value = Number.parseFloat(String(amount));
-  if (!Number.isFinite(value) || value < 0) return null;
-  return Math.round(value * 100);
-}
+
 
 function getCorrelationId(req) {
   return req.requestId || req.get('x-request-id') || 'unknown';
@@ -168,7 +165,7 @@ router.post('/stripe', async (req, res, next) => {
       return res.status(200).json({ data: { ignored: true, reason: 'order_state_incompatible' } });
     }
 
-    const expectedMinor = toMinorUnits(order.totalAmount);
+    const expectedMinor = toMinorUnits(order.totalAmount, order.currency || 'EUR');
     if (paymentObject.amount_received !== expectedMinor) {
       logger.error('webhook_amount_mismatch', {
         provider: 'stripe',
@@ -287,8 +284,16 @@ router.post('/paypal', async (req, res, next) => {
     }
 
     const capture = payload.payload?.capture || {};
-    const paidMinor = toMinorUnits(capture.amount);
-    const expectedMinor = toMinorUnits(order.totalAmount);
+    const expectedMinor = toMinorUnits(order.totalAmount, order.currency || 'EUR');
+    let paidMinor = null;
+    if (capture.amount !== undefined && capture.amount !== null) {
+      try {
+        paidMinor = toMinorUnits(capture.amount, capture.currency || order.currency || 'EUR');
+      } catch {
+        return res.status(200).json({ data: { ignored: true, reason: 'amount_mismatch' } });
+      }
+    }
+    
     if (paidMinor !== null && expectedMinor !== paidMinor) {
       logger.error('webhook_amount_mismatch', {
         provider: 'paypal',

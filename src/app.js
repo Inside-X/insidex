@@ -14,7 +14,7 @@ import requestLogger from './middlewares/requestLogger.js';
 import errorHandler from './middlewares/error-handler.js';
 import { securityHeaders } from './middlewares/securityHeaders.js';
 import { corsMiddleware } from './middlewares/cors.js';
-import { apiRateLimiter } from './middlewares/rateLimit.js';
+import { apiRateLimiter, isRateLimitBackendHealthy } from './middlewares/rateLimit.js';
 import { cookieParser } from './middlewares/cookieParser.js';
 
 const app = express();
@@ -33,6 +33,19 @@ app.get('/api/health', (req, res) => {
     data: {
       status: 'ok',
       scope: 'public',
+    },
+  });
+});
+
+app.get('/healthz', async (_req, res) => {
+  const redis = await isRateLimitBackendHealthy();
+  const status = redis ? 'ok' : 'degraded';
+  return res.status(redis ? 200 : 503).json({
+    data: {
+      status,
+      dependencies: {
+        redis,
+      },
     },
   });
 });

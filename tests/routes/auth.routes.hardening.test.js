@@ -53,7 +53,7 @@ describe('auth routes hardening branches', () => {
 
     const rotatedCookie = refresh.headers['set-cookie'][0].split(';')[0];
     const logout = await request(app).post('/api/auth/logout').set('Cookie', rotatedCookie).send({});
-    expect(logout.status).toBe(200);
+    expect(logout.status).toBe(204);
   });
 
   test('refresh returns 500 when refresh JWT config missing', async () => {

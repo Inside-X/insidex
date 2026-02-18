@@ -24,6 +24,8 @@ describe('boot configuration validation', () => {
       'STRIPE_SECRET is required when PAYMENTS_ENABLED=true',
       'PAYMENT_WEBHOOK_SECRET is required',
       'PAYPAL_SECRET is required when PAYPAL_ENABLED=true',
+      'REDIS_URL is required',
+      'DATABASE_URL is required',
       'CORS_ORIGIN contains an invalid origin: *',
     ]));
   });
@@ -40,6 +42,8 @@ describe('boot configuration validation', () => {
       JWT_REFRESH_AUDIENCE: 'aud-r',
       JWT_REFRESH_EXPIRY: '30m',
       PAYMENT_WEBHOOK_SECRET: 'whsec_x',
+      REDIS_URL: 'redis://127.0.0.1:6379',
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/app',
       CORS_ORIGIN: 'https://app.example.com',
     });
 
@@ -64,6 +68,8 @@ describe('boot configuration validation', () => {
       JWT_REFRESH_ISSUER: 'insidex-auth-refresh',
       JWT_REFRESH_AUDIENCE: 'insidex-api-refresh',
       JWT_REFRESH_EXPIRY: '30m',
+      REDIS_URL: 'redis://127.0.0.1:6379',
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/app',
       CORS_ORIGIN: 'https://app.example.com',
     });
 
@@ -90,6 +96,8 @@ describe('boot configuration validation', () => {
       JWT_REFRESH_AUDIENCE: 'insidex-api-refresh',
       JWT_REFRESH_EXPIRY: '30m',
       PAYMENT_WEBHOOK_SECRET: 'whsec_123',
+      REDIS_URL: 'redis://127.0.0.1:6379',
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/app',
       CORS_ORIGIN: 'https://app.example.com',
     });
 
@@ -111,6 +119,8 @@ describe('boot configuration validation', () => {
       JWT_REFRESH_AUDIENCE: 'insidex-api-refresh',
       JWT_REFRESH_EXPIRY: '30m',
       PAYMENT_WEBHOOK_SECRET: 'whsec_123',
+      REDIS_URL: 'redis://127.0.0.1:6379',
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/app',
       CORS_ORIGIN: 'https://app.example.com',
     });
 

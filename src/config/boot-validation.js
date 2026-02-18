@@ -48,6 +48,14 @@ export function validateBootConfig(env = process.env) {
     errors.push('PAYPAL_SECRET is required');
   }
 
+  if (!env.REDIS_URL) {
+    errors.push('REDIS_URL is required');
+  }
+
+  if (!env.DATABASE_URL) {
+    errors.push('DATABASE_URL is required');
+  }
+  
   if (paymentsEnabled && !env.STRIPE_SECRET) {
     errors.push('STRIPE_SECRET is required when PAYMENTS_ENABLED=true');
   }

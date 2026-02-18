@@ -13,33 +13,22 @@ function nowPlus(ms) {
   return new Date(Date.now() + ms);
 }
 
-function createMemoryFallback() {
-  const buckets = new Map();
-
-  return {
-    increment(key, windowMs) {
-      const now = Date.now();
-      const bucket = buckets.get(key) ?? { count: 0, resetAt: now + windowMs };
-      if (now > bucket.resetAt) {
-        bucket.count = 0;
-        bucket.resetAt = now + windowMs;
-      }
-      bucket.count += 1;
-      buckets.set(key, bucket);
-      return { totalHits: bucket.count, resetTime: new Date(bucket.resetAt), source: 'memory' };
-    },
-    reset() {
-      buckets.clear();
-    },
-  };
-}
-
-export function createRateLimitRedisStore({ redisClient, fallbackMode = 'strict' } = {}) {
-  const memoryFallback = createMemoryFallback();
+export function createRateLimitRedisStore({ getRedisClient } = {}) {
+  if (typeof getRedisClient !== 'function') {
+    throw new Error('createRateLimitRedisStore requires a getRedisClient function');
+  }
 
   async function increment(key, windowMs) {
+    const redisClient = getRedisClient();
+
     if (!redisClient) {
-      return handleRedisFailure(new Error('Redis client unavailable'), key, windowMs);
+      const error = new Error('Redis client unavailable');
+      logger.error('rate_limit_backend_down', {
+        event: 'rate_limit_backend_down',
+        key,
+        message: error.message,
+      });
+      throw error;
     }
 
     try {
@@ -55,32 +44,23 @@ export function createRateLimitRedisStore({ redisClient, fallbackMode = 'strict'
         source: 'redis',
       };
     } catch (error) {
-      return handleRedisFailure(error, key, windowMs);
+      logger.error('rate_limit_backend_down', {
+        event: 'rate_limit_backend_down',
+        key,
+        message: error.message,
+      });
+      throw error;
     }
-  }
-
-  function handleRedisFailure(error, key, windowMs) {
-    logger.error('rate_limit_redis_failure', {
-      key,
-      fallbackMode,
-      message: error.message,
-    });
-
-    if (fallbackMode === 'graceful') {
-      logger.warn('rate_limit_memory_fallback_activated', { key });
-      return memoryFallback.increment(key, windowMs);
-    }
-
-    throw error;
-  }
-
-  function reset() {
-    memoryFallback.reset();
   }
 
   return {
     increment,
-    reset,
+    reset() {
+      const redisClient = getRedisClient();
+      if (redisClient && typeof redisClient.flushAll === 'function') {
+        redisClient.flushAll();
+      }
+    },
     _script: LUA_INCREMENT_WITH_TTL,
   };
 }

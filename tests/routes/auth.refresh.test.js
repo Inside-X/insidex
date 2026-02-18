@@ -68,8 +68,9 @@ describe('Auth refresh flow', () => {
     expect(tooSoon.status).toBe(429);
   });
 
-  test('logout invalid refresh token returns unauthorized', async () => {
+  test('logout invalid refresh token returns no content', async () => {
     const res = await request(app).post('/api/auth/logout').send({ refreshToken: 'invalid.token.value' });
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(204);
+    expect(res.text).toBe('');
   });
 });

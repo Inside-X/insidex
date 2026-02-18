@@ -1,7 +1,15 @@
 import { jest } from '@jest/globals';
-import { createRateLimiter, endpointToken, resolveClientIp, apiRateLimiter, resetRateLimiters } from '../../src/middlewares/rateLimit.js';
+import {
+  createRateLimiter,
+  endpointToken,
+  resolveClientIp,
+  apiRateLimiter,
+  resetRateLimiters,
+  setRateLimitRedisClient,
+} from '../../src/middlewares/rateLimit.js';
 import authRateLimiter, { authRateLimiter as namedAuthRateLimiter } from '../../src/middlewares/authRateLimiter.js';
 import { strictAuthRateLimiter } from '../../src/middlewares/rateLimit.js';
+import { createFakeRedisClient } from '../helpers/fake-redis-client.js';
 
 function reqBase(overrides = {}) {
   return {
@@ -15,6 +23,11 @@ function reqBase(overrides = {}) {
 }
 
 describe('rateLimit helpers', () => {
+  beforeEach(() => {
+    setRateLimitRedisClient(createFakeRedisClient());
+    resetRateLimiters();
+  });
+
   test('resolveClientIp handles direct ipv4 mapping', () => {
     expect(resolveClientIp(reqBase())).toBe('127.0.0.1');
   });
@@ -38,45 +51,25 @@ describe('rateLimit helpers', () => {
     expect(endpointToken({ path: '/' })).toBe('root');
   });
 
-  test('middleware can fail-open on store error', async () => {
+  test('middleware returns 503 when backend fails', async () => {
     const limiter = createRateLimiter({
       windowMs: 1000,
       max: 1,
       code: 'X',
       message: 'Y',
       keyBuilder: () => 'rate:root:127.0.0.1',
-      onStoreFailure: 'allow',
-      store: { increment: async () => { throw new Error('store down'); } },
-    });
-    const next = jest.fn();
-
-    await limiter(reqBase(), { status: () => ({ json: () => null }) }, next);
-
-    expect(next).toHaveBeenCalledTimes(1);
-  });
-
-
-
-  test('resolveClientIp rejects spoofing when proxy is not trusted', () => {
-    const req = reqBase({ headers: { 'x-forwarded-for': '8.8.8.8' } });
-    expect(() => resolveClientIp(req)).toThrow('x-forwarded-for_not_trusted');
-  });
-
-  test('middleware returns 503 when backend fails in deny mode', async () => {
-    const limiter = createRateLimiter({
-      windowMs: 1000,
-      max: 1,
-      code: 'X',
-      message: 'Y',
-      keyBuilder: () => 'rate:root:127.0.0.1',
-      onStoreFailure: 'deny',
       store: { increment: async () => { throw new Error('store down'); } },
     });
     const res = { statusCode: null, status(code) { this.statusCode = code; return this; }, json() { return this; } };
 
-    await limiter(reqBase(), res, jest.fn());
+    await limiter(reqBase(), { status: () => ({ json: () => null }) }, next);
 
     expect(res.statusCode).toBe(503);
+  });
+
+  test('resolveClientIp rejects spoofing when proxy is not trusted', () => {
+    const req = reqBase({ headers: { 'x-forwarded-for': '8.8.8.8' } });
+    expect(() => resolveClientIp(req)).toThrow('x-forwarded-for_not_trusted');
   });
 
   test('apiRateLimiter builds endpoint+ip key and enforces limits', async () => {
@@ -99,7 +92,6 @@ describe('rateLimit helpers', () => {
     expect(namedAuthRateLimiter).toBe(strictAuthRateLimiter);
     expect(authRateLimiter).toBe(strictAuthRateLimiter);
   });
-});
 
   test('resolveClientIp rejects when ip fields are absent', () => {
     const req = { headers: {}, app: { get: () => false } };
@@ -117,17 +109,11 @@ describe('rateLimit helpers', () => {
       code: 'X',
       message: 'Y',
       keyBuilder: () => 'rate:root:127.0.0.1',
+      store: { increment: async () => ({ totalHits: 1, resetTime: new Date(Date.now() + 1000) }) },
     });
     const next = jest.fn();
 
     await limiter(reqBase(), { status: () => ({ json: () => null }) }, next);
     expect(next).toHaveBeenCalledTimes(1);
   });
-
-  test('module initializes redis-backed stores when redis flag is enabled', async () => {
-    process.env.REDIS_RATE_LIMIT_ENABLED = 'true';
-    const module = await import(`../../src/middlewares/rateLimit.js?redis=${Date.now()}`);
-    expect(typeof module.apiRateLimiter).toBe('function');
-    expect(typeof module.strictAuthRateLimiter).toBe('function');
-    process.env.REDIS_RATE_LIMIT_ENABLED = 'false';
-  });
+});
