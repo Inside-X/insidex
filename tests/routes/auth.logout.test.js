@@ -32,6 +32,24 @@ describe('Auth logout consistency', () => {
     expect(second.text).toBe('');
   });
 
+    test('logout with valid refresh token returns 204 and clears refresh cookie', async () => {
+    const login = await request(app).post('/api/auth/login').send({ email: 'valid@x.com', password: 'Password123' });
+    const cookieHeader = login.headers['set-cookie']?.find((value) => value.startsWith('refresh_token='));
+    expect(cookieHeader).toBeDefined();
+
+    const res = await request(app)
+      .post('/api/auth/logout')
+      .set('Cookie', cookieHeader)
+      .send({});
+
+    expect(res.status).toBe(204);
+    expect(res.text).toBe('');
+    expect(res.headers['set-cookie']).toEqual(expect.arrayContaining([
+      expect.stringMatching(/^refresh_token=;/),
+    ]));
+  });
+
+  
   test('logout without token returns 204', async () => {
     const res = await request(app).post('/api/auth/logout').send({});
     expect(res.status).toBe(204);
