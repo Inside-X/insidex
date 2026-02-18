@@ -8,6 +8,10 @@ function resolveStatusCode(err, isAppError) {
     return err.statusCode;
   }
 
+  if (typeof err?.status === 'number' && err.status >= 400 && err.status < 600) {
+    return err.status;
+  }
+  
   return 500;
 }
 

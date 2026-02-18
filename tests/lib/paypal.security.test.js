@@ -31,7 +31,7 @@ describe('paypal webhook security', () => {
       webhookEvent: { id: 'evt' },
     });
 
-    expect(result).toEqual({ verified: true, reason: 'SUCCESS' });
+    expect(result).toEqual({ verified: true, verificationStatus: 'SUCCESS', reason: 'SUCCESS' });
   });
 
   test('verification fail', async () => {
@@ -43,14 +43,44 @@ describe('paypal webhook security', () => {
     expect(result.verified).toBe(false);
   });
 
-  test('api error', async () => {
+  test('api token error', async () => {
     global.fetch = jest.fn().mockResolvedValueOnce({ ok: false, json: async () => ({}) });
     await expect(paypal.webhooks.verifyWebhookSignature({ getHeader: (n) => headers[n], webhookEvent: { id: 'evt' } }))
       .rejects.toThrow(/unable to retrieve paypal access token/i);
   });
 
+  test('invalid access token payload', async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({ ok: true, json: async () => ({}) });
+    await expect(paypal.webhooks.verifyWebhookSignature({ getHeader: (n) => headers[n], webhookEvent: { id: 'evt' } }))
+      .rejects.toThrow(/access token response is invalid/i);
+  });
+
+  test('missing env throws', async () => {
+    delete process.env.PAYPAL_WEBHOOK_ID;
+    await expect(paypal.webhooks.verifyWebhookSignature({ getHeader: (n) => headers[n], webhookEvent: { id: 'evt' } }))
+      .rejects.toThrow(/PAYPAL_WEBHOOK_ID/i);
+  });
+
+  test('verification endpoint error returns explicit reason', async () => {
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'token' }) })
+      .mockResolvedValueOnce({ ok: false, json: async () => ({}) });
+
+    const result = await paypal.webhooks.verifyWebhookSignature({ getHeader: (n) => headers[n], webhookEvent: { id: 'evt' } });
+    expect(result).toEqual({ verified: false, verificationStatus: 'VERIFICATION_ENDPOINT_ERROR', reason: 'verification_endpoint_error' });
+  });
+
+  test('unknown verification status is returned', async () => {
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'token' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) });
+
+    const result = await paypal.webhooks.verifyWebhookSignature({ getHeader: (n) => headers[n], webhookEvent: { id: 'evt' } });
+    expect(result).toEqual({ verified: false, verificationStatus: 'UNKNOWN', reason: 'UNKNOWN' });
+  });
+
   test('missing headers returns non-verified', async () => {
     const result = await paypal.webhooks.verifyWebhookSignature({ getHeader: () => undefined, webhookEvent: { id: 'evt' } });
-    expect(result).toEqual({ verified: false, reason: 'missing_verification_headers' });
+    expect(result).toEqual({ verified: false, verificationStatus: 'MISSING_HEADERS', reason: 'missing_verification_headers' });
   });
 });

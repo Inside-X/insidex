@@ -21,7 +21,8 @@ const app = express();
 
 app.use(securityHeaders);
 app.use(corsMiddleware);
-app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
+app.use('/api/webhooks/stripe', express.raw({ type: 'application/json', limit: '1mb' }));
+app.use('/api/webhooks/paypal', express.raw({ type: 'application/json', limit: '1mb' }));
 app.use(express.json());
 app.use(cookieParser);
 app.use(requestContext);

@@ -53,7 +53,28 @@ describe('stripe webhook security', () => {
     expect(() => stripe.webhooks.constructEvent(raw, sig, secret)).toThrow(/malformed webhook payload/i);
   });
 
-  test('passes unsupported event type through signature construction for route-level filtering', () => {
+  
+  test('rejects payload that is not a buffer', () => {
+    const sig = createStripeSignatureHeader(basePayload, secret);
+    expect(() => stripe.webhooks.constructEvent(JSON.stringify(basePayload), sig, secret)).toThrow(/buffer/i);
+  });
+
+  test('rejects missing webhook secret', () => {
+    const raw = Buffer.from(JSON.stringify(basePayload), 'utf8');
+    const sig = createStripeSignatureHeader(basePayload, secret);
+    expect(() => stripe.webhooks.constructEvent(raw, sig, '')).toThrow(/missing stripe webhook secret/i);
+  });
+
+  test('rejects missing v1 signature value', () => {
+    const raw = Buffer.from(JSON.stringify(basePayload), 'utf8');
+    expect(() => stripe.webhooks.constructEvent(raw, `t=${Math.floor(Date.now() / 1000)}`, secret)).toThrow(/no signatures/i);
+  });
+
+  test('rejects invalid signature timestamp format', () => {
+    const raw = Buffer.from(JSON.stringify(basePayload), 'utf8');
+    expect(() => stripe.webhooks.constructEvent(raw, 't=abc,v1=123', secret)).toThrow(/invalid stripe signature timestamp/i);
+  });
+test('passes unsupported event type through signature construction for route-level filtering', () => {
     const payload = { ...basePayload, type: 'charge.pending' };
     const raw = Buffer.from(JSON.stringify(payload), 'utf8');
     const sig = createStripeSignatureHeader(payload, secret);

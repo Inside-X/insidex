@@ -70,7 +70,11 @@ async function verifyWebhookSignature({ getHeader, webhookEvent }) {
   const verificationHeaders = parseVerificationHeaders(getHeader);
 
   if (!assertVerificationHeaders(verificationHeaders)) {
-    return { verified: false, reason: 'missing_verification_headers' };
+    return {
+      verified: false,
+      verificationStatus: 'MISSING_HEADERS',
+      reason: 'missing_verification_headers',
+    };
   }
 
   const accessToken = await getAccessToken();
@@ -89,14 +93,20 @@ async function verifyWebhookSignature({ getHeader, webhookEvent }) {
   });
 
   if (!response.ok) {
-    return { verified: false, reason: 'verification_endpoint_error' };
+    return {
+      verified: false,
+      verificationStatus: 'VERIFICATION_ENDPOINT_ERROR',
+      reason: 'verification_endpoint_error',
+    };
   }
 
   const payload = await response.json();
+  const verificationStatus = payload.verification_status || 'UNKNOWN';
 
   return {
-    verified: payload.verification_status === 'SUCCESS',
-    reason: payload.verification_status || 'UNKNOWN',
+    verified: verificationStatus === 'SUCCESS',
+    verificationStatus,
+    reason: verificationStatus
   };
 }
 
