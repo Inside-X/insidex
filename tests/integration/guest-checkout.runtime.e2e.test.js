@@ -231,6 +231,9 @@ describe('guest checkout runtime e2e', () => {
       data: {
         object: {
           id: 'pi_777',
+          status: 'succeeded',
+          amount_received: 100,
+          currency: 'eur',
           metadata: {
             orderId: '00000000-0000-0000-0000-000000000777',
             userId: '00000000-0000-0000-0000-000000000123',
@@ -246,9 +249,9 @@ describe('guest checkout runtime e2e', () => {
 
     expect(stripeFirst.status).toBe(200);
     expect(stripeReplay.status).toBe(200);
-    expect(stripeReplay.body.data.replayed).toBe(true);
+    expect(stripeReplay.body.data).toEqual({ ignored: true, reason: 'replay_detected' });
 
-    const verifyPaypalSignature = jest.spyOn(paypal.webhooks, 'verifyWebhookSignature').mockResolvedValue({ verified: true, reason: 'SUCCESS' });
+    const verifyPaypalSignature = jest.spyOn(paypal.webhooks, 'verifyWebhookSignature').mockResolvedValue({ verified: true, verificationStatus: 'SUCCESS', reason: 'SUCCESS' });
     jest.spyOn(orderRepository, 'processPaymentWebhookEvent')
       .mockResolvedValueOnce({ replayed: false, orderMarkedPaid: true })
       .mockResolvedValueOnce({ replayed: true, orderMarkedPaid: false });
@@ -268,10 +271,12 @@ describe('guest checkout runtime e2e', () => {
 
     expect(paypalFirst.status).toBe(200);
     expect(paypalReplay.status).toBe(200);
-    expect(paypalReplay.body.data.replayed).toBe(true);
+    expect(paypalReplay.body.data).toEqual({ ignored: true, reason: 'replay_detected' });
 
-    verifyPaypalSignature.mockResolvedValueOnce({ verified: false, reason: 'FAILURE' });
-    const paypalInvalid = await request(app).post('/api/webhooks/paypal').send(paypalPayload);
+    verifyPaypalSignature.mockResolvedValueOnce({ verified: false, verificationStatus: 'FAILURE', reason: 'FAILURE' });
+    const paypalInvalid = await request(app)
+      .post('/api/webhooks/paypal')
+      .send({ ...paypalPayload, eventId: 'paypal_evt_invalid_sig' });
     expect(paypalInvalid.status).toBe(400);
 
     const badSig = await request(app)

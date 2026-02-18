@@ -61,9 +61,11 @@ describe('rateLimit helpers', () => {
       store: { increment: async () => { throw new Error('store down'); } },
     });
     const res = { statusCode: null, status(code) { this.statusCode = code; return this; }, json() { return this; } };
+    const next = jest.fn();
 
-    await limiter(reqBase(), { status: () => ({ json: () => null }) }, next);
+    await limiter(reqBase(), res, next);
 
+    expect(next).not.toHaveBeenCalled();
     expect(res.statusCode).toBe(503);
   });
 

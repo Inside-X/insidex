@@ -19,7 +19,7 @@ async function cleanupDatabase() {
 }
 
 function refreshToken(sub = '00000000-0000-0000-0000-000000000123', options = {}) {
-  return jwt.sign({ sub, type: 'refresh' }, options.secret || process.env.JWT_REFRESH_SECRET, {
+  return jwt.sign({ sub, sid: options.sid || '11111111-1111-4111-8111-111111111111', type: 'refresh' }, options.secret || process.env.JWT_REFRESH_SECRET, {
     algorithm: 'HS256',
     issuer: options.issuer || process.env.JWT_REFRESH_ISSUER,
     audience: options.audience || process.env.JWT_REFRESH_AUDIENCE,
@@ -123,10 +123,13 @@ describe('sensitive auth runtime endpoints', () => {
   });
 
   test('POST /api/auth/refresh returns 200 on valid refresh token', async () => {
-    const res = await request(app).post('/api/auth/refresh').send({ refreshToken: refreshToken() });
+    const login = await request(app).post('/api/auth/login').send({ email: 'valid@example.com', password: 'Password123!' });
+    const res = await request(app).post('/api/auth/refresh').send({ refreshToken: login.body.data.refreshToken });
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ data: { refreshed: true } });
+    expect(res.body.data.refreshed).toBe(true);
+    expect(typeof res.body.data.accessToken).toBe('string');
+    expect(typeof res.body.data.refreshToken).toBe('string');
   });
 
   test('POST /api/auth/refresh returns 400 on invalid payload', async () => {
@@ -163,7 +166,8 @@ describe('sensitive auth runtime endpoints', () => {
   });
 
   test('POST /api/auth/refresh returns 429 when strict auth rate limit exceeded', async () => {
-    const payload = { refreshToken: refreshToken() };
+    const login = await request(app).post('/api/auth/login').send({ email: 'valid@example.com', password: 'Password123!' });
+    const payload = { refreshToken: login.body.data.refreshToken };
 
     await request(app).post('/api/auth/refresh').send(payload);
     await request(app).post('/api/auth/refresh').send(payload);

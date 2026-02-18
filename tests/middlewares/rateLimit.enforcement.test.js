@@ -32,12 +32,19 @@ function buildRes() {
 
 describe('rate limit middleware enforcement', () => {
   test('allows request under limit', async () => {
+    const hits = { value: 0 };
     const limiter = createRateLimiter({
       windowMs: 1000,
       max: 2,
       code: 'LIMIT',
       message: 'Too many',
       keyBuilder: () => 'rate:auth:127.0.0.1',
+      store: {
+        async increment() {
+          hits.value += 1;
+          return { totalHits: hits.value, resetTime: new Date(Date.now() + 1000) };
+        },
+      },
     });
     const next = jest.fn();
 
@@ -47,12 +54,19 @@ describe('rate limit middleware enforcement', () => {
   });
 
   test('blocks request with 429 when limit exceeded', async () => {
+    const hits = { value: 0 };
     const limiter = createRateLimiter({
       windowMs: 1000,
       max: 1,
       code: 'LIMIT',
       message: 'Too many',
       keyBuilder: () => 'rate:auth:127.0.0.1',
+      store: {
+        async increment() {
+          hits.value += 1;
+          return { totalHits: hits.value, resetTime: new Date(Date.now() + 1000) };
+        },
+      },
     });
 
     await limiter(buildReq(), buildRes(), jest.fn());
@@ -63,12 +77,25 @@ describe('rate limit middleware enforcement', () => {
   });
 
   test('resets after ttl', async () => {
+    let resetAt = Date.now() + 20;
+    let hits = 0;
     const limiter = createRateLimiter({
       windowMs: 20,
       max: 1,
       code: 'LIMIT',
       message: 'Too many',
       keyBuilder: () => 'rate:auth:127.0.0.1',
+      store: {
+        async increment(_key, windowMs) {
+          const now = Date.now();
+          if (now >= resetAt) {
+            hits = 0;
+            resetAt = now + windowMs;
+          }
+          hits += 1;
+          return { totalHits: hits, resetTime: new Date(resetAt) };
+        },
+      },
     });
 
     await limiter(buildReq(), buildRes(), jest.fn());
@@ -89,6 +116,7 @@ describe('rate limit middleware enforcement', () => {
         if (req.headers['x-forwarded-for']) throw new Error('spoof');
         return 'rate:auth:127.0.0.1';
       },
+      store: { increment: async () => ({ totalHits: 1, resetTime: new Date(Date.now() + 1000) }) },
     });
 
     const res = buildRes();
@@ -110,6 +138,7 @@ describe('rate limit middleware enforcement', () => {
         }
         return 'rate:auth:127.0.0.1';
       },
+      store: { increment: async () => ({ totalHits: 1, resetTime: new Date(Date.now() + 1000) }) },
     });
 
     const res = buildRes();

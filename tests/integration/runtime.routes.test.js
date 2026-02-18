@@ -238,6 +238,9 @@ describe('runtime business routes', () => {
       data: {
         object: {
           id: 'pi_123',
+          status: 'succeeded',
+          amount_received: 9990,
+          currency: 'eur',
           metadata: {
             orderId: '00000000-0000-0000-0000-000000000777',
             userId: '00000000-0000-0000-0000-000000000123',
@@ -248,6 +251,7 @@ describe('runtime business routes', () => {
     };
 
     const signature = createStripeSignatureHeader(body, process.env.PAYMENT_WEBHOOK_SECRET);
+    jest.spyOn(orderRepository, 'findById').mockResolvedValue({ id: '00000000-0000-0000-0000-000000000777', status: 'pending', totalAmount: '99.90', currency: 'EUR' });
     jest.spyOn(orderRepository, 'markPaidFromWebhook').mockResolvedValue({ replayed: false, orderMarkedPaid: true });
 
     const res = await request(app)
@@ -267,6 +271,9 @@ describe('runtime business routes', () => {
       data: {
         object: {
           id: 'pi_invalid_sig',
+          status: 'succeeded',
+          amount_received: 9990,
+          currency: 'eur',
           metadata: {
             orderId: '00000000-0000-0000-0000-000000000777',
             userId: '00000000-0000-0000-0000-000000000123',
@@ -292,6 +299,9 @@ describe('runtime business routes', () => {
       data: {
         object: {
           id: 'pi_replay_123',
+          status: 'succeeded',
+          amount_received: 9990,
+          currency: 'eur',
           metadata: {
             orderId: '00000000-0000-0000-0000-000000000777',
             userId: '00000000-0000-0000-0000-000000000123',
@@ -302,6 +312,7 @@ describe('runtime business routes', () => {
     };
 
     const signature = createStripeSignatureHeader(body, process.env.PAYMENT_WEBHOOK_SECRET);
+    jest.spyOn(orderRepository, 'findById').mockResolvedValue({ id: '00000000-0000-0000-0000-000000000777', status: 'pending', totalAmount: '99.90', currency: 'EUR' });
     jest.spyOn(orderRepository, 'markPaidFromWebhook')
       .mockResolvedValueOnce({ replayed: false, orderMarkedPaid: true })
       .mockResolvedValueOnce({ replayed: true, orderMarkedPaid: false });
@@ -318,7 +329,7 @@ describe('runtime business routes', () => {
 
     expect(first.status).toBe(200);
     expect(replay.status).toBe(200);
-    expect(replay.body.data.replayed).toBe(true);
+    expect(replay.body.data).toEqual({ ignored: true, reason: 'replay_detected' });
   });
 
   test('paypal webhook with verified signature is processed', async () => {
@@ -332,7 +343,8 @@ describe('runtime business routes', () => {
       },
     };
 
-    jest.spyOn(paypal.webhooks, 'verifyWebhookSignature').mockResolvedValue({ verified: true, reason: 'SUCCESS' });
+    jest.spyOn(paypal.webhooks, 'verifyWebhookSignature').mockResolvedValue({ verified: true, verificationStatus: 'SUCCESS', reason: 'SUCCESS' });
+    jest.spyOn(orderRepository, 'findById').mockResolvedValue({ id: '00000000-0000-0000-0000-000000000777', status: 'pending', totalAmount: '99.90', currency: 'EUR' });
     jest.spyOn(orderRepository, 'processPaymentWebhookEvent').mockResolvedValue({ replayed: false, orderMarkedPaid: true });
 
     const res = await request(app)
@@ -354,7 +366,7 @@ describe('runtime business routes', () => {
       },
     };
 
-    jest.spyOn(paypal.webhooks, 'verifyWebhookSignature').mockResolvedValue({ verified: false, reason: 'FAILURE' });
+    jest.spyOn(paypal.webhooks, 'verifyWebhookSignature').mockResolvedValue({ verified: false, verificationStatus: 'FAILURE', reason: 'FAILURE' });
     const processSpy = jest.spyOn(orderRepository, 'processPaymentWebhookEvent');
 
     const res = await request(app)
@@ -376,7 +388,8 @@ describe('runtime business routes', () => {
       },
     };
 
-    jest.spyOn(paypal.webhooks, 'verifyWebhookSignature').mockResolvedValue({ verified: true, reason: 'SUCCESS' });
+    jest.spyOn(paypal.webhooks, 'verifyWebhookSignature').mockResolvedValue({ verified: true, verificationStatus: 'SUCCESS', reason: 'SUCCESS' });
+    jest.spyOn(orderRepository, 'findById').mockResolvedValue({ id: '00000000-0000-0000-0000-000000000777', status: 'pending', totalAmount: '99.90', currency: 'EUR' });
     jest.spyOn(orderRepository, 'processPaymentWebhookEvent')
       .mockResolvedValueOnce({ replayed: false, orderMarkedPaid: true })
       .mockResolvedValueOnce({ replayed: true, orderMarkedPaid: false });
@@ -391,7 +404,7 @@ describe('runtime business routes', () => {
 
     expect(first.status).toBe(200);
     expect(replay.status).toBe(200);
-    expect(replay.body.data.replayed).toBe(true);
+    expect(replay.body.data).toEqual({ ignored: true, reason: 'replay_detected' });
   });
 
   test('orders create rejects any userId field from client payload', async () => {
