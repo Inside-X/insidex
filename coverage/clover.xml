@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1771420419159" clover="3.2.0">
-  <project timestamp="1771420419160" name="All files">
-    <metrics statements="1339" coveredstatements="1218" conditionals="883" coveredconditionals="743" methods="289" coveredmethods="248" elements="2511" coveredelements="2209" complexity="0" loc="1339" ncloc="1339" packages="11" files="64" classes="64"/>
+<coverage generated="1771478907639" clover="3.2.0">
+  <project timestamp="1771478907640" name="All files">
+    <metrics statements="1339" coveredstatements="1219" conditionals="883" coveredconditionals="744" methods="289" coveredmethods="248" elements="2511" coveredelements="2211" complexity="0" loc="1339" ncloc="1339" packages="11" files="64" classes="64"/>
     <package name="src">
       <metrics statements="27" coveredstatements="27" conditionals="4" coveredconditionals="4" methods="2" coveredmethods="2"/>
       <file name="app.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\app.js">
@@ -243,9 +243,9 @@
       </file>
       <file name="rate-limit-redis-store.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\lib\rate-limit-redis-store.js">
         <metrics statements="20" coveredstatements="20" conditionals="15" coveredconditionals="11" methods="4" coveredmethods="4"/>
-        <line num="3" count="63" type="stmt"/>
+        <line num="3" count="64" type="stmt"/>
         <line num="13" count="408" type="stmt"/>
-        <line num="17" count="71" type="cond" truecount="2" falsecount="0"/>
+        <line num="17" count="72" type="cond" truecount="2" falsecount="0"/>
         <line num="18" count="1" type="stmt"/>
         <line num="22" count="417" type="stmt"/>
         <line num="24" count="417" type="cond" truecount="2" falsecount="0"/>
@@ -259,7 +259,7 @@
         <line num="41" count="408" type="stmt"/>
         <line num="47" count="1" type="stmt"/>
         <line num="52" count="1" type="stmt"/>
-        <line num="56" count="70" type="stmt"/>
+        <line num="56" count="71" type="stmt"/>
         <line num="59" count="118" type="stmt"/>
         <line num="60" count="118" type="cond" truecount="3" falsecount="1"/>
         <line num="61" count="118" type="stmt"/>
@@ -408,7 +408,7 @@
       </file>
     </package>
     <package name="src.middlewares">
-      <metrics statements="232" coveredstatements="217" conditionals="198" coveredconditionals="183" methods="49" coveredmethods="48"/>
+      <metrics statements="232" coveredstatements="218" conditionals="198" coveredconditionals="184" methods="49" coveredmethods="48"/>
       <file name="authRateLimiter.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\middlewares\authRateLimiter.js">
         <metrics statements="1" coveredstatements="1" conditionals="0" coveredconditionals="0" methods="0" coveredmethods="0"/>
         <line num="3" count="2" type="stmt"/>
@@ -443,18 +443,18 @@
         <line num="74" count="40" type="stmt"/>
       </file>
       <file name="authorizeRole.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\middlewares\authorizeRole.js">
-        <metrics statements="11" coveredstatements="10" conditionals="14" coveredconditionals="13" methods="4" coveredmethods="4"/>
-        <line num="12" count="98" type="cond" truecount="2" falsecount="0"/>
-        <line num="14" count="120" type="cond" truecount="6" falsecount="0"/>
-        <line num="15" count="1" type="stmt"/>
-        <line num="18" count="120" type="stmt"/>
-        <line num="20" count="97" type="stmt"/>
-        <line num="21" count="6" type="cond" truecount="1" falsecount="1"/>
-        <line num="22" count="0" type="stmt"/>
-        <line num="25" count="6" type="stmt"/>
-        <line num="27" count="6" type="cond" truecount="4" falsecount="0"/>
-        <line num="28" count="3" type="stmt"/>
-        <line num="31" count="3" type="stmt"/>
+        <metrics statements="11" coveredstatements="11" conditionals="14" coveredconditionals="14" methods="4" coveredmethods="4"/>
+        <line num="12" count="106" type="cond" truecount="2" falsecount="0"/>
+        <line num="14" count="131" type="cond" truecount="6" falsecount="0"/>
+        <line num="15" count="5" type="stmt"/>
+        <line num="18" count="126" type="stmt"/>
+        <line num="20" count="101" type="stmt"/>
+        <line num="21" count="10" type="cond" truecount="2" falsecount="0"/>
+        <line num="22" count="1" type="stmt"/>
+        <line num="25" count="9" type="stmt"/>
+        <line num="27" count="9" type="cond" truecount="4" falsecount="0"/>
+        <line num="28" count="5" type="stmt"/>
+        <line num="31" count="4" type="stmt"/>
       </file>
       <file name="checkoutCustomerAccess.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\middlewares\checkoutCustomerAccess.js">
         <metrics statements="10" coveredstatements="10" conditionals="10" coveredconditionals="9" methods="2" coveredmethods="2"/>
@@ -558,8 +558,8 @@
       </file>
       <file name="rateLimit.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\middlewares\rateLimit.js">
         <metrics statements="58" coveredstatements="55" conditionals="51" coveredconditionals="49" methods="17" coveredmethods="16"/>
-        <line num="6" count="63" type="stmt"/>
-        <line num="9" count="86" type="cond" truecount="2" falsecount="0"/>
+        <line num="6" count="64" type="stmt"/>
+        <line num="9" count="87" type="cond" truecount="2" falsecount="0"/>
         <line num="13" count="0" type="stmt"/>
         <line num="17" count="2" type="cond" truecount="4" falsecount="0"/>
         <line num="18" count="1" type="stmt"/>
@@ -586,7 +586,7 @@
         <line num="59" count="248" type="cond" truecount="2" falsecount="1"/>
         <line num="60" count="248" type="stmt"/>
         <line num="61" count="248" type="cond" truecount="2" falsecount="0"/>
-        <line num="65" count="133" type="cond" truecount="3" falsecount="1"/>
+        <line num="65" count="135" type="cond" truecount="3" falsecount="1"/>
         <line num="66" count="0" type="stmt"/>
         <line num="70" count="397" type="cond" truecount="2" falsecount="0"/>
         <line num="71" count="397" type="cond" truecount="2" falsecount="0"/>
@@ -603,14 +603,14 @@
         <line num="89" count="369" type="stmt"/>
         <line num="91" count="8" type="stmt"/>
         <line num="95" count="8" type="stmt"/>
-        <line num="99" count="133" type="stmt"/>
-        <line num="101" count="133" type="stmt"/>
+        <line num="99" count="135" type="stmt"/>
+        <line num="101" count="135" type="stmt"/>
         <line num="104" count="506" type="stmt"/>
-        <line num="106" count="63" type="stmt"/>
+        <line num="106" count="64" type="stmt"/>
         <line num="107" count="246" type="cond" truecount="2" falsecount="0"/>
         <line num="108" count="246" type="cond" truecount="2" falsecount="0"/>
         <line num="111" count="246" type="stmt"/>
-        <line num="115" count="63" type="stmt"/>
+        <line num="115" count="64" type="stmt"/>
         <line num="116" count="142" type="cond" truecount="2" falsecount="0"/>
         <line num="117" count="142" type="cond" truecount="2" falsecount="0"/>
         <line num="120" count="142" type="stmt"/>
@@ -1297,9 +1297,9 @@
       </file>
       <file name="refresh-token-store.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\security\refresh-token-store.js">
         <metrics statements="51" coveredstatements="51" conditionals="27" coveredconditionals="27" methods="16" coveredmethods="16"/>
-        <line num="3" count="63" type="stmt"/>
-        <line num="51" count="63" type="stmt"/>
-        <line num="78" count="63" type="stmt"/>
+        <line num="3" count="64" type="stmt"/>
+        <line num="51" count="64" type="stmt"/>
+        <line num="78" count="64" type="stmt"/>
         <line num="81" count="89" type="stmt"/>
         <line num="85" count="125" type="stmt"/>
         <line num="89" count="26" type="stmt"/>
@@ -1309,7 +1309,7 @@
         <line num="100" count="63" type="stmt"/>
         <line num="114" count="65" type="stmt"/>
         <line num="115" count="65" type="cond" truecount="2" falsecount="0"/>
-        <line num="119" count="115" type="cond" truecount="2" falsecount="0"/>
+        <line num="119" count="116" type="cond" truecount="2" falsecount="0"/>
         <line num="123" count="3" type="stmt"/>
         <line num="127" count="3" type="stmt"/>
         <line num="128" count="2" type="stmt"/>
@@ -1391,11 +1391,11 @@
       </file>
       <file name="logger.js" path="C:\Users\insid\Desktop\VS code project\inside-home\src\utils\logger.js">
         <metrics statements="24" coveredstatements="22" conditionals="14" coveredconditionals="9" methods="8" coveredmethods="8"/>
-        <line num="1" count="63" type="stmt"/>
-        <line num="9" count="63" type="cond" truecount="1" falsecount="1"/>
+        <line num="1" count="64" type="stmt"/>
+        <line num="9" count="64" type="cond" truecount="1" falsecount="1"/>
         <line num="10" count="0" type="stmt"/>
-        <line num="12" count="63" type="cond" truecount="1" falsecount="1"/>
-        <line num="15" count="63" type="cond" truecount="1" falsecount="1"/>
+        <line num="12" count="64" type="cond" truecount="1" falsecount="1"/>
+        <line num="15" count="64" type="cond" truecount="1" falsecount="1"/>
         <line num="18" count="499" type="stmt"/>
         <line num="22" count="499" type="cond" truecount="1" falsecount="1"/>
         <line num="23" count="499" type="stmt"/>
@@ -1410,7 +1410,7 @@
         <line num="40" count="120" type="stmt"/>
         <line num="41" count="120" type="stmt"/>
         <line num="44" count="318" type="stmt"/>
-        <line num="47" count="63" type="stmt"/>
+        <line num="47" count="64" type="stmt"/>
         <line num="49" count="230" type="stmt"/>
         <line num="52" count="88" type="stmt"/>
         <line num="55" count="120" type="stmt"/>
