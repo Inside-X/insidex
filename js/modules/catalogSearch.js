@@ -1,5 +1,6 @@
 import { getPublishedProducts } from './productService.js';
 import { renderProducts } from './renderProducts.js';
+import { toMinorUnitsDecimalString } from './money.js';
 
 const normalizeText = (value) => value
   ?.toString()
@@ -195,8 +196,12 @@ export async function initCatalogSearch() {
           if (!range) {
             return true;
           }
-          const price = Number(product.price) || 0;
-          if (price < range.min || price > range.max) {
+          const priceMinor = toMinorUnitsDecimalString(String(product.price), 'EUR');
+          const minMinor = toMinorUnitsDecimalString(String(range.min), 'EUR');
+          const maxMinor = range.max === Number.POSITIVE_INFINITY
+            ? null
+            : toMinorUnitsDecimalString(String(range.max), 'EUR');
+          if (priceMinor < minMinor || (maxMinor !== null && priceMinor > maxMinor)) {
             return false;
           }
         }

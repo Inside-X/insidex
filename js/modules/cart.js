@@ -1,4 +1,5 @@
 import { trackAnalyticsEvent } from './analytics.js';
+import { fromMinorUnits, multiplyMinorUnits, toMinorUnitsDecimalString } from './money.js';
 
 // Année footer
 const yearEl = document.getElementById("year");
@@ -67,14 +68,18 @@ export async function updateBadge() {
 
 export async function addToCart(id, name, price, qty = 1) {
   const { anonId } = getCartContext();
+  const parsedQty = parseInt(String(qty), 10);
+  const unitMinor = toMinorUnitsDecimalString(String(price), 'EUR');
+  const lineMinor = multiplyMinorUnits(unitMinor, parsedQty);
+
   await fetchJSON('/api/cart/items', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       id,
       name,
-      price: Number(price),
-      qty: Number(qty),
+      price: +fromMinorUnits(unitMinor, 'EUR'),
+      qty: parsedQty,
       anonId
     })
   });
@@ -82,12 +87,12 @@ export async function addToCart(id, name, price, qty = 1) {
 
   await trackAnalyticsEvent('add_to_cart', {
     currency: 'EUR',
-    value: Number(price) * Number(qty),
+    value: +fromMinorUnits(lineMinor, 'EUR'),
     items: [{
       item_id: id,
       item_name: name,
-      price: Number(price),
-      quantity: Number(qty)
+      price: +fromMinorUnits(unitMinor, 'EUR'),
+      quantity: parsedQty
     }]
   });
 }
@@ -98,7 +103,7 @@ export async function setQty(id, qty) {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      qty: Number(qty),
+      qty: parseInt(String(qty), 10),
       anonId
     })
   });

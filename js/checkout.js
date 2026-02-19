@@ -7,15 +7,24 @@ import { renderTexts } from './modules/renderTexts.js';
 import { addAddress, addOrder, setActiveEmail, upsertProfile } from './modules/accountData.js';
 import { initAnalytics, trackAnalyticsEvent } from './modules/analytics.js';
 import { buildCheckoutPayload, confirmStripePayment, createPaymentIntent, generateIdempotencyKey, storeGuestSession } from './modules/guestCheckoutApi.js';
+import {
+  fromMinorUnits,
+  multiplyMinorUnits,
+  multiplyMinorUnitsRatio,
+  sumMinorUnits,
+  toMinorUnitsDecimalString,
+} from './modules/money.js';
 
 const currency = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 
 const state = {
-  subtotal: 0,
-  shipping: 0,
-  tax: 0,
-  total: 0
+  subtotalMinor: 0n,
+  shippingMinor: 0n,
+  taxMinor: 0n,
+  totalMinor: 0n,
 };
+
+let checkoutItemsState = [];
 
 const selectors = {
   items: document.getElementById('checkoutItems'),
@@ -34,8 +43,16 @@ const selectors = {
   paymentStatus: document.getElementById('paymentStatus'),
   paymentOutcome: document.getElementById('paymentOutcome'),
   cardFields: document.getElementById('cardFields'),
-  paymentMethods: Array.from(document.querySelectorAll('input[name="paymentMethod"]'))
+  paymentMethods: Array.from(document.querySelectorAll('input[name="paymentMethod"]')),
 };
+
+function minorToDecimal(minorUnits) {
+  return +fromMinorUnits(minorUnits, 'EUR');
+}
+
+function toMoneyMinor(value) {
+  return toMinorUnitsDecimalString(String(value), 'EUR');
+}
 
 function getSelectedPaymentMethod() {
   return selectors.paymentMethods.find((input) => input.checked)?.value ?? 'stripe';
@@ -85,56 +102,64 @@ async function processPayment({ paymentIntent, testOutcome }) {
   return true;
 }
 
-function getZoneMultiplier(zone) {
+function getZoneMultiplierRatio(zone) {
   switch (zone) {
     case 'nord':
-      return 1.1;
+      return { numerator: 110, denominator: 100 };
     case 'sud':
-      return 1.05;
+      return { numerator: 105, denominator: 100 };
     case 'hors-zone':
-      return 1.4;
+      return { numerator: 140, denominator: 100 };
     default:
-      return 1;
+      return { numerator: 100, denominator: 100 };
   }
 }
 
-function calculateShipping(subtotal) {
+function calculateShippingMinor(subtotalMinor) {
   const method = selectors.deliveryMethod.value;
   const zone = selectors.deliveryZone.value;
-  const multiplier = getZoneMultiplier(zone);
+  const { numerator, denominator } = getZoneMultiplierRatio(zone);
+  const freeShippingThresholdMinor = toMoneyMinor('700');
 
-  let base = 0;
+  let baseMinor = 0n;
   if (method === 'standard') {
-    base = subtotal >= 700 ? 0 : 25;
+    baseMinor = subtotalMinor >= freeShippingThresholdMinor ? 0n : toMoneyMinor('25');
   } else if (method === 'express') {
-    base = 35 + subtotal * 0.03;
-  } else if (method === 'pickup') {
-    base = 0;
+    baseMinor = sumMinorUnits([
+      toMoneyMinor('35'),
+      multiplyMinorUnitsRatio(subtotalMinor, 3, 100),
+    ]);
   }
 
-  const insurance = selectors.deliveryInsurance.checked ? subtotal * 0.02 : 0;
-  return (base + insurance) * multiplier;
+  const insuranceMinor = selectors.deliveryInsurance.checked
+    ? multiplyMinorUnitsRatio(subtotalMinor, 2, 100)
+    : 0n;
+
+  return multiplyMinorUnitsRatio(sumMinorUnits([baseMinor, insuranceMinor]), numerator, denominator);
 }
 
-function calculateTax(subtotal, shipping) {
+function calculateTaxMinor(subtotalMinor, shippingMinor) {
   const country = selectors.country.value;
   const isExempt = selectors.taxExempt.checked;
-  const rate = country === 'Mayotte' || isExempt ? 0 : 0.2;
-  return (subtotal + shipping) * rate;
+  const taxableMinor = sumMinorUnits([subtotalMinor, shippingMinor]);
+  if (country === 'Mayotte' || isExempt) {
+    return 0n;
+  }
+  return multiplyMinorUnitsRatio(taxableMinor, 20, 100);
 }
 
 function updateTotals() {
-  state.shipping = calculateShipping(state.subtotal);
-  state.tax = calculateTax(state.subtotal, state.shipping);
-  state.total = state.subtotal + state.shipping + state.tax;
+  state.shippingMinor = calculateShippingMinor(state.subtotalMinor);
+  state.taxMinor = calculateTaxMinor(state.subtotalMinor, state.shippingMinor);
+  state.totalMinor = sumMinorUnits([state.subtotalMinor, state.shippingMinor, state.taxMinor]);
 
-  selectors.subtotal.textContent = currency.format(state.subtotal);
-  selectors.shipping.textContent = currency.format(state.shipping);
-  selectors.tax.textContent = currency.format(state.tax);
-  selectors.total.textContent = currency.format(state.total);
+  selectors.subtotal.textContent = currency.format(minorToDecimal(state.subtotalMinor));
+  selectors.shipping.textContent = currency.format(minorToDecimal(state.shippingMinor));
+  selectors.tax.textContent = currency.format(minorToDecimal(state.taxMinor));
+  selectors.total.textContent = currency.format(minorToDecimal(state.totalMinor));
 
   selectors.taxNotice.textContent =
-    state.tax === 0
+    state.taxMinor === 0n
       ? 'TVA non applicable à Mayotte ou exonération activée.'
       : 'TVA appliquée selon le pays de livraison.';
 
@@ -148,41 +173,54 @@ async function renderCartSummary() {
   const cart = await loadCart();
   const entries = Object.entries(cart.items);
 
-  if (entries.length > 0) {
+  checkoutItemsState = entries.map(([id, item]) => ({
+    id,
+    name: item.name,
+    qty: item.qty,
+    unitMinor: toMoneyMinor(item.price),
+  }));
+
+  if (checkoutItemsState.length > 0) {
+    const lineMinors = checkoutItemsState.map((item) => multiplyMinorUnits(item.unitMinor, item.qty));
+    const beginCheckoutValueMinor = sumMinorUnits(lineMinors);
     await trackAnalyticsEvent('begin_checkout', {
       currency: 'EUR',
-      value: entries.reduce((sum, [, item]) => sum + (item.price * item.qty), 0),
-      items: entries.map(([id, item]) => ({
-        item_id: id,
+      value: minorToDecimal(beginCheckoutValueMinor),
+      items: checkoutItemsState.map((item) => ({
+        item_id: item.id,
         item_name: item.name,
-        price: item.price,
-        quantity: item.qty
-      }))
+        price: minorToDecimal(item.unitMinor),
+        quantity: item.qty,
+      })),
     });
   }
-  selectors.items.innerHTML = '';
-  state.subtotal = 0;
 
-  if (entries.length === 0) {
+  selectors.items.innerHTML = '';
+  state.subtotalMinor = 0n;
+
+  if (checkoutItemsState.length === 0) {
     selectors.items.innerHTML = '<p>Votre panier est vide pour le moment.</p>';
     updateTotals();
     return;
   }
 
-  entries.forEach(([id, item]) => {
-    const lineTotal = item.price * item.qty;
-    state.subtotal += lineTotal;
+  const lineMinors = [];
+  checkoutItemsState.forEach((item) => {
+    const lineTotalMinor = multiplyMinorUnits(item.unitMinor, item.qty);
+    lineMinors.push(lineTotalMinor);
+
     selectors.items.insertAdjacentHTML('beforeend', `
-      <div class="checkout__item" data-id="${id}">
+      <div class="checkout__item" data-id="${item.id}">
         <div>
           <div class="checkout__item-title">${item.name}</div>
           <div class="checkout__item-meta">Quantité : ${item.qty}</div>
         </div>
-        <strong>${currency.format(lineTotal)}</strong>
+        <strong>${currency.format(minorToDecimal(lineTotalMinor))}</strong>
       </div>
     `);
   });
 
+  state.subtotalMinor = sumMinorUnits(lineMinors);
   updateTotals();
 }
 
@@ -192,7 +230,7 @@ function handleInputChange() {
 
 async function handleSubmit(event) {
   event.preventDefault();
-  if (state.subtotal === 0) {
+  if (state.subtotalMinor === 0n) {
     showToast('Votre panier est vide. Ajoutez un produit pour finaliser.', 'warning');
     return;
   }
@@ -206,13 +244,14 @@ async function handleSubmit(event) {
   const email = formData.get('email')?.toString().trim();
   const fullName = formData.get('fullName')?.toString().trim();
   const phone = formData.get('phone')?.toString().trim();
-  const cart = await loadCart();
-  const items = Object.entries(cart.items).map(([id, item]) => ({
-    id,
+
+  const items = checkoutItemsState.map((item) => ({
+    id: item.id,
     name: item.name,
     qty: item.qty,
-    price: item.price
+    price: minorToDecimal(item.unitMinor),
   }));
+
   const address = {
     label: 'Livraison principale',
     fullName,
@@ -221,12 +260,13 @@ async function handleSubmit(event) {
     city: formData.get('city')?.toString().trim(),
     country: formData.get('country')?.toString().trim(),
     phone,
-    lastUsed: 'Utilisée pour la dernière commande'
+    lastUsed: 'Utilisée pour la dernière commande',
   };
-  const paymentItems = items.map((item) => ({
+
+  const paymentItems = checkoutItemsState.map((item) => ({
     id: item.id,
     quantity: item.qty,
-    price: item.price,
+    price: minorToDecimal(item.unitMinor),
   }));
 
   const checkoutPayload = buildCheckoutPayload({
@@ -264,38 +304,38 @@ async function handleSubmit(event) {
   }
 
   const order = {
-  id: paymentIntent?.metadata?.orderId || `CMD-${Date.now().toString(36).toUpperCase()}`,
+    id: paymentIntent?.metadata?.orderId || `CMD-${Date.now().toString(36).toUpperCase()}`,
     date: new Date().toISOString(),
     status: 'Confirmée',
     items,
     totals: {
-      subtotal: state.subtotal,
-      shipping: state.shipping,
-      tax: state.tax,
-      total: state.total
+      subtotal: minorToDecimal(state.subtotalMinor),
+      shipping: minorToDecimal(state.shippingMinor),
+      tax: minorToDecimal(state.taxMinor),
+      total: minorToDecimal(state.totalMinor),
     },
     delivery: {
       method: selectors.deliveryMethod.value,
       methodLabel: selectors.deliveryMethod.options[selectors.deliveryMethod.selectedIndex]?.textContent || '',
       zone: selectors.deliveryZone.value,
-      insurance: selectors.deliveryInsurance.checked
+      insurance: selectors.deliveryInsurance.checked,
     },
     note: formData.get('orderNote')?.toString().trim(),
-    address
+    address,
   };
 
   await trackAnalyticsEvent('purchase', {
     transaction_id: order.id,
     currency: 'EUR',
-    value: state.total,
-    shipping: state.shipping,
-    tax: state.tax,
-    items: items.map((item) => ({
+    value: minorToDecimal(state.totalMinor),
+    shipping: minorToDecimal(state.shippingMinor),
+    tax: minorToDecimal(state.taxMinor),
+    items: checkoutItemsState.map((item) => ({
       item_id: item.id,
       item_name: item.name,
-      price: item.price,
-      quantity: item.qty
-    }))
+      price: minorToDecimal(item.unitMinor),
+      quantity: item.qty,
+    })),
   });
 
   if (email) {
@@ -334,7 +374,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     selectors.deliveryZone,
     selectors.deliveryInsurance,
     selectors.country,
-    selectors.taxExempt
+    selectors.taxExempt,
   ].forEach((input) => {
     input.addEventListener('change', handleInputChange);
   });

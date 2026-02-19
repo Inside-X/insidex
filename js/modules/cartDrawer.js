@@ -6,6 +6,7 @@ import {
   clearCart as clearRemoteCart
 } from './cart.js';
 import { showToast } from './toast.js';
+import { fromMinorUnits, multiplyMinorUnits, sumMinorUnits, toMinorUnitsDecimalString } from './money.js';
 
 const currency = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 const IMG_BY_ID = {
@@ -19,6 +20,16 @@ const IMG_BY_ID = {
 
 let cartBtn, cartDrawer, cartBackdrop, cartCloseBtn, cartList, cartTotalEl, goToCartBtn, clearCartBtn, checkoutBtn;
 let cartPageContainer;
+
+
+function toMoneyMinor(value) {
+  return toMinorUnitsDecimalString(String(value), 'EUR');
+}
+
+function toDisplayAmount(minor) {
+  return +fromMinorUnits(minor, 'EUR');
+}
+
 
 async function openCart() {
   cartDrawer.classList.add('open');
@@ -43,13 +54,13 @@ async function clearCart() {
 }
 
 function lineHTML(id, it) {
-  const lineTotal = it.price * it.qty;
+  const lineTotalMinor = multiplyMinorUnits(toMoneyMinor(it.price), it.qty);
   return `
     <div class="cart-drawer__item" role="listitem">
       <img src="${IMG_BY_ID[id] || 'assets/images/placeholder.png'}" alt="${it.name}">
       <div class="cart-drawer__meta">
         <div class="cart-drawer__name">${it.name}</div>
-        <div class="cart-drawer__price">${currency.format(it.price)}</div>
+        <div class="cart-drawer__price">${currency.format(toDisplayAmount(toMoneyMinor(it.price)))}</div>
         <div class="cart-drawer__qty">
           <button class="qty-btn" data-act="dec" data-id="${id}" aria-label="Diminuer" type="button">−</button>
           <span aria-live="polite">${it.qty}</span>
@@ -57,7 +68,7 @@ function lineHTML(id, it) {
           <button class="remove-btn" data-act="rm" data-id="${id}" aria-label="Supprimer" type="button">Supprimer</button>
         </div>
       </div>
-      <div class="cart-drawer__line-total">${currency.format(lineTotal)}</div>
+      <div class="cart-drawer__line-total">${currency.format(toDisplayAmount(lineTotalMinor))}</div>
     </div>
   `;
 }
@@ -66,12 +77,13 @@ async function renderCart() {
   const cart = await loadCart();
   const entries = Object.entries(cart.items);
   cartList.innerHTML = '';
-  let total = 0;
+  const lineMinors = [];
   for (const [id, it] of entries) {
     cartList.insertAdjacentHTML('beforeend', lineHTML(id, it));
-    total += it.price * it.qty;
+    lineMinors.push(multiplyMinorUnits(toMoneyMinor(it.price), it.qty));
   }
-  cartTotalEl.textContent = currency.format(total);
+  const totalMinor = sumMinorUnits(lineMinors);
+  cartTotalEl.textContent = currency.format(toDisplayAmount(totalMinor));
   cartBackdrop.hidden = !cartDrawer.classList.contains('open');
 }
 
@@ -82,18 +94,19 @@ async function renderCartPage() {
     cartPageContainer.innerHTML = `<p>Votre panier est vide.</p>`;
     return;
   }
-  let total = 0;
+  const lineMinors = [];
   const list = entries.map(([id, it]) => {
-    total += it.price * it.qty;
+    lineMinors.push(multiplyMinorUnits(toMoneyMinor(it.price), it.qty));
     return lineHTML(id, it);
   }).join('');
+  const totalMinor = sumMinorUnits(lineMinors);
 
   cartPageContainer.innerHTML = `
     ${list}
     <div class="cart-drawer__footer" style="position:sticky;bottom:0;">
       <div class="cart-drawer__total">
         <span>Total</span>
-        <strong>${currency.format(total)}</strong>
+        <strong>${currency.format(toDisplayAmount(totalMinor))}</strong>
       </div>
       <div class="cart-drawer__actions">
         <button class="btn btn-outline" id="checkoutBtnPage" type="button">Finaliser la commande</button>

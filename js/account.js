@@ -13,6 +13,7 @@ import {
   setActiveEmail,
   upsertProfile
 } from './modules/accountData.js';
+import { fromMinorUnits, multiplyMinorUnits, toMinorUnitsDecimalString } from './modules/money.js';
 
 const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
   dateStyle: 'medium',
@@ -35,6 +36,16 @@ const selectors = {
 };
 
 let activeEmail = '';
+
+
+function toMoneyMinor(value) {
+  return toMinorUnitsDecimalString(String(value ?? 0), 'EUR');
+}
+
+function minorToDisplay(minor) {
+  return +fromMinorUnits(minor, 'EUR');
+}
+
 
 function setStatus(message, tone = 'info') {
   if (!selectors.status) return;
@@ -95,7 +106,7 @@ function renderOrders(account) {
             <p class="account-order__label">Articles</p>
             <ul>
               ${items.map((item) => `
-                <li>${item.name} × ${item.qty} <span>${currency.format(item.price * item.qty)}</span></li>
+                <li>${item.name} × ${item.qty} <span>${currency.format(minorToDisplay(multiplyMinorUnits(toMoneyMinor(item.price), item.qty)))}</span></li>
               `).join('')}
             </ul>
           </div>
@@ -108,10 +119,10 @@ function renderOrders(account) {
           </div>
           <div>
             <p class="account-order__label">Total</p>
-            <p>${currency.format(totals.total || 0)}</p>
-            <p class="account-muted">Sous-total ${currency.format(totals.subtotal || 0)}</p>
-            <p class="account-muted">Livraison ${currency.format(totals.shipping || 0)}</p>
-            <p class="account-muted">TVA ${currency.format(totals.tax || 0)}</p>
+            <p>${currency.format(minorToDisplay(toMoneyMinor(totals.total || 0)))}</p>
+            <p class="account-muted">Sous-total ${currency.format(minorToDisplay(toMoneyMinor(totals.subtotal || 0)))}</p>
+            <p class="account-muted">Livraison ${currency.format(minorToDisplay(toMoneyMinor(totals.shipping || 0)))}</p>
+            <p class="account-muted">TVA ${currency.format(minorToDisplay(toMoneyMinor(totals.tax || 0)))}</p>
           </div>
         </div>
       </article>
