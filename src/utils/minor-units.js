@@ -3,6 +3,7 @@ const CURRENCY_EXPONENT = Object.freeze({
   USD: 2,
   GBP: 2,
   JPY: 0,
+  BHD: 3,
 });
 
 function normalizeCurrency(currency) {
@@ -27,6 +28,14 @@ function parseDecimalParts(amountDecimalString) {
   const unsigned = normalized.replace(/^[+-]/, '');
   const [whole, frac = ''] = unsigned.split('.');
   return { sign, whole, frac };
+}
+
+function assertSafeInteger(value, message) {
+  if (!Number.isSafeInteger(value)) {
+    const error = new Error(message);
+    error.code = 'AMOUNT_OUT_OF_RANGE';
+    throw error;
+  }
 }
 
 export function toMinorUnits(amountDecimalString, currency = 'EUR') {
@@ -74,6 +83,10 @@ export function fromMinorUnits(minorUnits, currency = 'EUR') {
     throw error;
   }
 
+  if (isValidNumber) {
+    assertSafeInteger(minorUnits, 'Amount exceeds safe integer range');
+  }
+
   if (exponent === 0) {
     return String(minorUnits);
   }
@@ -108,17 +121,44 @@ function assertQuantityInteger(quantity) {
 export function multiplyMinorUnits(unitMinor, quantity) {
   assertMinorUnitInteger(unitMinor, 'unit');
   assertQuantityInteger(quantity);
-  return unitMinor * quantity;
+  const result = unitMinor * quantity;
+  assertSafeInteger(result, 'Minor units multiplication exceeds safe integer range');
+  return result;
 }
 
 export function sumMinorUnits(values) {
   return values.reduce((sum, value) => {
     assertMinorUnitInteger(sum, 'sum');
     assertMinorUnitInteger(value, 'line');
-    return sum + value;
+    const next = sum + value;
+    assertSafeInteger(next, 'Minor units summation exceeds safe integer range');
+    return next;
   }, 0);
 }
 
+export function multiplyMinorUnitsRatio(minorUnits, numerator, denominator) {
+  assertMinorUnitInteger(minorUnits, 'unit');
+  assertQuantityInteger(numerator);
+  if (!Number.isInteger(denominator) || denominator <= 0) {
+    const error = new Error(`Invalid denominator: ${denominator}`);
+    error.code = 'INVALID_RATIO';
+    throw error;
+  }
+
+  const product = BigInt(minorUnits) * BigInt(numerator);
+  const divisor = BigInt(denominator);
+  const quotient = product / divisor;
+  const remainder = product % divisor;
+  const rounded = remainder * 2n >= divisor ? quotient + 1n : quotient;
+
+  if (rounded > BigInt(Number.MAX_SAFE_INTEGER)) {
+    const error = new Error('Minor units ratio multiplication exceeds safe integer range');
+    error.code = 'AMOUNT_OUT_OF_RANGE';
+    throw error;
+  }
+
+  return Number(rounded);
+}
 
 function assertMinorUnitBigInt(value, label) {
   if (typeof value !== 'bigint' || value < 0n) {
@@ -156,6 +196,7 @@ export default {
   getCurrencyExponent,
   multiplyMinorUnits,
   sumMinorUnits,
+  multiplyMinorUnitsRatio,
   multiplyMinorUnitsBigInt,
   sumMinorUnitsBigInt,
 };
