@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { parseJsonWithStrictMonetaryValidation } from '../utils/strict-monetary-json.js';
 
 const DEFAULT_TOLERANCE_SECONDS = 300;
 
@@ -81,7 +82,7 @@ function constructEvent(rawBody, signature, secret, options = {}) {
   });
 
   try {
-    return JSON.parse(rawBody.toString('utf8'));
+    return parseJsonWithStrictMonetaryValidation(rawBody.toString('utf8'), 'webhook payload');
   } catch {
     throw new Error('Malformed webhook payload');
   }

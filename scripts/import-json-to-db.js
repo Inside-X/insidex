@@ -8,6 +8,7 @@ import {
   sumMinorUnitsBigInt,
   toMinorUnits,
 } from '../src/utils/minor-units.js';
+import { parseJsonWithStrictMonetaryValidation } from '../src/utils/strict-monetary-json.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,7 +53,7 @@ async function readJsonIfExists(fileName, defaultValue) {
   const filePath = path.join(DATA_DIR, fileName);
   try {
     const raw = await readFile(filePath, 'utf-8');
-    return JSON.parse(raw);
+    return parseJsonWithStrictMonetaryValidation(raw, fileName);
   } catch (error) {
     if (error.code === 'ENOENT') return defaultValue;
     throw new Error(`Failed to read ${fileName}: ${error.message}`);

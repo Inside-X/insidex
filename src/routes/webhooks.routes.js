@@ -8,6 +8,7 @@ import { orderRepository } from '../repositories/order.repository.js';
 import { logger } from '../utils/logger.js';
 import { createWebhookIdempotencyStore } from '../lib/webhook-idempotency-store.js';
 import { toMinorUnits } from '../utils/minor-units.js';
+import { parseJsonWithStrictMonetaryValidation } from '../utils/strict-monetary-json.js';
 
 const router = express.Router();
 const MAX_WEBHOOK_BODY_SIZE_BYTES = 1024 * 1024;
@@ -36,13 +37,7 @@ function parseRawJsonBody(rawBody) {
     throw error;
   }
 
-  try {
-    return JSON.parse(rawBody.toString('utf8'));
-  } catch {
-    const error = new SyntaxError('Malformed webhook payload');
-    error.statusCode = 400;
-    throw error;
-  }
+  return parseJsonWithStrictMonetaryValidation(rawBody.toString('utf8'), 'webhook payload');
 }
 
 function getIdempotencyStore(req) {
