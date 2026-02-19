@@ -89,8 +89,73 @@ export function getCurrencyExponent(currency = 'EUR') {
   return CURRENCY_EXPONENT[normalizedCurrency];
 }
 
+function assertMinorUnitInteger(value, label) {
+  if (!Number.isInteger(value) || value < 0) {
+    const error = new Error(`Invalid ${label} minor units: ${value}`);
+    error.code = 'INVALID_MINOR_UNITS';
+    throw error;
+  }
+}
+
+function assertQuantityInteger(quantity) {
+  if (!Number.isInteger(quantity) || quantity < 0) {
+    const error = new Error(`Invalid quantity: ${quantity}`);
+    error.code = 'INVALID_QUANTITY';
+    throw error;
+  }
+}
+
+export function multiplyMinorUnits(unitMinor, quantity) {
+  assertMinorUnitInteger(unitMinor, 'unit');
+  assertQuantityInteger(quantity);
+  return unitMinor * quantity;
+}
+
+export function sumMinorUnits(values) {
+  return values.reduce((sum, value) => {
+    assertMinorUnitInteger(sum, 'sum');
+    assertMinorUnitInteger(value, 'line');
+    return sum + value;
+  }, 0);
+}
+
+
+function assertMinorUnitBigInt(value, label) {
+  if (typeof value !== 'bigint' || value < 0n) {
+    const error = new Error(`Invalid ${label} minor units bigint: ${value}`);
+    error.code = 'INVALID_MINOR_UNITS';
+    throw error;
+  }
+}
+
+function assertQuantityBigInt(quantity) {
+  if (typeof quantity !== 'bigint' || quantity < 0n) {
+    const error = new Error(`Invalid quantity bigint: ${quantity}`);
+    error.code = 'INVALID_QUANTITY';
+    throw error;
+  }
+}
+
+export function multiplyMinorUnitsBigInt(unitMinor, quantity) {
+  assertMinorUnitBigInt(unitMinor, 'unit');
+  assertQuantityBigInt(quantity);
+  return unitMinor * quantity;
+}
+
+export function sumMinorUnitsBigInt(values) {
+  return values.reduce((sum, value) => {
+    assertMinorUnitBigInt(sum, 'sum');
+    assertMinorUnitBigInt(value, 'line');
+    return sum + value;
+  }, 0n);
+}
+
 export default {
   toMinorUnits,
   fromMinorUnits,
   getCurrencyExponent,
+  multiplyMinorUnits,
+  sumMinorUnits,
+  multiplyMinorUnitsBigInt,
+  sumMinorUnitsBigInt,
 };

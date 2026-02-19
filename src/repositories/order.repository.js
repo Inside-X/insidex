@@ -1,6 +1,6 @@
 import prisma from '../lib/prisma.js';
 import { normalizeDbError } from '../lib/db-error.js';
-import { fromMinorUnits, toMinorUnits } from '../utils/minor-units.js';
+import { fromMinorUnits, multiplyMinorUnits, sumMinorUnits, toMinorUnits } from '../utils/minor-units.js';
 
 function uniqueProductItems(items) {
   const byProduct = new Map();
@@ -97,11 +97,11 @@ export const orderRepository = {
 
         const productMap = new Map(products.map((product) => [product.id, product]));
 
-        const totalAmountMinor = normalizedItems.reduce((sum, item) => {
+        const totalAmountMinor = sumMinorUnits(normalizedItems.map((item) => {
           const product = productMap.get(item.productId);
           const unitMinor = toMinorUnits(String(product.price));
-          return sum + unitMinor * item.quantity;
-        }, 0);
+          return multiplyMinorUnits(unitMinor, item.quantity);
+        }));
 
         let order;
         try {
@@ -183,10 +183,10 @@ export const orderRepository = {
         }
 
         const productMap = new Map(products.map((product) => [product.id, product]));
-        const totalAmountMinor = normalizedItems.reduce((sum, item) => {
+        const totalAmountMinor = sumMinorUnits(normalizedItems.map((item) => {
           const unitMinor = toMinorUnits(String(productMap.get(item.productId).price));
-          return sum + (unitMinor * item.quantity);
-        }, 0);
+          return multiplyMinorUnits(unitMinor, item.quantity);
+        }));
 
         assertExpectedAmountMatches({ expectedTotalAmount, expectedTotalAmountMinor, totalAmountMinor });
 

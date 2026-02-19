@@ -2,7 +2,12 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
-import { toMinorUnits, fromMinorUnits } from '../src/utils/minor-units.js';
+import {
+  fromMinorUnits,
+  multiplyMinorUnitsBigInt,
+  sumMinorUnitsBigInt,
+  toMinorUnits,
+} from '../src/utils/minor-units.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -192,7 +197,7 @@ function transformOrders(ordersJson, userMap, productMap) {
     const orderId = crypto.randomUUID();
     const createdAt = toDate(rawOrder?.createdAt);
     const items = Array.isArray(rawOrder?.items) ? rawOrder.items : [];
-    let totalAmountMinor = 0n;
+    const lineTotalMinor = [];
 
     for (const item of items) {
       const productId = productMap.get(item?.productId);
@@ -200,9 +205,8 @@ function transformOrders(ordersJson, userMap, productMap) {
       const quantity = parseQuantity(item?.quantity || 1);
       const unitPriceString = String(item?.unitPrice ?? item?.price ?? '0');
       const unitMinor = BigInt(toMinorUnits(String(unitPriceString), 'EUR'));
-      const totalMinor = unitMinor * BigInt(quantity);
-      const total = fromMinorUnits(totalMinor, 'EUR');
-      totalAmountMinor += BigInt(toMinorUnits(total, 'EUR'));
+      const totalMinor = multiplyMinorUnitsBigInt(unitMinor, BigInt(quantity));
+      lineTotalMinor.push(totalMinor);
 
       orderItems.push({
         id: crypto.randomUUID(),
@@ -218,7 +222,7 @@ function transformOrders(ordersJson, userMap, productMap) {
       id: orderId,
       userId: mappedUserId,
       status: ['pending', 'paid', 'shipped', 'cancelled'].includes(rawOrder?.status) ? rawOrder.status : 'pending',
-      totalAmount: fromMinorUnits(totalAmountMinor, 'EUR'),
+      totalAmount: fromMinorUnits(sumMinorUnitsBigInt(lineTotalMinor), 'EUR'),
       createdAt,
       updatedAt: toDate(rawOrder?.updatedAt, createdAt),
     });

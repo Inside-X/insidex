@@ -8,7 +8,7 @@ import authenticateJWT from '../middlewares/authenticate.js';
 import checkoutCustomerAccess from '../middlewares/checkoutCustomerAccess.js';
 import { orderRepository } from '../repositories/order.repository.js';
 import { sendApiError } from '../utils/api-error.js';
-import { toMinorUnits } from '../utils/minor-units.js';
+import { multiplyMinorUnits, sumMinorUnits, toMinorUnits } from '../utils/minor-units.js';
 
 const router = express.Router();
 const SUPPORTED_CURRENCIES = new Set(['EUR', 'USD']);
@@ -44,7 +44,7 @@ router.post('/create-intent', strictValidate(paymentsSchemas.createIntent), ensu
       dbUnitPriceMinor: productMap.get(item.id),
     }));
 
-    const totalAmountMinor = lineItems.reduce((sum, item) => sum + (item.dbUnitPriceMinor * item.quantity), 0);
+    const totalAmountMinor = sumMinorUnits(lineItems.map((item) => multiplyMinorUnits(item.dbUnitPriceMinor, item.quantity)));
     const candidateIntentId = `pi_${crypto.randomUUID().replace(/-/g, '')}`;
 
     const orderResult = await orderRepository.createPendingPaymentOrder({
