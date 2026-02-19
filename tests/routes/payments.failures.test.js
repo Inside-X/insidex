@@ -19,7 +19,7 @@ const payload = {
   email: 'test@insidex.local',
   address: { line1: '1', city: 'Paris', postalCode: '75001', country: 'FR' },
   currency: 'EUR',
-  items: [{ id: '00000000-0000-0000-0000-000000000999', quantity: 1, price: 10 }],
+  items: [{ id: '00000000-0000-0000-0000-000000000999', quantity: 1 }],
 };
 
 describe('payments route failures', () => {

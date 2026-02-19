@@ -33,7 +33,7 @@ describe('guest checkout frontend api helpers', () => {
     const payload = buildCheckoutPayload({
       email: 'guest@x.com',
       address: { line1: 'a', city: 'c', postalCode: '1', country: 'FR' },
-      items: [{ id: 'p1', quantity: 1, price: 10 }],
+      items: [{ id: 'p1', quantity: 1 }],
       idempotencyKey: key,
     });
 

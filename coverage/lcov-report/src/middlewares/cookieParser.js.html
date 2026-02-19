@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">86.66% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>13/15</span>
+                <span class='fraction'>0/15</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">75% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>3/4</span>
+                <span class='fraction'>0/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>2/2</span>
+                <span class='fraction'>0/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">92.85% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>13/14</span>
+                <span class='fraction'>0/14</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line medium'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -90,55 +90,55 @@
 <a name='L25'></a><a href='#L25'>25</a>
 <a name='L26'></a><a href='#L26'>26</a>
 <a name='L27'></a><a href='#L27'>27</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">247x</span>
-<span class="cline-any cline-yes">247x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">247x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">247x</span>
-<span class="cline-any cline-yes">247x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">function decodeCookieValue(value) {
-  try {
-    return decodeURIComponent(value);
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">function <span class="fstat-no" title="function not covered" >decodeCookieValue(</span>value) {
+<span class="cstat-no" title="statement not covered" >  try {</span>
+<span class="cstat-no" title="statement not covered" >    return decodeURIComponent(value);</span>
   } catch {
 <span class="cstat-no" title="statement not covered" >    return value;</span>
   }
 }
 &nbsp;
-export function cookieParser(req, _res, next) {
-  const header = req.get('cookie');
-  const cookies = {};
+export function <span class="fstat-no" title="function not covered" >cookieParser(</span>req, _res, next) {
+  const header = <span class="cstat-no" title="statement not covered" >req.get('cookie');</span>
+  const cookies = <span class="cstat-no" title="statement not covered" >{};</span>
 &nbsp;
-  if (header) {
-    const rawCookies = header.split(';');
-    for (const rawCookie of rawCookies) {
-      const [name, ...rest] = rawCookie.trim().split('=');
-      <span class="missing-if-branch" title="if path not taken" >I</span>if (!name) <span class="cstat-no" title="statement not covered" >continue;</span>
-      const value = rest.join('=');
-      cookies[name] = decodeCookieValue(value);
+<span class="cstat-no" title="statement not covered" >  if (header) {</span>
+    const rawCookies = <span class="cstat-no" title="statement not covered" >header.split(';');</span>
+<span class="cstat-no" title="statement not covered" >    for (const rawCookie of rawCookies) {</span>
+      const [name, ...rest] = <span class="cstat-no" title="statement not covered" >rawCookie.trim().split('=');</span>
+<span class="cstat-no" title="statement not covered" >      if (!name) <span class="cstat-no" title="statement not covered" >continue;</span></span>
+      const value = <span class="cstat-no" title="statement not covered" >rest.join('=');</span>
+<span class="cstat-no" title="statement not covered" >      cookies[name] = decodeCookieValue(value);</span>
     }
   }
 &nbsp;
-  req.cookies = cookies;
-  next();
+<span class="cstat-no" title="statement not covered" >  req.cookies = cookies;</span>
+<span class="cstat-no" title="statement not covered" >  next();</span>
 }
 &nbsp;
 export default cookieParser;</pre></td></tr></table></pre>
@@ -148,7 +148,7 @@ export default cookieParser;</pre></td></tr></table></pre>
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-02-19T07:08:11.160Z
+                at 2026-02-19T09:43:57.682Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

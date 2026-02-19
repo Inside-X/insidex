@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>19/19</span>
+                <span class='fraction'>0/19</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>20/20</span>
+                <span class='fraction'>0/20</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>2/2</span>
+                <span class='fraction'>0/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>19/19</span>
+                <span class='fraction'>0/19</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -114,38 +114,38 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">76x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">76x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">74x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">76x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">71x</span>
-<span class="cline-any cline-yes">71x</span>
-<span class="cline-any cline-yes">7x</span>
-<span class="cline-any cline-yes">7x</span>
-<span class="cline-any cline-yes">7x</span>
-<span class="cline-any cline-yes">7x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">64x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -160,39 +160,39 @@
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import jwt from 'jsonwebtoken';
 import { getAccessTokenConfig } from './jwt-config.js';
 &nbsp;
-function assertGuestTokenClaims({ role, isGuest }) {
-  const normalizedRole = typeof role === 'string' ? role.trim().toLowerCase() : '';
+function <span class="fstat-no" title="function not covered" >assertGuestTokenClaims(</span>{ role, isGuest }) {
+  const normalizedRole = <span class="cstat-no" title="statement not covered" >typeof role === 'string' ? role.trim().toLowerCase() : '';</span>
 &nbsp;
-  if (isGuest === true &amp;&amp; normalizedRole !== 'guest') {
-    const error = new Error('Invalid guest token claims');
-    error.statusCode = 500;
-    error.code = 'GUEST_ISOLATION_VIOLATION';
-    throw error;
+<span class="cstat-no" title="statement not covered" >  if (isGuest === true &amp;&amp; normalizedRole !== 'guest') {</span>
+    const error = <span class="cstat-no" title="statement not covered" >new Error('Invalid guest token claims');</span>
+<span class="cstat-no" title="statement not covered" >    error.statusCode = 500;</span>
+<span class="cstat-no" title="statement not covered" >    error.code = 'GUEST_ISOLATION_VIOLATION';</span>
+<span class="cstat-no" title="statement not covered" >    throw error;</span>
   }
 &nbsp;
-  if (normalizedRole === 'guest' &amp;&amp; isGuest !== true) {
-    const error = new Error('Invalid guest token claims');
-    error.statusCode = 500;
-    error.code = 'GUEST_ISOLATION_VIOLATION';
-    throw error;
+<span class="cstat-no" title="statement not covered" >  if (normalizedRole === 'guest' &amp;&amp; isGuest !== true) {</span>
+    const error = <span class="cstat-no" title="statement not covered" >new Error('Invalid guest token claims');</span>
+<span class="cstat-no" title="statement not covered" >    error.statusCode = 500;</span>
+<span class="cstat-no" title="statement not covered" >    error.code = 'GUEST_ISOLATION_VIOLATION';</span>
+<span class="cstat-no" title="statement not covered" >    throw error;</span>
   }
 }
 &nbsp;
 /**
  * Shared JWT issuer used by login/register and implicit guest checkout sessions.
  */
-export function issueAccessToken({ id, role, isGuest = false, expiresIn } = {}) {
-  assertGuestTokenClaims({ role, isGuest });
+export function <span class="fstat-no" title="function not covered" >issueAccessToken(</span>{ id, role, isGuest = <span class="branch-0 cbranch-no" title="branch not covered" >false,</span> expiresIn } = <span class="branch-0 cbranch-no" title="branch not covered" >{})</span> {
+<span class="cstat-no" title="statement not covered" >  assertGuestTokenClaims({ role, isGuest });</span>
 &nbsp;
-  const accessConfig = getAccessTokenConfig();
-    if (!accessConfig.secret || !accessConfig.issuer || !accessConfig.audience || !accessConfig.expiry) {
-    const error = new Error('JWT access token configuration is incomplete');
-    error.statusCode = 500;
-    error.code = 'JWT_MISCONFIGURED';
-    throw error;
+  const accessConfig = <span class="cstat-no" title="statement not covered" >getAccessTokenConfig();</span>
+<span class="cstat-no" title="statement not covered" >    if (!accessConfig.secret || !accessConfig.issuer || !accessConfig.audience || !accessConfig.expiry) {</span>
+    const error = <span class="cstat-no" title="statement not covered" >new Error('JWT access token configuration is incomplete');</span>
+<span class="cstat-no" title="statement not covered" >    error.statusCode = 500;</span>
+<span class="cstat-no" title="statement not covered" >    error.code = 'JWT_MISCONFIGURED';</span>
+<span class="cstat-no" title="statement not covered" >    throw error;</span>
   }
  
-  return jwt.sign(
+<span class="cstat-no" title="statement not covered" >  return jwt.sign(</span>
     { sub: id, role, isGuest },
     accessConfig.secret,
     {
@@ -211,7 +211,7 @@ export default issueAccessToken;</pre></td></tr></table></pre>
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-02-19T07:08:11.160Z
+                at 2026-02-19T09:43:57.682Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

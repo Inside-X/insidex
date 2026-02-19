@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>13/13</span>
+                <span class='fraction'>0/13</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>12/12</span>
+                <span class='fraction'>0/12</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>3/3</span>
+                <span class='fraction'>0/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>13/13</span>
+                <span class='fraction'>0/13</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -100,7 +100,7 @@
 <a name='L35'></a><a href='#L35'>35</a>
 <a name='L36'></a><a href='#L36'>36</a>
 <a name='L37'></a><a href='#L37'>37</a>
-<a name='L38'></a><a href='#L38'>38</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">31x</span>
+<a name='L38'></a><a href='#L38'>38</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -113,31 +113,31 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">150x</span>
-<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">140x</span>
-<span class="cline-any cline-yes">140x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">47x</span>
-<span class="cline-any cline-yes">47x</span>
-<span class="cline-any cline-yes">7x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">40x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">43x</span>
-<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">37x</span>
-<span class="cline-any cline-yes">37x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">export const ROLE_PERMISSIONS = Object.freeze({
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">export const ROLE_PERMISSIONS = <span class="cstat-no" title="statement not covered" >Object.freeze({</span>
   admin: Object.freeze([
     'admin:health:read',
     'reports:read',
@@ -149,31 +149,31 @@
   customer: Object.freeze([]),
 });
 &nbsp;
-export function normalizeRole(role) {
-  if (typeof role !== 'string') {
-    return null;
+export function <span class="fstat-no" title="function not covered" >normalizeRole(</span>role) {
+<span class="cstat-no" title="statement not covered" >  if (typeof role !== 'string') {</span>
+<span class="cstat-no" title="statement not covered" >    return null;</span>
   }
 &nbsp;
-  const normalizedRole = role.trim().toLowerCase();
-  return normalizedRole || null;
+  const normalizedRole = <span class="cstat-no" title="statement not covered" >role.trim().toLowerCase();</span>
+<span class="cstat-no" title="statement not covered" >  return normalizedRole || null;</span>
 }
 &nbsp;
-export function getPermissionsForRole(role) {
-  const normalizedRole = normalizeRole(role);
-  if (!normalizedRole) {
-    return [];
+export function <span class="fstat-no" title="function not covered" >getPermissionsForRole(</span>role) {
+  const normalizedRole = <span class="cstat-no" title="statement not covered" >normalizeRole(role);</span>
+<span class="cstat-no" title="statement not covered" >  if (!normalizedRole) {</span>
+<span class="cstat-no" title="statement not covered" >    return [];</span>
   }
 &nbsp;
-  return ROLE_PERMISSIONS[normalizedRole] ?? [];
+<span class="cstat-no" title="statement not covered" >  return ROLE_PERMISSIONS[normalizedRole] ?? [];</span>
 }
 &nbsp;
-export function roleHasPermission(role, permission) {
-  if (typeof permission !== 'string' || !permission.trim()) {
-    return false;
+export function <span class="fstat-no" title="function not covered" >roleHasPermission(</span>role, permission) {
+<span class="cstat-no" title="statement not covered" >  if (typeof permission !== 'string' || !permission.trim()) {</span>
+<span class="cstat-no" title="statement not covered" >    return false;</span>
   }
 &nbsp;
-  const requiredPermission = permission.trim();
-  return getPermissionsForRole(role).includes(requiredPermission);
+  const requiredPermission = <span class="cstat-no" title="statement not covered" >permission.trim();</span>
+<span class="cstat-no" title="statement not covered" >  return getPermissionsForRole(role).includes(requiredPermission);</span>
 }</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -181,7 +181,7 @@ export function roleHasPermission(role, permission) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-02-19T07:08:11.160Z
+                at 2026-02-19T09:43:57.682Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

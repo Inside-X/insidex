@@ -3,7 +3,6 @@ import { z } from 'zod';
 export const checkoutItemSchema = z.object({
   id: z.string().uuid('item id must be a valid UUID'),
   quantity: z.number().int().min(1).max(100),
-  price: z.number().positive(),
 }).strict();
 
 export const checkoutAddressSchema = z.object({

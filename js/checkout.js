@@ -266,7 +266,6 @@ async function handleSubmit(event) {
   const paymentItems = checkoutItemsState.map((item) => ({
     id: item.id,
     quantity: item.qty,
-    price: minorToDecimal(item.unitMinor),
   }));
 
   const checkoutPayload = buildCheckoutPayload({

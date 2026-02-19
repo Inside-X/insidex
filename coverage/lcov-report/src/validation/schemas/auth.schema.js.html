@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>8/8</span>
+                <span class='fraction'>0/8</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>8/8</span>
+                <span class='fraction'>0/8</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -110,23 +110,21 @@
 <a name='L45'></a><a href='#L45'>45</a>
 <a name='L46'></a><a href='#L46'>46</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">28x</span>
-<span class="cline-any cline-yes">28x</span>
-<span class="cline-any cline-yes">28x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">28x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">28x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">28x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -135,14 +133,16 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">28x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">28x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -155,21 +155,21 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { z } from 'zod';
 &nbsp;
-const EMAIL_MAX = 255;
-const PASSWORD_MIN = 8;
-const PASSWORD_MAX = 100;
+const EMAIL_MAX = <span class="cstat-no" title="statement not covered" >255;</span>
+const PASSWORD_MIN = <span class="cstat-no" title="statement not covered" >8;</span>
+const PASSWORD_MAX = <span class="cstat-no" title="statement not covered" >100;</span>
 &nbsp;
-const emailSchema = z.string({ required_error: 'email is required' })
+const emailSchema = <span class="cstat-no" title="statement not covered" >z.string({ required_error: 'email is required' })</span>
   .trim()
   .toLowerCase()
   .email('email must be a valid email address')
   .max(EMAIL_MAX, `email must contain at most ${EMAIL_MAX} characters`);
 &nbsp;
-const passwordSchema = z.string({ required_error: 'password is required' })
+const passwordSchema = <span class="cstat-no" title="statement not covered" >z.string({ required_error: 'password is required' })</span>
   .min(PASSWORD_MIN, `password must contain at least ${PASSWORD_MIN} characters`)
   .max(PASSWORD_MAX, `password must contain at most ${PASSWORD_MAX} characters`);
 &nbsp;
-export const registerSchema = z
+export const registerSchema = <span class="cstat-no" title="statement not covered" >z</span>
   .object({
     // Normalise l'email pour unicité et indexation future en base PostgreSQL.
     email: emailSchema,
@@ -180,14 +180,14 @@ export const registerSchema = z
   })
   .strict({ message: 'unknown field in register payload' });
 &nbsp;
-export const loginSchema = z
+export const loginSchema = <span class="cstat-no" title="statement not covered" >z</span>
   .object({
     email: emailSchema,
     password: passwordSchema
   })
   .strict({ message: 'unknown field in login payload' });
 &nbsp;
-export const authSchemas = {
+export const authSchemas = <span class="cstat-no" title="statement not covered" >{</span>
   register: registerSchema,
   login: loginSchema,
   refresh: z.object({ refreshToken: z.string().min(1).max(2048).optional() }).strict({ message: 'unknown field in refresh payload' }),
@@ -205,7 +205,7 @@ export const authSchemas = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-02-19T07:08:11.160Z
+                at 2026-02-19T09:43:57.682Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

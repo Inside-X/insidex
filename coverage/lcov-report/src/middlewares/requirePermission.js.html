@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>15/15</span>
+                <span class='fraction'>0/15</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">91.66% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>11/12</span>
+                <span class='fraction'>0/12</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>5/5</span>
+                <span class='fraction'>0/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>12/12</span>
+                <span class='fraction'>0/12</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -105,27 +105,27 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">71x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">71x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">70x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">70x</span>
-<span class="cline-any cline-yes">15x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">14x</span>
-<span class="cline-any cline-yes">14x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">14x</span>
-<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -137,28 +137,28 @@ import { getNormalizedAuthRole, requireAuthenticatedSubject } from './rbac.js';
  * requirePermission('reports:read')
  * requirePermission(['reports:read', 'audit-log:read'])
  */
-export function requirePermission(permissionOrArray) {
-  const requiredPermissions = Array.isArray(permissionOrArray) ? <span class="branch-0 cbranch-no" title="branch not covered" >permissionOrArray </span>: [permissionOrArray];
+export function <span class="fstat-no" title="function not covered" >requirePermission(</span>permissionOrArray) {
+  const requiredPermissions = <span class="cstat-no" title="statement not covered" >Array.isArray(permissionOrArray) ? permissionOrArray : [permissionOrArray];</span>
 &nbsp;
-  if (!requiredPermissions.length || requiredPermissions.some((p) =&gt; typeof p !== 'string' || !p.trim())) {
-    throw new Error('requirePermission expects a non-empty permission string or array of non-empty permission strings');
+<span class="cstat-no" title="statement not covered" >  if (!requiredPermissions.length || requiredPermissions.some(<span class="fstat-no" title="function not covered" >(p</span>) =&gt; <span class="cstat-no" title="statement not covered" >typeof p !== 'string' || !p.trim())</span>) {</span>
+<span class="cstat-no" title="statement not covered" >    throw new Error('requirePermission expects a non-empty permission string or array of non-empty permission strings');</span>
   }
 &nbsp;
-  const normalizedPermissions = requiredPermissions.map((p) =&gt; p.trim());
+  const normalizedPermissions = <span class="cstat-no" title="statement not covered" >requiredPermissions.map(<span class="fstat-no" title="function not covered" >(p</span>) =&gt; <span class="cstat-no" title="statement not covered" >p.trim())</span>;</span>
 &nbsp;
-  return function requirePermissionMiddleware(req, res, next) {
-    if (!requireAuthenticatedSubject(req, res)) {
-      return undefined;
+<span class="cstat-no" title="statement not covered" >  return function <span class="fstat-no" title="function not covered" >requirePermissionMiddleware(</span>req, res, next) {</span>
+<span class="cstat-no" title="statement not covered" >    if (!requireAuthenticatedSubject(req, res)) {</span>
+<span class="cstat-no" title="statement not covered" >      return undefined;</span>
     }
 &nbsp;
-    const normalizedRole = getNormalizedAuthRole(req);
-    const hasAnyPermission = normalizedPermissions.some((permission) =&gt; roleHasPermission(normalizedRole, permission));
+    const normalizedRole = <span class="cstat-no" title="statement not covered" >getNormalizedAuthRole(req);</span>
+    const hasAnyPermission = <span class="cstat-no" title="statement not covered" >normalizedPermissions.some(<span class="fstat-no" title="function not covered" >(p</span>ermission) =&gt; <span class="cstat-no" title="statement not covered" >roleHasPermission(normalizedRole, permission))</span>;</span>
 &nbsp;
-    if (!hasAnyPermission) {
-      return sendApiError(req, res, 403, 'FORBIDDEN', 'Insufficient permissions');
+<span class="cstat-no" title="statement not covered" >    if (!hasAnyPermission) {</span>
+<span class="cstat-no" title="statement not covered" >      return sendApiError(req, res, 403, 'FORBIDDEN', 'Insufficient permissions');</span>
     }
 &nbsp;
-    return next();
+<span class="cstat-no" title="statement not covered" >    return next();</span>
   };
 }
 &nbsp;
@@ -169,7 +169,7 @@ export default requirePermission;</pre></td></tr></table></pre>
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-02-19T07:08:11.160Z
+                at 2026-02-19T09:43:57.682Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

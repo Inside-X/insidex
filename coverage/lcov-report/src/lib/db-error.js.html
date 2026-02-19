@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>21/21</span>
+                <span class='fraction'>0/21</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>10/10</span>
+                <span class='fraction'>0/10</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>2/2</span>
+                <span class='fraction'>0/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>21/21</span>
+                <span class='fraction'>0/21</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -107,7 +107,7 @@
 <a name='L42'></a><a href='#L42'>42</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">74x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -116,39 +116,39 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">74x</span>
-<span class="cline-any cline-yes">60x</span>
-<span class="cline-any cline-yes">60x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">14x</span>
-<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { logger } from '../utils/logger.js';
 &nbsp;
-function logDbError(level, error, context) {
-  logger[level]('db_error', {
+function <span class="fstat-no" title="function not covered" >logDbError(</span>level, error, context) {
+<span class="cstat-no" title="statement not covered" >  logger[level]('db_error', {</span>
     message: error?.message,
     code: error?.code,
     meta: error?.meta,
@@ -156,36 +156,36 @@ function logDbError(level, error, context) {
   });
 }
 &nbsp;
-export function normalizeDbError(error, context = {}) {
-  if (typeof error?.statusCode === 'number' &amp;&amp; error.statusCode &gt;= 400 &amp;&amp; error.statusCode &lt; 500) {
-    logDbError('warn', error, context);
-    throw error;
+export function <span class="fstat-no" title="function not covered" >normalizeDbError(</span>error, context = <span class="branch-0 cbranch-no" title="branch not covered" >{})</span> {
+<span class="cstat-no" title="statement not covered" >  if (typeof error?.statusCode === 'number' &amp;&amp; error.statusCode &gt;= 400 &amp;&amp; error.statusCode &lt; 500) {</span>
+<span class="cstat-no" title="statement not covered" >    logDbError('warn', error, context);</span>
+<span class="cstat-no" title="statement not covered" >    throw error;</span>
   }
   
-  if (error?.code === 'P2002') {
-    logDbError('warn', error, context);
+<span class="cstat-no" title="statement not covered" >  if (error?.code === 'P2002') {</span>
+<span class="cstat-no" title="statement not covered" >    logDbError('warn', error, context);</span>
 &nbsp;
-    const conflict = new Error('Database unique constraint violation');
-    conflict.statusCode = 409;
-    conflict.code = 'DB_UNIQUE_CONSTRAINT';
-    throw conflict;
+    const conflict = <span class="cstat-no" title="statement not covered" >new Error('Database unique constraint violation');</span>
+<span class="cstat-no" title="statement not covered" >    conflict.statusCode = 409;</span>
+<span class="cstat-no" title="statement not covered" >    conflict.code = 'DB_UNIQUE_CONSTRAINT';</span>
+<span class="cstat-no" title="statement not covered" >    throw conflict;</span>
   }
 &nbsp;
-  if (error?.code === 'P2025') {
-    logDbError('warn', error, context);
+<span class="cstat-no" title="statement not covered" >  if (error?.code === 'P2025') {</span>
+<span class="cstat-no" title="statement not covered" >    logDbError('warn', error, context);</span>
 &nbsp;
-    const notFound = new Error('Database record not found');
-    notFound.statusCode = 404;
-    notFound.code = 'DB_RECORD_NOT_FOUND';
-    throw notFound;
+    const notFound = <span class="cstat-no" title="statement not covered" >new Error('Database record not found');</span>
+<span class="cstat-no" title="statement not covered" >    notFound.statusCode = 404;</span>
+<span class="cstat-no" title="statement not covered" >    notFound.code = 'DB_RECORD_NOT_FOUND';</span>
+<span class="cstat-no" title="statement not covered" >    throw notFound;</span>
   }
 &nbsp;
-  logDbError('error', error, context);
+<span class="cstat-no" title="statement not covered" >  logDbError('error', error, context);</span>
   
-  const generic = new Error('Database operation failed');
-  generic.statusCode = 500;
-  generic.code = 'DB_OPERATION_FAILED';
-  throw generic;
+  const generic = <span class="cstat-no" title="statement not covered" >new Error('Database operation failed');</span>
+<span class="cstat-no" title="statement not covered" >  generic.statusCode = 500;</span>
+<span class="cstat-no" title="statement not covered" >  generic.code = 'DB_OPERATION_FAILED';</span>
+<span class="cstat-no" title="statement not covered" >  throw generic;</span>
 }</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -193,7 +193,7 @@ export function normalizeDbError(error, context = {}) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-02-19T07:08:11.160Z
+                at 2026-02-19T09:43:57.682Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
