@@ -2,25 +2,27 @@
 
 ## Scope
 Repository-wide scan for forbidden monetary patterns:
-- `parseFloat`
-- `Number(` used on amount conversions
+- `parseFloat(...)`
+- `Number(...)` used on amount conversions
 - inline `/100` and `*100` for monetary conversion
 
 ## Before hardening
-Historical findings were concentrated in `src/utils/minor-units.js`.
+Legacy scans previously flagged historical float conversion paths in payment-related code.
+Those paths were migrated to the centralized `minor-units` utility flow.
 
-## After hardening
+## After hardening (current verification)
 Command executed:
 
 ```bash
-rg -n "parseFloat|Number\([^)]*amount|/\s*100|\*\s*100" src
+npm run scan:floats
 ```
 
 Output:
 
-- `src/routes/auth.routes.js:31` (cookie maxAge constant, non-financial)
-- `src/middlewares/rateLimit.js:81` (seconds conversion for header, non-financial)
-- `src/lib/stripe.js:31` (timestamp conversion, non-financial)
-- `src/lib/webhook-idempotency-store.js:26` (TTL conversion, non-financial)
+- `[SCAN][PASS] parseFloat: 0 findings`
+- `[SCAN][PASS] Number-on-amount: 0 findings`
+- `[SCAN][PASS] inline-division-by-100: 0 findings`
+- `[SCAN][PASS] inline-multiplication-by-100: 0 findings`
 
-No remaining inline float conversion for payment amount handling was detected.
+## Result
+No forbidden float/approximate amount arithmetic patterns were detected in the current codebase scan.
