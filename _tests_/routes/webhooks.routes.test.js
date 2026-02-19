@@ -15,7 +15,7 @@ describe('webhooks.routes',()=>{
    '../../src/repositories/order.repository.js':()=>({orderRepository}),
    '../../src/utils/logger.js':()=>({logger}),
    '../../src/lib/webhook-idempotency-store.js':()=>({createWebhookIdempotencyStore:()=>({claim})}),
-   '../../src/utils/minor-units.js':()=>({toMinorUnits:(v)=>Number(String(v).replace('.',''))}),
+   '../../src/utils/minor-units.js': await import('../../src/utils/minor-units.js'),
   });
   process.env.PAYMENT_WEBHOOK_SECRET='sec';
   const stripe=routes.find(r=>r.path==='/stripe').handlers.at(-1); const paypal=routes.find(r=>r.path==='/paypal').handlers.at(-1); const next=jest.fn();

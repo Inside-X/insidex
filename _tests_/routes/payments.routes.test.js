@@ -15,7 +15,7 @@ describe('payments.routes',()=>{
    '../../src/lib/prisma.js':()=>({default:prisma}),
    '../../src/repositories/order.repository.js':()=>({orderRepository}),
    '../../src/utils/api-error.js':()=>({sendApiError}),
-   '../../src/utils/minor-units.js':()=>({toMinorUnits:(p)=>Number(String(p).replace('.',''))}),
+   '../../src/utils/minor-units.js': await import('../../src/utils/minor-units.js'),
   });
   const h=routes[0].handlers.at(-1); let next=jest.fn();
   let req={body:{currency:'JPY',items:[],idempotencyKey:'k',email:'e'},auth:{sub:'u1',isGuest:false}},res={locals:{},status:jest.fn(()=>res),json:jest.fn()}; await h(req,res,next); expect(sendApiError).toHaveBeenCalled();

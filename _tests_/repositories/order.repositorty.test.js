@@ -36,17 +36,12 @@ async function loadOrderRepository({ toMinorUnitsImpl, fromMinorUnitsImpl, norma
     throw error;
   }));
 
-  const toMinorUnits = jest.fn(toMinorUnitsImpl || ((amount) => {
-    if (String(amount) === 'invalid-price') throw new Error('invalid price');
-    const [whole, frac = ''] = String(amount).split('.');
-    return Number(whole) * 100 + Number(frac.padEnd(2, '0').slice(0, 2));
-  }));
-
-  const fromMinorUnits = jest.fn(fromMinorUnitsImpl || ((minor) => (minor / 100).toFixed(2)));
+  const minorUnits = await import('../../src/utils/minor-units.js');
+  const toMinorUnits = toMinorUnitsImpl ? jest.fn(toMinorUnitsImpl) : jest.spyOn(minorUnits, 'toMinorUnits');
+  const fromMinorUnits = fromMinorUnitsImpl ? jest.fn(fromMinorUnitsImpl) : jest.spyOn(minorUnits, 'fromMinorUnits');
 
   await jest.unstable_mockModule('../../src/lib/prisma.js', () => ({ default: prismaMock }));
   await jest.unstable_mockModule('../../src/lib/db-error.js', () => ({ normalizeDbError }));
-  await jest.unstable_mockModule('../../src/utils/minor-units.js', () => ({ toMinorUnits, fromMinorUnits }));
 
   const { orderRepository } = await import('../../src/repositories/order.repository.js');
   return { orderRepository, prismaMock, tx, normalizeDbError, toMinorUnits, fromMinorUnits };
@@ -236,8 +231,7 @@ describe('orderRepository', () => {
           if (String(amount) === 'abc') {
             throw new Error('invalid amount format');
           }
-          const [whole, frac = ''] = String(amount).split('.');
-          return Number(whole) * 100 + Number(frac.padEnd(2, '0').slice(0, 2));
+          return 0;
         },
       });
       tx.product.findMany.mockResolvedValueOnce([{ id: 'p1', price: '2.00' }]);

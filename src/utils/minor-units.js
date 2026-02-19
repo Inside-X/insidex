@@ -66,7 +66,9 @@ export function fromMinorUnits(minorUnits, currency = 'EUR') {
   const normalizedCurrency = normalizeCurrency(currency);
   const exponent = CURRENCY_EXPONENT[normalizedCurrency];
 
-  if (!Number.isInteger(minorUnits) || minorUnits < 0) {
+  const isValidNumber = Number.isInteger(minorUnits) && minorUnits >= 0;
+  const isValidBigInt = typeof minorUnits === 'bigint' && minorUnits >= 0n;
+  if (!isValidNumber && !isValidBigInt) {
     const error = new Error(`Invalid minor units amount: ${minorUnits}`);
     error.code = 'INVALID_MINOR_UNITS';
     throw error;

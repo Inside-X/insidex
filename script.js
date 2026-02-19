@@ -17,7 +17,7 @@ function getCartCount(cart) { return Object.values(cart.items).reduce((s, it) =>
 function updateBadge() { countEl.textContent = getCartCount(loadCart()).toString(); }
 function addToCart(id, name, price) {
   const cart = loadCart();
-  if (!cart.items[id]) cart.items[id] = { name, price: Number(price), qty: 0 };
+  if (!cart.items[id]) cart.items[id] = { name, price: String(price), qty: 0 };
   cart.items[id].qty += 1;
   saveCart(cart); updateBadge();
 }

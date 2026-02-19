@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
+import { toMinorUnits, fromMinorUnits } from '../src/utils/minor-units.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,6 +24,23 @@ function toDate(value, fallback = new Date()) {
 
 function normalizeRole(role) {
   return String(role || '').toLowerCase() === 'admin' ? 'admin' : 'customer';
+}
+
+function parsePositiveInt(value, fallback = 0) {
+  const normalized = String(value ?? '').trim();
+  if (!/^\d+$/.test(normalized)) return fallback;
+  const parsed = BigInt(normalized);
+  if (parsed > BigInt(Number.MAX_SAFE_INTEGER)) return fallback;
+  return JSON.parse(parsed.toString());
+}
+
+function normalizeMoneyDecimal(value, currency = 'EUR') {
+  try {
+    const minor = toMinorUnits(String(value ?? '0'), currency);
+    return fromMinorUnits(minor, currency);
+  } catch {
+    return fromMinorUnits(0, currency);
+  }
 }
 
 async function readJsonIfExists(fileName, defaultValue) {
@@ -86,8 +104,8 @@ function transformProducts(productsJson) {
       id,
       name: String(raw?.title || raw?.designation || raw?.name || legacyId).slice(0, 255),
       description: raw?.description || raw?.shortDescription || null,
-      price: Number.isFinite(Number(raw?.price)) ? Number(raw.price) : 0,
-      stock: Number.isFinite(Number(raw?.stock)) ? Number(raw.stock) : 0,
+      price: normalizeMoneyDecimal(raw?.price, 'EUR'),
+      stock: parsePositiveInt(raw?.stock, 0),
       active: Boolean(raw?.published ?? raw?.active ?? true),
       createdAt: toDate(raw?.createdAt),
       updatedAt: toDate(raw?.updatedAt, toDate(raw?.createdAt)),
@@ -148,7 +166,7 @@ function transformCarts(cartsJson, userMap, productMap) {
         id: crypto.randomUUID(),
         cartId,
         productId,
-        quantity: Math.max(1, Number(item?.qty || item?.quantity || 1)),
+        quantity: Math.max(1, parsePositiveInt(item?.qty ?? item?.quantity ?? 1, 1)),
         createdAt: ts,
         updatedAt: ts,
       });
@@ -156,6 +174,10 @@ function transformCarts(cartsJson, userMap, productMap) {
   }
 
   return { carts, cartItems };
+}
+
+function parseQuantity(value) {
+  return Math.max(1, parsePositiveInt(value, 1));
 }
 
 function transformOrders(ordersJson, userMap, productMap) {
@@ -170,21 +192,24 @@ function transformOrders(ordersJson, userMap, productMap) {
     const orderId = crypto.randomUUID();
     const createdAt = toDate(rawOrder?.createdAt);
     const items = Array.isArray(rawOrder?.items) ? rawOrder.items : [];
-    let totalAmount = 0;
+    let totalAmountMinor = 0n;
 
     for (const item of items) {
       const productId = productMap.get(item?.productId);
       if (!productId) continue;
-      const quantity = Math.max(1, Number(item?.quantity || 1));
-      const unitPrice = Number.isFinite(Number(item?.unitPrice || item?.price)) ? Number(item?.unitPrice || item?.price) : 0;
-      totalAmount += unitPrice * quantity;
+      const quantity = parseQuantity(item?.quantity || 1);
+      const unitPriceString = String(item?.unitPrice ?? item?.price ?? '0');
+      const unitMinor = BigInt(toMinorUnits(String(unitPriceString), 'EUR'));
+      const totalMinor = unitMinor * BigInt(quantity);
+      const total = fromMinorUnits(totalMinor, 'EUR');
+      totalAmountMinor += BigInt(toMinorUnits(total, 'EUR'));
 
       orderItems.push({
         id: crypto.randomUUID(),
         orderId,
         productId,
         quantity,
-        unitPrice,
+        unitPrice: fromMinorUnits(unitMinor, 'EUR'),
         createdAt,
       });
     }
@@ -193,7 +218,7 @@ function transformOrders(ordersJson, userMap, productMap) {
       id: orderId,
       userId: mappedUserId,
       status: ['pending', 'paid', 'shipped', 'cancelled'].includes(rawOrder?.status) ? rawOrder.status : 'pending',
-      totalAmount,
+      totalAmount: fromMinorUnits(totalAmountMinor, 'EUR'),
       createdAt,
       updatedAt: toDate(rawOrder?.updatedAt, createdAt),
     });
