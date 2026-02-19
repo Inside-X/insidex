@@ -1,5 +1,5 @@
 import { trackAnalyticsEvent } from './analytics.js';
-import { fromMinorUnits, multiplyMinorUnits, toMinorUnitsDecimalString } from './money.js';
+import { fromMinorUnitsNumber, multiplyMinorUnits, toMinorUnitsDecimalString } from './money.js';
 
 // Année footer
 const yearEl = document.getElementById("year");
@@ -78,7 +78,7 @@ export async function addToCart(id, name, price, qty = 1) {
     body: JSON.stringify({
       id,
       name,
-      price: +fromMinorUnits(unitMinor, 'EUR'),
+      price: fromMinorUnitsNumber(unitMinor, 'EUR'),
       qty: parsedQty,
       anonId
     })
@@ -87,11 +87,11 @@ export async function addToCart(id, name, price, qty = 1) {
 
   await trackAnalyticsEvent('add_to_cart', {
     currency: 'EUR',
-    value: +fromMinorUnits(lineMinor, 'EUR'),
+    value: fromMinorUnitsNumber(lineMinor, 'EUR'),
     items: [{
       item_id: id,
       item_name: name,
-      price: +fromMinorUnits(unitMinor, 'EUR'),
+      price: fromMinorUnitsNumber(unitMinor, 'EUR'),
       quantity: parsedQty
     }]
   });

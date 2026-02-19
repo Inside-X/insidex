@@ -86,6 +86,15 @@ export function fromMinorUnits(minorUnits, currency = 'EUR') {
   return `${whole}.${fraction}`;
 }
 
+export function fromMinorUnitsNumber(minorUnits, currency = 'EUR') {
+  const decimal = fromMinorUnits(minorUnits, currency);
+  const parsed = Number.parseFloat(decimal);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`Invalid decimal representation from minor units: ${decimal}`);
+  }
+  return parsed;
+}
+
 export function multiplyMinorUnits(unitMinor, qty) {
   if (typeof unitMinor !== 'bigint' || unitMinor < 0n) {
     const error = new Error(`Invalid unit minor units: ${unitMinor}`);
@@ -127,6 +136,7 @@ export function multiplyMinorUnitsRatio(minorUnits, numerator, denominator) {
 export default {
   toMinorUnitsDecimalString,
   fromMinorUnits,
+  fromMinorUnitsNumber,
   multiplyMinorUnits,
   sumMinorUnits,
   multiplyMinorUnitsRatio,

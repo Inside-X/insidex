@@ -13,7 +13,7 @@ import {
   setActiveEmail,
   upsertProfile
 } from './modules/accountData.js';
-import { fromMinorUnits, multiplyMinorUnits, toMinorUnitsDecimalString } from './modules/money.js';
+import { fromMinorUnitsNumber, multiplyMinorUnits, toMinorUnitsDecimalString } from './modules/money.js';
 
 const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
   dateStyle: 'medium',
@@ -43,7 +43,7 @@ function toMoneyMinor(value) {
 }
 
 function minorToDisplay(minor) {
-  return +fromMinorUnits(minor, 'EUR');
+  return fromMinorUnitsNumber(minor, 'EUR');
 }
 
 

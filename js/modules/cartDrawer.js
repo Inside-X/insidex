@@ -6,7 +6,7 @@ import {
   clearCart as clearRemoteCart
 } from './cart.js';
 import { showToast } from './toast.js';
-import { fromMinorUnits, multiplyMinorUnits, sumMinorUnits, toMinorUnitsDecimalString } from './money.js';
+import { fromMinorUnitsNumber, multiplyMinorUnits, sumMinorUnits, toMinorUnitsDecimalString } from './money.js';
 
 const currency = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 const IMG_BY_ID = {
@@ -27,7 +27,7 @@ function toMoneyMinor(value) {
 }
 
 function toDisplayAmount(minor) {
-  return +fromMinorUnits(minor, 'EUR');
+  return fromMinorUnitsNumber(minor, 'EUR');
 }
 
 

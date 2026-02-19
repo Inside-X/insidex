@@ -1,5 +1,6 @@
 import {
   fromMinorUnits,
+  fromMinorUnitsNumber,
   multiplyMinorUnits,
   sumMinorUnits,
   toMinorUnitsDecimalString,
@@ -19,6 +20,10 @@ describe('frontend money minor-unit helpers', () => {
     expect(fromMinorUnits(sumMinorUnits([lineA, lineB]), 'EUR')).toBe('40.01');
   });
 
+  test('converts minor units to finite display numbers through dedicated helper', () => {
+    expect(fromMinorUnitsNumber(4001n, 'EUR')).toBe(40.01);
+  });
+  
   test('rejects scientific notation, malformed input, negative amounts and float input', () => {
     expect(() => toMinorUnitsDecimalString('1e3', 'EUR')).toThrow(/Invalid decimal amount/);
     expect(() => toMinorUnitsDecimalString('abc', 'EUR')).toThrow(/Invalid decimal amount/);

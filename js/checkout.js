@@ -8,7 +8,7 @@ import { addAddress, addOrder, setActiveEmail, upsertProfile } from './modules/a
 import { initAnalytics, trackAnalyticsEvent } from './modules/analytics.js';
 import { buildCheckoutPayload, confirmStripePayment, createPaymentIntent, generateIdempotencyKey, storeGuestSession } from './modules/guestCheckoutApi.js';
 import {
-  fromMinorUnits,
+  fromMinorUnitsNumber,
   multiplyMinorUnits,
   multiplyMinorUnitsRatio,
   sumMinorUnits,
@@ -47,7 +47,7 @@ const selectors = {
 };
 
 function minorToDecimal(minorUnits) {
-  return +fromMinorUnits(minorUnits, 'EUR');
+  return fromMinorUnitsNumber(minorUnits, 'EUR');
 }
 
 function toMoneyMinor(value) {
