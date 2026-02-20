@@ -87,7 +87,7 @@ model CartItem {
 model Order {
   id                    String      @id @default(uuid()) @db.Uuid
   userId                String      @map("user_id") @db.Uuid
-  idempotencyKey        String      @unique @map("idempotency_key") @db.VarChar(128)
+  idempotencyKey        String      @map("idempotency_key") @db.VarChar(128)
   stripePaymentIntentId String?     @unique @map("stripe_payment_intent_id") @db.VarChar(255)
   status                OrderStatus @default(pending)
   totalAmount           Decimal     @map("total_amount") @db.Decimal(12, 2)
@@ -100,18 +100,22 @@ model Order {
 
   @@index([userId, createdAt], map: "idx_orders_user_created_at")
   @@index([status, createdAt], map: "idx_orders_status_created_at")
+  @@unique([userId, idempotencyKey], map: "uq_orders_user_idempotency")
   @@map("orders")
 }
 
 model PaymentWebhookEvent {
   id        String   @id @default(uuid()) @db.Uuid
   provider  String   @db.VarChar(40)
-  eventId   String   @unique @map("event_id") @db.VarChar(255)
+  eventId   String   @map("event_id") @db.VarChar(255)
+  resourceId String? @map("resource_id") @db.VarChar(255)
   orderId   String?  @map("order_id") @db.Uuid
   payload   Json     @default("{}") @db.JsonB
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   order     Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
 
+  @@unique([provider, eventId], map: "uq_payment_webhook_events_provider_event")
+  @@unique([provider, resourceId], map: "uq_payment_webhook_events_provider_resource")
   @@index([provider, createdAt], map: "idx_payment_webhook_events_provider_created_at")
   @@index([orderId], map: "idx_payment_webhook_events_order_id")
   @@map("payment_webhook_events")

@@ -56,7 +56,7 @@ describe('webhooks.routes', () => {
 
     req = {
       get: (h) => (h === 'content-length' ? '10' : null),
-      body: Buffer.from(JSON.stringify({ eventId: 'e1', orderId: 'o1', metadata: { orderId: 'o1' }, payload: { capture: { status: 'COMPLETED', amount: '10.00', currency: 'EUR' } } })),
+      body: Buffer.from(JSON.stringify({ eventId: 'e1', orderId: 'o1', metadata: { orderId: 'o1' }, payload: { capture: { status: 'COMPLETED', id: 'cap_u1', amount: '10.00', currency: 'EUR' } } })),
       headers: {},
       app: { locals: {} },
     };

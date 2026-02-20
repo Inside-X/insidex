@@ -15,6 +15,23 @@ const router = express.Router();
 const MAX_WEBHOOK_BODY_SIZE_BYTES = 1024 * 1024;
 const ALLOWED_ORDER_STATUSES = new Set(['pending']);
 
+
+function isDependencyUnavailableError(error) {
+  const transientCodes = new Set(['DB_OPERATION_FAILED', 'ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN']);
+  if (transientCodes.has(error?.code)) return true;
+  return error?.statusCode === 502 || error?.statusCode === 503;
+}
+
+function sendDependencyUnavailable(req, res, dependency, error) {
+  logger.error('critical_dependency_unavailable', {
+    dependency,
+    reason: error?.code || error?.message || 'unavailable',
+    correlationId: getCorrelationId(req),
+  });
+  return sendApiError(req, res, 503, 'SERVICE_UNAVAILABLE', 'Critical dependency unavailable');
+}
+
+
 function normalizeCurrency(currency) {
   return String(currency || '').trim().toLowerCase();
 }
@@ -39,6 +56,12 @@ function parseRawJsonBody(rawBody) {
   }
 
   return parseJsonWithStrictMonetaryValidation(rawBody.toString('utf8'), 'webhook payload');
+}
+
+
+function isWebhookIdempotencyStrict() {
+  const env = process.env;
+  return env.NODE_ENV === 'production' || String(env.WEBHOOK_IDEMPOTENCY_STRICT || '').toLowerCase() === 'true';
 }
 
 function getIdempotencyStore(req) {
@@ -120,6 +143,13 @@ router.post('/stripe', async (req, res, next) => {
     const secret = process.env.PAYMENT_WEBHOOK_SECRET;
     const rawBody = req.body;
 
+    if (isWebhookIdempotencyStrict()) {
+      const earlyStore = getIdempotencyStore(req);
+      if (!earlyStore) {
+        return sendDependencyUnavailable(req, res, 'webhook_idempotency_backend');
+      }
+    }
+
     logger.info('webhook_received', {
       provider: 'stripe',
       correlationId,
@@ -140,6 +170,9 @@ router.post('/stripe', async (req, res, next) => {
     try {
       payload = stripe.webhooks.constructEvent(rawBody, signature, secret, { toleranceSeconds: 300 });
     } catch (error) {
+      if (isDependencyUnavailableError(error)) {
+        return sendDependencyUnavailable(req, res, 'stripe_sdk', error);
+      }
       logger.warn('stripe_webhook_signature_validation_failed', {
         reason: error.message,
         correlationId,
@@ -182,6 +215,7 @@ router.post('/stripe', async (req, res, next) => {
         provider: 'stripe',
         eventId: validatedPayload.id,
         orderId: metadata.orderId,
+        reason: 'order_not_found',
         correlationId,
       });
       return res.status(200).json({ data: { ignored: true, reason: 'order_not_found' } });
@@ -193,6 +227,7 @@ router.post('/stripe', async (req, res, next) => {
         eventId: validatedPayload.id,
         orderId: order.id,
         status: order.status,
+        reason: 'order_state_incompatible',
         correlationId,
       });
       return res.status(200).json({ data: { ignored: true, reason: 'order_state_incompatible' } });
@@ -206,6 +241,7 @@ router.post('/stripe', async (req, res, next) => {
         orderId: order.id,
         expectedMinor,
         receivedMinor: paymentObject.amount_received,
+        reason: 'amount_mismatch',
         correlationId,
       });
       return res.status(200).json({ data: { ignored: true, reason: 'amount_mismatch' } });
@@ -218,6 +254,7 @@ router.post('/stripe', async (req, res, next) => {
         orderId: order.id,
         expectedCurrency: order.currency || 'EUR',
         receivedCurrency: paymentObject.currency,
+        reason: 'currency_mismatch',
         correlationId,
       });
       return res.status(200).json({ data: { ignored: true, reason: 'currency_mismatch' } });
@@ -244,6 +281,10 @@ router.post('/stripe', async (req, res, next) => {
       return sendApiError(req, res, error.statusCode || 400, 'VALIDATION_ERROR', 'Invalid request payload');
     }
 
+    if (isDependencyUnavailableError(error)) {
+      return sendDependencyUnavailable(req, res, 'webhook_processing', error);
+    }
+
     return next(error);
   }
 });
@@ -253,6 +294,13 @@ router.post('/paypal', async (req, res, next) => {
   try {
     const rawBody = req.body;
     const contentLength = Number(req.get('content-length') || 0);
+
+    if (isWebhookIdempotencyStrict()) {
+      const earlyStore = getIdempotencyStore(req);
+      if (!earlyStore) {
+        return sendDependencyUnavailable(req, res, 'webhook_idempotency_backend');
+      }
+    }
 
     if (contentLength > MAX_WEBHOOK_BODY_SIZE_BYTES) {
       return sendApiError(req, res, 413, 'PAYLOAD_TOO_LARGE', 'Payload too large');
@@ -276,10 +324,18 @@ router.post('/paypal', async (req, res, next) => {
     });
     if (replayResponse) return replayResponse;
 
-    const verification = await paypal.webhooks.verifyWebhookSignature({
-      getHeader: (name) => req.get(name),
-      webhookEvent: parsedPayload,
-    });
+    let verification;
+    try {
+      verification = await paypal.webhooks.verifyWebhookSignature({
+        getHeader: (name) => req.get(name),
+        webhookEvent: parsedPayload,
+      });
+    } catch (error) {
+      if (isDependencyUnavailableError(error)) {
+        return sendDependencyUnavailable(req, res, 'paypal_verification', error);
+      }
+      throw error;
+    }
 
     if (!verification.verified || verification.verificationStatus !== 'SUCCESS') {
       logger.warn('paypal_webhook_signature_validation_failed', {
@@ -300,6 +356,7 @@ router.post('/paypal', async (req, res, next) => {
         provider: 'paypal',
         eventId: payload.eventId,
         orderId: payload.orderId,
+        reason: 'order_not_found',
         correlationId,
       });
       return res.status(200).json({ data: { ignored: true, reason: 'order_not_found' } });
@@ -311,6 +368,7 @@ router.post('/paypal', async (req, res, next) => {
         eventId: payload.eventId,
         orderId: order.id,
         status: order.status,
+        reason: 'order_state_incompatible',
         correlationId,
       });
       return res.status(200).json({ data: { ignored: true, reason: 'order_state_incompatible' } });
@@ -334,6 +392,7 @@ router.post('/paypal', async (req, res, next) => {
         orderId: order.id,
         expectedMinor,
         receivedMinor: paidMinor,
+        reason: 'amount_mismatch',
         correlationId,
       });
       return res.status(200).json({ data: { ignored: true, reason: 'amount_mismatch' } });
@@ -346,6 +405,7 @@ router.post('/paypal', async (req, res, next) => {
         orderId: order.id,
         expectedCurrency: order.currency || 'EUR',
         receivedCurrency: capture.currency,
+        reason: 'currency_mismatch',
         correlationId,
       });
       return res.status(200).json({ data: { ignored: true, reason: 'currency_mismatch' } });
@@ -355,6 +415,18 @@ router.post('/paypal', async (req, res, next) => {
       return sendApiError(req, res, 400, 'VALIDATION_ERROR', 'Unexpected payment status');
     }
 
+    const paypalResourceId = capture.id || payload.payload?.resource?.id || null;
+    if (capture.status === 'COMPLETED' && !paypalResourceId) {
+      logger.warn('paypal_webhook_missing_resource_id', {
+        provider: 'paypal',
+        eventId: payload.eventId,
+        orderId: order.id,
+        reason: 'missing_resource_id',
+        correlationId,
+      });
+      return sendApiError(req, res, 400, 'VALIDATION_ERROR', 'Missing capture/resource id');
+    }
+    
     const result = await orderRepository.processPaymentWebhookEvent({
       provider: 'paypal',
       eventId: payload.eventId,

@@ -152,7 +152,7 @@ describe('order transaction integration (isolated in-memory DB)', () => {
       userId: '20000000-0000-0000-0000-000000000001',
       expectedIdempotencyKey: 'integ-paid-123456',
       payload: {},
-    })).rejects.toMatchObject({ statusCode: 409 });
+    })).resolves.toEqual({ replayed: true, orderMarkedPaid: false });
   });
 
   test('charge concurrente simple: protège le stock', async () => {

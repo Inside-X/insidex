@@ -34,7 +34,7 @@ function createPrismaMock(state) {
     },
     order: {
       create: async ({ data }) => {
-        if (working.orders.some((order) => order.idempotencyKey === data.idempotencyKey)) {
+        if (working.orders.some((order) => order.userId === data.userId && order.idempotencyKey === data.idempotencyKey)) {
           const err = new Error('Unique constraint');
           err.code = 'P2002';
           throw err;
@@ -51,6 +51,23 @@ function createPrismaMock(state) {
       },
       findUnique: async ({ where, include }) => {
         const order = working.orders.find((candidate) => (where.id ? candidate.id === where.id : candidate.idempotencyKey === where.idempotencyKey));
+        if (!order) {
+          return null;
+        }
+        if (!include?.items) {
+          return order;
+        }
+        return {
+          ...order,
+          items: working.orderItems.filter((item) => item.orderId === order.id),
+        };
+      },
+      findFirst: async ({ where, include }) => {
+        const order = working.orders.find((candidate) => {
+          const matchesUser = where.userId ? candidate.userId === where.userId : true;
+          const matchesKey = where.idempotencyKey ? candidate.idempotencyKey === where.idempotencyKey : true;
+          return matchesUser && matchesKey;
+        });
         if (!order) {
           return null;
         }
@@ -84,9 +101,16 @@ function createPrismaMock(state) {
     },
     paymentWebhookEvent: {
       create: async ({ data }) => {
-        if (working.webhookEvents.some((event) => event.eventId === data.eventId)) {
+        if (working.webhookEvents.some((event) => event.provider === data.provider && event.eventId === data.eventId)) {
           const err = new Error('Unique constraint');
           err.code = 'P2002';
+          err.meta = { target: ['provider', 'event_id'] };
+          throw err;
+        }
+        if (data.resourceId && working.webhookEvents.some((event) => event.provider === data.provider && event.resourceId === data.resourceId)) {
+          const err = new Error('Unique constraint');
+          err.code = 'P2002';
+          err.meta = { target: ['provider', 'resource_id'] };
           throw err;
         }
         working.webhookEvents.push(data);

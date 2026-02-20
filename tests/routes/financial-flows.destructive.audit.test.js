@@ -191,6 +191,7 @@ describe('destructive financial flow audit', () => {
       },
       payload: {
         capture: {
+          id: 'cap_destructive_1',
           amount: '10.00',
           currency: 'EUR',
           status: 'COMPLETED',
@@ -300,6 +301,7 @@ describe('destructive financial flow audit', () => {
       eventId: 'paypal_evt_completed_state_1',
       payload: {
         capture: {
+          id: 'cap_completed_1',
           amount: '15.00',
           currency: 'EUR',
           status: 'COMPLETED',

@@ -71,7 +71,7 @@ describe('webhooks integrity', () => {
         eventId: 'evt_pp',
         orderId: stripePayload.data.object.metadata.orderId,
         metadata: stripePayload.data.object.metadata,
-        payload: { capture: { amount: '12.00', currency: 'EUR', status: 'COMPLETED' } },
+        payload: { capture: { amount: '12.00', currency: 'EUR', status: 'COMPLETED', id: 'cap_int_1' } },
       });
 
     expect(res.status).toBe(200);

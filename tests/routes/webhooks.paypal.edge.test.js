@@ -47,7 +47,7 @@ describe('paypal webhook edge coverage', () => {
         userId: '00000000-0000-0000-0000-000000000123',
         idempotencyKey: 'idem_ok_123456',
       },
-      payload: { capture: { amount: '12.00', currency: 'EUR', status: 'COMPLETED' } },
+      payload: { capture: { id: 'cap_auto_store', amount: '12.00', currency: 'EUR', status: 'COMPLETED' } },
     };
 
     const res = await request(app).post('/api/webhooks/paypal').send(payload);
@@ -70,7 +70,7 @@ describe('paypal webhook edge coverage', () => {
         userId: '00000000-0000-0000-0000-000000000123',
         idempotencyKey: 'idem_ok_123456',
       },
-      payload: { capture: { amount: '12.00', currency: 'EUR', status: 'COMPLETED' } },
+      payload: { capture: { id: 'cap_auto_store', amount: '12.00', currency: 'EUR', status: 'COMPLETED' } },
     };
 
     paypal.webhooks.verifyWebhookSignature.mockRestore();

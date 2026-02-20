@@ -50,12 +50,24 @@ function assertExpectedAmountMatches({ expectedTotalAmount, expectedTotalAmountM
   }
 }
 
-function assertOrderNotAlreadyPaid(order) {
-  if (order.status === 'paid') {
-    const error = new Error(`Order already paid: ${order.id}`);
-    error.statusCode = 409;
-    throw error;
+function isUniqueConstraintOnTarget(error, targetField) {
+  if (error?.code !== 'P2002') return false;
+  const target = error?.meta?.target;
+  if (Array.isArray(target)) return target.includes(targetField);
+  if (typeof target === 'string') return target.includes(targetField);
+  return false;
+}
+
+function extractWebhookResourceId({ provider, paymentIntentId = null, payload = {} }) {
+  if (provider === 'stripe') {
+    return paymentIntentId || payload?.data?.object?.id || null;
   }
+
+  if (provider === 'paypal') {
+    return payload?.payload?.capture?.id || payload?.payload?.resource?.id || null;
+  }
+
+  return null;
 }
 
 export const orderRepository = {
@@ -116,8 +128,10 @@ export const orderRepository = {
           });
         } catch (error) {
           if (error?.code === 'P2002') {
-            const existingOrder = await tx.order.findUnique({ where: { idempotencyKey } });
-            return { order: existingOrder, replayed: true };
+            const existingOrder = await tx.order.findFirst({ where: { userId, idempotencyKey } });
+            if (existingOrder) {
+              return { order: existingOrder, replayed: true };
+            }
           }
           throw error;
         }
@@ -203,8 +217,10 @@ export const orderRepository = {
           });
         } catch (error) {
           if (error?.code === 'P2002') {
-            const existingOrder = await tx.order.findUnique({ where: { idempotencyKey }, include: { items: true } });
-            return { order: existingOrder, replayed: true };
+            const existingOrder = await tx.order.findFirst({ where: { userId, idempotencyKey }, include: { items: true } });
+            if (existingOrder) {
+              return { order: existingOrder, replayed: true };
+            }
           }
           throw error;
         }
@@ -248,17 +264,20 @@ export const orderRepository = {
   async markPaidFromWebhook({ eventId, paymentIntentId, orderId, userId, expectedIdempotencyKey, provider = 'stripe', payload = {} }) {
     try {
       return await prisma.$transaction(async (tx) => {
+        const resourceId = extractWebhookResourceId({ provider, paymentIntentId, payload });
+
         try {
           await tx.paymentWebhookEvent.create({
             data: {
               provider,
               eventId,
+              resourceId,
               orderId,
               payload,
             },
           });
         } catch (error) {
-          if (error?.code === 'P2002') {
+          if (isUniqueConstraintOnTarget(error, 'event_id') || isUniqueConstraintOnTarget(error, 'resource_id') || error?.code === 'P2002') {
             return { replayed: true, orderMarkedPaid: false };
           }
           throw error;
@@ -277,7 +296,9 @@ export const orderRepository = {
           throw error;
         }
 
-        assertOrderNotAlreadyPaid(order);
+        if (order.status === 'paid') {
+          return { replayed: true, orderMarkedPaid: false };
+        }
 
         const updateResult = await tx.order.updateMany({
           where: { id: orderId, status: { not: 'paid' } },
@@ -297,17 +318,20 @@ export const orderRepository = {
   async processPaymentWebhookEvent({ provider, eventId, orderId = null, stripePaymentIntentId = null, payload = {} }) {
     try {
       return await prisma.$transaction(async (tx) => {
+        const resourceId = extractWebhookResourceId({ provider, paymentIntentId: stripePaymentIntentId, payload });
+
         try {
           await tx.paymentWebhookEvent.create({
             data: {
               provider,
               eventId,
+              resourceId,
               orderId,
               payload,
             },
           });
         } catch (error) {
-          if (error?.code === 'P2002') {
+          if (isUniqueConstraintOnTarget(error, 'event_id') || isUniqueConstraintOnTarget(error, 'resource_id') || error?.code === 'P2002') {
             return { replayed: true, orderMarkedPaid: false };
           }
           throw error;
@@ -321,7 +345,9 @@ export const orderRepository = {
             throw error;
           }
 
-          assertOrderNotAlreadyPaid(existingOrder);
+          if (existingOrder.status === 'paid') {
+            return { replayed: true, orderMarkedPaid: false };
+          }
         }
         
         const where = orderId

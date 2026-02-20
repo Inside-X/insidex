@@ -61,6 +61,18 @@ describe('stripe webhook route branches', () => {
     expect(res.status).toBe(400);
   });
 
+
+  test('fails closed when persistence step fails after provider confirmation', async () => {
+    orderRepository.markPaidFromWebhook.mockRejectedValueOnce(new Error('persist failed after confirmation'));
+    const payload = stripePayload({ id: 'evt_persist_fail_after_confirm' });
+    const sig = createStripeSignatureHeader(payload, process.env.PAYMENT_WEBHOOK_SECRET);
+
+    const res = await request(app).post('/api/webhooks/stripe').set('stripe-signature', sig).send(payload);
+
+    expect(res.status).toBe(500);
+    expect(orderRepository.markPaidFromWebhook).toHaveBeenCalledTimes(1);
+  });
+  
   test('propagates unexpected errors to error middleware', async () => {
     orderRepository.findById.mockRejectedValueOnce(new Error('db down'));
     const payload = stripePayload({ id: 'evt_db_error' });

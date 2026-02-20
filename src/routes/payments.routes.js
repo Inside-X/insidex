@@ -9,9 +9,18 @@ import checkoutCustomerAccess from '../middlewares/checkoutCustomerAccess.js';
 import { orderRepository } from '../repositories/order.repository.js';
 import { sendApiError } from '../utils/api-error.js';
 import { multiplyMinorUnits, sumMinorUnits, toMinorUnits } from '../utils/minor-units.js';
+import { logger } from '../utils/logger.js';
 
 const router = express.Router();
 const SUPPORTED_CURRENCIES = new Set(['EUR', 'USD']);
+
+
+function isDependencyUnavailableError(error) {
+  const transientCodes = new Set(['DB_OPERATION_FAILED', 'ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN']);
+  if (transientCodes.has(error?.code)) return true;
+  return error?.statusCode === 502 || error?.statusCode === 503;
+}
+
 
 function normalizeCurrency(currency) {
   return String(currency || 'EUR').trim().toUpperCase();
@@ -78,6 +87,10 @@ router.post('/create-intent', strictValidate(paymentsSchemas.createIntent), ensu
       },
     });
   } catch (error) {
+    if (isDependencyUnavailableError(error)) {
+      logger.error('payments_dependency_unavailable', { reason: error?.code || error?.message });
+      return sendApiError(req, res, 503, 'SERVICE_UNAVAILABLE', 'Critical dependency unavailable');
+    }
     return next(error);
   }
 });
