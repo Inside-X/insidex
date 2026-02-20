@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">55.55% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/9</span>
+                <span class='fraction'>5/9</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/5</span>
+                <span class='fraction'>5/5</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -82,12 +82,12 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">25x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">25x</span>
+<span class="cline-any cline-yes">25x</span>
+<span class="cline-any cline-yes">25x</span>
+<span class="cline-any cline-yes">25x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { validate } from '../validation/validate.middleware.js';
 import express from 'express';
@@ -95,12 +95,12 @@ import { strictValidate } from '../validation/strict-validate.middleware.js';
 import { cartSchemas } from '../validation/schemas/index.js';
 import authenticate from '../middlewares/authenticate.js';
 &nbsp;
-const router = <span class="cstat-no" title="statement not covered" >express.Router();</span>
+const router = express.Router();
 &nbsp;
-<span class="cstat-no" title="statement not covered" >router.get('/', validate(cartSchemas.getCartQuery, 'query'), authenticate, <span class="fstat-no" title="function not covered" >(r</span>eq, res) =&gt; <span class="cstat-no" title="statement not covered" >res.status(200).json({ data: { owner: req.auth.sub } }))</span>;</span>
-<span class="cstat-no" title="statement not covered" >router.post('/items', strictValidate(cartSchemas.add), authenticate, <span class="fstat-no" title="function not covered" >(r</span>eq, res) =&gt; <span class="cstat-no" title="statement not covered" >res.status(201).json({ data: req.body }))</span>;</span>
-<span class="cstat-no" title="statement not covered" >router.patch('/items/:id', strictValidate(cartSchemas.updateItemParams, 'params'), strictValidate(cartSchemas.updateItemBody), authenticate, <span class="fstat-no" title="function not covered" >(r</span>eq, res) =&gt; <span class="cstat-no" title="statement not covered" >res.status(200).json({ data: { id: req.params.id, ...req.body } }))</span>;</span>
-<span class="cstat-no" title="statement not covered" >router.delete('/items/:id', strictValidate(cartSchemas.removeItemParams, 'params'), strictValidate(cartSchemas.removeItemBody), authenticate, <span class="fstat-no" title="function not covered" >(r</span>eq, res) =&gt; <span class="cstat-no" title="statement not covered" >res.status(204).end())</span>;</span>
+router.get('/', validate(cartSchemas.getCartQuery, 'query'), authenticate, <span class="fstat-no" title="function not covered" >(r</span>eq, res) =&gt; <span class="cstat-no" title="statement not covered" >res.status(200).json({ data: { owner: req.auth.sub } }))</span>;
+router.post('/items', strictValidate(cartSchemas.add), authenticate, <span class="fstat-no" title="function not covered" >(r</span>eq, res) =&gt; <span class="cstat-no" title="statement not covered" >res.status(201).json({ data: req.body }))</span>;
+router.patch('/items/:id', strictValidate(cartSchemas.updateItemParams, 'params'), strictValidate(cartSchemas.updateItemBody), authenticate, <span class="fstat-no" title="function not covered" >(r</span>eq, res) =&gt; <span class="cstat-no" title="statement not covered" >res.status(200).json({ data: { id: req.params.id, ...req.body } }))</span>;
+router.delete('/items/:id', strictValidate(cartSchemas.removeItemParams, 'params'), strictValidate(cartSchemas.removeItemBody), authenticate, <span class="fstat-no" title="function not covered" >(r</span>eq, res) =&gt; <span class="cstat-no" title="statement not covered" >res.status(204).end())</span>;
 &nbsp;
 export default router;</pre></td></tr></table></pre>
 
@@ -109,7 +109,7 @@ export default router;</pre></td></tr></table></pre>
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-02-19T09:43:57.682Z
+                at 2026-02-19T11:18:53.734Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

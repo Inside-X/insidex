@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/9</span>
+                <span class='fraction'>9/9</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/15</span>
+                <span class='fraction'>15/15</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/5</span>
+                <span class='fraction'>5/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/9</span>
+                <span class='fraction'>9/9</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -107,72 +107,72 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">39x</span>
+<span class="cline-any cline-yes">39x</span>
+<span class="cline-any cline-yes">39x</span>
+<span class="cline-any cline-yes">39x</span>
+<span class="cline-any cline-yes">39x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">export class AppError extends Error {
-<span class="fstat-no" title="function not covered" >  co</span>nstructor({
-    statusCode = <span class="branch-0 cbranch-no" title="branch not covered" >500,</span>
-    code = <span class="branch-0 cbranch-no" title="branch not covered" >'INTERNAL_ERROR',</span>
-    message = <span class="branch-0 cbranch-no" title="branch not covered" >'Internal server error',</span>
-    details = <span class="branch-0 cbranch-no" title="branch not covered" >[]</span>
-  } = <span class="branch-0 cbranch-no" title="branch not covered" >{})</span> {
-<span class="cstat-no" title="statement not covered" >    super(message);</span>
-<span class="cstat-no" title="statement not covered" >    this.name = this.constructor.name;</span>
-<span class="cstat-no" title="statement not covered" >    this.statusCode = statusCode;</span>
-<span class="cstat-no" title="statement not covered" >    this.code = code;</span>
-<span class="cstat-no" title="statement not covered" >    this.details = Array.isArray(details) ? details : [];</span>
+  constructor({
+    statusCode = 500,
+    code = 'INTERNAL_ERROR',
+    message = 'Internal server error',
+    details = []
+  } = {}) {
+    super(message);
+    this.name = this.constructor.name;
+    this.statusCode = statusCode;
+    this.code = code;
+    this.details = Array.isArray(details) ? details : [];
   }
 }
 &nbsp;
 export class AuthError extends AppError {
-<span class="fstat-no" title="function not covered" >  co</span>nstructor(message = <span class="branch-0 cbranch-no" title="branch not covered" >'Authentication required',</span> details = <span class="branch-0 cbranch-no" title="branch not covered" >[])</span> {
-<span class="cstat-no" title="statement not covered" >    super({ statusCode: 401, code: 'AUTH_ERROR', message, details });</span>
+  constructor(message = 'Authentication required', details = []) {
+    super({ statusCode: 401, code: 'AUTH_ERROR', message, details });
   }
 }
 &nbsp;
 export class ForbiddenError extends AppError {
-<span class="fstat-no" title="function not covered" >  co</span>nstructor(message = <span class="branch-0 cbranch-no" title="branch not covered" >'Forbidden',</span> details = <span class="branch-0 cbranch-no" title="branch not covered" >[])</span> {
-<span class="cstat-no" title="statement not covered" >    super({ statusCode: 403, code: 'FORBIDDEN', message, details });</span>
+  constructor(message = 'Forbidden', details = []) {
+    super({ statusCode: 403, code: 'FORBIDDEN', message, details });
   }
 }
 &nbsp;
 export class NotFoundError extends AppError {
-<span class="fstat-no" title="function not covered" >  co</span>nstructor(message = <span class="branch-0 cbranch-no" title="branch not covered" >'Resource not found',</span> details = <span class="branch-0 cbranch-no" title="branch not covered" >[])</span> {
-<span class="cstat-no" title="statement not covered" >    super({ statusCode: 404, code: 'NOT_FOUND', message, details });</span>
+  constructor(message = 'Resource not found', details = []) {
+    super({ statusCode: 404, code: 'NOT_FOUND', message, details });
   }
 }
 &nbsp;
 export class InternalError extends AppError {
-<span class="fstat-no" title="function not covered" >  co</span>nstructor(message = <span class="branch-0 cbranch-no" title="branch not covered" >'Internal server error',</span> details = <span class="branch-0 cbranch-no" title="branch not covered" >[])</span> {
-<span class="cstat-no" title="statement not covered" >    super({ statusCode: 500, code: 'INTERNAL_ERROR', message, details });</span>
+  constructor(message = 'Internal server error', details = []) {
+    super({ statusCode: 500, code: 'INTERNAL_ERROR', message, details });
   }
 }</pre></td></tr></table></pre>
 
@@ -181,7 +181,7 @@ export class InternalError extends AppError {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-02-19T09:43:57.682Z
+                at 2026-02-19T11:18:53.734Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

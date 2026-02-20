@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">71.42% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/21</span>
+                <span class='fraction'>15/21</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">70.58% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/17</span>
+                <span class='fraction'>12/17</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>4/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">70% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/20</span>
+                <span class='fraction'>14/20</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -109,87 +109,87 @@
 <a name='L44'></a><a href='#L44'>44</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">265x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">265x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">265x</span>
+<span class="cline-any cline-yes">265x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">265x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">265x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">265x</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">265x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { sendApiError } from '../utils/api-error.js';
 &nbsp;
-function <span class="fstat-no" title="function not covered" >parseAllowedOrigins(</span>) {
-<span class="cstat-no" title="statement not covered" >  return (process.env.CORS_ORIGIN || '')</span>
+function parseAllowedOrigins() {
+  return (process.env.CORS_ORIGIN || '')
     .split(',')
-    .map(<span class="fstat-no" title="function not covered" >(o</span>rigin) =&gt; <span class="cstat-no" title="statement not covered" >origin.trim())</span>
+    .map((origin) =&gt; origin.trim())
     .filter(Boolean);
 }
 &nbsp;
-function <span class="fstat-no" title="function not covered" >isAllowed(</span>origin, allowedOrigins) {
-<span class="cstat-no" title="statement not covered" >  if (!origin) <span class="cstat-no" title="statement not covered" >return true;</span></span>
+function isAllowed(origin, allowedOrigins) {
+  <span class="missing-if-branch" title="else path not taken" >E</span>if (!origin) return true;
 <span class="cstat-no" title="statement not covered" >  return allowedOrigins.includes(origin);</span>
 }
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >corsMiddleware(</span>req, res, next) {
-  const allowedOrigins = <span class="cstat-no" title="statement not covered" >parseAllowedOrigins();</span>
-  const origin = <span class="cstat-no" title="statement not covered" >req.headers.origin;</span>
+export function corsMiddleware(req, res, next) {
+  const allowedOrigins = parseAllowedOrigins();
+  const origin = req.headers.origin;
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  if (process.env.NODE_ENV === 'production' &amp;&amp; (!allowedOrigins.length || allowedOrigins.includes('*'))) {</span>
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (process.env.NODE_ENV === 'production' &amp;&amp; (!allowedOrigins.length || allowedOrigins.includes('*'))) {
 <span class="cstat-no" title="statement not covered" >    return sendApiError(req, res, 500, 'CORS_MISCONFIGURED', 'CORS origin must be explicit in production');</span>
   }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  if (allowedOrigins.length &gt; 0) {</span>
-<span class="cstat-no" title="statement not covered" >    if (!isAllowed(origin, allowedOrigins)) {</span>
+  if (allowedOrigins.length &gt; 0) {
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (!isAllowed(origin, allowedOrigins)) {
 <span class="cstat-no" title="statement not covered" >      return sendApiError(req, res, 403, 'CORS_FORBIDDEN', 'Origin not allowed');</span>
     }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    if (origin) {</span>
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (origin) {
 <span class="cstat-no" title="statement not covered" >      res.setHeader('Access-Control-Allow-Origin', origin);</span>
 <span class="cstat-no" title="statement not covered" >      res.setHeader('Vary', 'Origin');</span>
     }
-<span class="cstat-no" title="statement not covered" >    res.setHeader('Access-Control-Allow-Credentials', 'true');</span>
-<span class="cstat-no" title="statement not covered" >    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Request-Id');</span>
-<span class="cstat-no" title="statement not covered" >    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');</span>
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Request-Id');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
   }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  if (req.method === 'OPTIONS') {</span>
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (req.method === 'OPTIONS') {
 <span class="cstat-no" title="statement not covered" >    return res.status(204).end();</span>
   }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  return next();</span>
+  return next();
 }
 &nbsp;
 export default corsMiddleware;</pre></td></tr></table></pre>
@@ -199,7 +199,7 @@ export default corsMiddleware;</pre></td></tr></table></pre>
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-02-19T09:43:57.682Z
+                at 2026-02-19T11:18:53.734Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/12</span>
+                <span class='fraction'>12/12</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/6</span>
+                <span class='fraction'>6/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/12</span>
+                <span class='fraction'>12/12</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -97,42 +97,42 @@
 <a name='L32'></a><a href='#L32'>32</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">263x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">263x</span>
+<span class="cline-any cline-yes">263x</span>
+<span class="cline-any cline-yes">263x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">263x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">262x</span>
+<span class="cline-any cline-yes">17x</span>
+<span class="cline-any cline-yes">17x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">245x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">263x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { logger } from '../utils/logger.js';
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >requestLogger(</span>req, res, next) {
-  const startedAt = <span class="cstat-no" title="statement not covered" >Date.now();</span>
+export function requestLogger(req, res, next) {
+  const startedAt = Date.now();
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  res.on('finish', <span class="fstat-no" title="function not covered" >()</span> =&gt; {</span>
-    const elapsedMs = <span class="cstat-no" title="statement not covered" >Date.now() - startedAt;</span>
-    const entry = <span class="cstat-no" title="statement not covered" >{</span>
+  res.on('finish', () =&gt; {
+    const elapsedMs = Date.now() - startedAt;
+    const entry = {
       requestId: req.requestId,
       method: req.method,
       path: req.originalUrl,
@@ -140,20 +140,20 @@ export function <span class="fstat-no" title="function not covered" >requestLogg
       elapsedMs,
     };
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    if (process.env.NODE_ENV === 'production' &amp;&amp; res.statusCode &lt; 400) {</span>
-<span class="cstat-no" title="statement not covered" >      logger.info('http_request', entry);</span>
-<span class="cstat-no" title="statement not covered" >      return;</span>
+    if (process.env.NODE_ENV === 'production' &amp;&amp; res.statusCode &lt; 400) {
+      logger.info('http_request', entry);
+      return;
     }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    if (res.statusCode &gt;= 500) {</span>
-<span class="cstat-no" title="statement not covered" >      logger.error('http_request_failed', entry);</span>
-<span class="cstat-no" title="statement not covered" >      return;</span>
+    if (res.statusCode &gt;= 500) {
+      logger.error('http_request_failed', entry);
+      return;
     }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    logger.debug('http_request', entry);</span>
+    logger.debug('http_request', entry);
   });
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  return next();</span>
+  return next();
 }
 &nbsp;
 export default requestLogger;</pre></td></tr></table></pre>
@@ -163,7 +163,7 @@ export default requestLogger;</pre></td></tr></table></pre>
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-02-19T09:43:57.682Z
+                at 2026-02-19T11:18:53.734Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

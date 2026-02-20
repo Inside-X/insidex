@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/13</span>
+                <span class='fraction'>13/13</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/14</span>
+                <span class='fraction'>14/14</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>4/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/11</span>
+                <span class='fraction'>11/11</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -108,26 +108,26 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">114x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">141x</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">136x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">109x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -141,27 +141,27 @@ import { getNormalizedAuthRole, requireAuthenticatedSubject } from './rbac.js';
  * - trims surrounding whitespace
  * - compares case-insensitively (lowercase normalization)
  */
-export function <span class="fstat-no" title="function not covered" >authorizeRole(</span>roleOrArray) {
-  const allowedRoles = <span class="cstat-no" title="statement not covered" >Array.isArray(roleOrArray) ? roleOrArray : [roleOrArray];</span>
+export function authorizeRole(roleOrArray) {
+  const allowedRoles = Array.isArray(roleOrArray) ? roleOrArray : [roleOrArray];
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  if (!allowedRoles.length || allowedRoles.some(<span class="fstat-no" title="function not covered" >(r</span>ole) =&gt; <span class="cstat-no" title="statement not covered" >typeof role !== 'string' || !role.trim())</span>) {</span>
-<span class="cstat-no" title="statement not covered" >    throw new Error('authorizeRole expects a non-empty role string or array of non-empty role strings');</span>
+  if (!allowedRoles.length || allowedRoles.some((role) =&gt; typeof role !== 'string' || !role.trim())) {
+    throw new Error('authorizeRole expects a non-empty role string or array of non-empty role strings');
   }
 &nbsp;
-  const normalizedAllowedRoles = <span class="cstat-no" title="statement not covered" >new Set(allowedRoles.map(<span class="fstat-no" title="function not covered" >(r</span>ole) =&gt; <span class="cstat-no" title="statement not covered" >role.trim().toLowerCase())</span>);</span>
+  const normalizedAllowedRoles = new Set(allowedRoles.map((role) =&gt; role.trim().toLowerCase()));
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  return function <span class="fstat-no" title="function not covered" >authorizeRoleMiddleware(</span>req, res, next) {</span>
-<span class="cstat-no" title="statement not covered" >    if (!requireAuthenticatedSubject(req, res)) {</span>
-<span class="cstat-no" title="statement not covered" >      return undefined;</span>
+  return function authorizeRoleMiddleware(req, res, next) {
+    if (!requireAuthenticatedSubject(req, res)) {
+      return undefined;
     }
 &nbsp;
-    const normalizedCurrentRole = <span class="cstat-no" title="statement not covered" >getNormalizedAuthRole(req);</span>
+    const normalizedCurrentRole = getNormalizedAuthRole(req);
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    if (!normalizedCurrentRole || !normalizedAllowedRoles.has(normalizedCurrentRole)) {</span>
-<span class="cstat-no" title="statement not covered" >      return sendApiError(req, res, 403, 'FORBIDDEN', 'Insufficient permissions');</span>
+    if (!normalizedCurrentRole || !normalizedAllowedRoles.has(normalizedCurrentRole)) {
+      return sendApiError(req, res, 403, 'FORBIDDEN', 'Insufficient permissions');
     }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    return next();</span>
+    return next();
   };
 }
 &nbsp;
@@ -172,7 +172,7 @@ export default authorizeRole;</pre></td></tr></table></pre>
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-02-19T09:43:57.682Z
+                at 2026-02-19T11:18:53.734Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

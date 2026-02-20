@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">76.47% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/17</span>
+                <span class='fraction'>13/17</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">68.42% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/19</span>
+                <span class='fraction'>13/19</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">86.66% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/15</span>
+                <span class='fraction'>13/15</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -120,37 +120,35 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">51x</span>
+<span class="cline-any cline-yes">51x</span>
+<span class="cline-any cline-yes">51x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">51x</span>
+<span class="cline-any cline-yes">51x</span>
+<span class="cline-any cline-yes">51x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">51x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">51x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">51x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">51x</span>
+<span class="cline-any cline-yes">51x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">51x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -159,7 +157,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">51x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -171,36 +171,36 @@
 import jwt from 'jsonwebtoken';
 import { getRefreshTokenConfig } from './jwt-config.js';
 &nbsp;
-function <span class="fstat-no" title="function not covered" >parseExpiryToMs(</span>expiry) {
-<span class="cstat-no" title="statement not covered" >  if (typeof expiry !== 'string') <span class="cstat-no" title="statement not covered" >return null;</span></span>
-  const match = <span class="cstat-no" title="statement not covered" >expiry.trim().match(/^(\d+)([smhd])$/i);</span>
-<span class="cstat-no" title="statement not covered" >  if (!match) <span class="cstat-no" title="statement not covered" >return null;</span></span>
+function parseExpiryToMs(expiry) {
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (typeof expiry !== 'string') <span class="cstat-no" title="statement not covered" >return null;</span>
+  const match = expiry.trim().match(/^(\d+)([smhd])$/i);
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!match) <span class="cstat-no" title="statement not covered" >return null;</span>
 &nbsp;
-  const value = <span class="cstat-no" title="statement not covered" >Number(match[1]);</span>
-  const unit = <span class="cstat-no" title="statement not covered" >match[2].toLowerCase();</span>
-  const unitMs = <span class="cstat-no" title="statement not covered" >{</span>
+  const value = Number(match[1]);
+  const unit = match[2].toLowerCase();
+  const unitMs = {
     s: 1000,
     m: 60_000,
     h: 3_600_000,
     d: 86_400_000,
   }[unit];
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  return Number.isFinite(value) &amp;&amp; unitMs ? value * unitMs : null;</span>
+  return Number.isFinite(value) &amp;&amp; unitMs ? value * unitMs : <span class="branch-1 cbranch-no" title="branch not covered" >null;</span>
 }
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >issueRefreshToken(</span>{ userId, sessionId = <span class="branch-0 cbranch-no" title="branch not covered" >crypto.randomUUID(),</span> env = <span class="branch-0 cbranch-no" title="branch not covered" >process.env </span>} = <span class="branch-0 cbranch-no" title="branch not covered" >{})</span> {
-  const config = <span class="cstat-no" title="statement not covered" >getRefreshTokenConfig(env);</span>
+export function issueRefreshToken({ userId, sessionId = crypto.randomUUID(), env = process.env } = <span class="branch-0 cbranch-no" title="branch not covered" >{})</span> {
+  const config = getRefreshTokenConfig(env);
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  if (!config.secret || !config.issuer || !config.audience || !config.expiry) {</span>
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!config.secret || !config.issuer || !config.audience || !config.expiry) {
 <span class="cstat-no" title="statement not covered" >    return { ok: false, reason: 'misconfigured' };</span>
   }
 &nbsp;
-  const expiresInMs = <span class="cstat-no" title="statement not covered" >parseExpiryToMs(config.expiry);</span>
-<span class="cstat-no" title="statement not covered" >  if (!expiresInMs) {</span>
+  const expiresInMs = parseExpiryToMs(config.expiry);
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!expiresInMs) {
 <span class="cstat-no" title="statement not covered" >    return { ok: false, reason: 'misconfigured' };</span>
   }
 &nbsp;
-  const token = <span class="cstat-no" title="statement not covered" >jwt.sign(</span>
+  const token = jwt.sign(
     { sub: userId, sid: sessionId, type: 'refresh' },
     config.secret,
     {
@@ -211,7 +211,7 @@ export function <span class="fstat-no" title="function not covered" >issueRefres
     }
   );
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  return {</span>
+  return {
     ok: true,
     token,
     sessionId,
@@ -226,7 +226,7 @@ export default issueRefreshToken;</pre></td></tr></table></pre>
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-02-19T09:43:57.682Z
+                at 2026-02-19T11:18:53.734Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
