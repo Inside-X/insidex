@@ -25,7 +25,7 @@ const checkoutPayload = {
     postalCode: '97600',
     country: 'FR',
   },
-  items: [{ id: '00000000-0000-0000-0000-000000000999', quantity: 1, price: 59.9 }],
+  items: [{ id: '00000000-0000-0000-0000-000000000999', quantity: 1 }],
 };
 
 describe('guest checkout runtime e2e', () => {

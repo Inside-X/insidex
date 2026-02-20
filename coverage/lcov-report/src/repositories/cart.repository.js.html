@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/20</span>
+                <span class='fraction'>20/20</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/5</span>
+                <span class='fraction'>5/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/6</span>
+                <span class='fraction'>6/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/10</span>
+                <span class='fraction'>10/10</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -100,33 +100,33 @@
 <a name='L35'></a><a href='#L35'>35</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -134,33 +134,33 @@
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import prisma from '../lib/prisma.js';
 import { normalizeDbError } from '../lib/db-error.js';
 &nbsp;
-export const cartRepository = <span class="cstat-no" title="statement not covered" >{</span>
-<span class="fstat-no" title="function not covered" >  as</span>ync create(data) {
-<span class="cstat-no" title="statement not covered" >    try { <span class="cstat-no" title="statement not covered" >return await prisma.cart.create({ data }); </span>} catch (error) { <span class="cstat-no" title="statement not covered" >normalizeDbError(error, { repository: 'cart', operation: 'create' }); </span>}</span>
+export const cartRepository = {
+  async create(data) {
+    try { return await prisma.cart.create({ data }); } catch (error) { normalizeDbError(error, { repository: 'cart', operation: 'create' }); }
   },
-<span class="fstat-no" title="function not covered" >  as</span>ync findById(id) {
-<span class="cstat-no" title="statement not covered" >    try { <span class="cstat-no" title="statement not covered" >return await prisma.cart.findUnique({ where: { id }, include: { items: true } }); </span>} catch (error) { <span class="cstat-no" title="statement not covered" >normalizeDbError(error, { repository: 'cart', operation: 'findById' }); </span>}</span>
+  async findById(id) {
+    try { return await prisma.cart.findUnique({ where: { id }, include: { items: true } }); } catch (error) { normalizeDbError(error, { repository: 'cart', operation: 'findById' }); }
   },
-<span class="fstat-no" title="function not covered" >  as</span>ync update(id, data) {
-<span class="cstat-no" title="statement not covered" >    try { <span class="cstat-no" title="statement not covered" >return await prisma.cart.update({ where: { id }, data }); </span>} catch (error) { <span class="cstat-no" title="statement not covered" >normalizeDbError(error, { repository: 'cart', operation: 'update' }); </span>}</span>
+  async update(id, data) {
+    try { return await prisma.cart.update({ where: { id }, data }); } catch (error) { normalizeDbError(error, { repository: 'cart', operation: 'update' }); }
   },
-<span class="fstat-no" title="function not covered" >  as</span>ync delete(id) {
-<span class="cstat-no" title="statement not covered" >    try { <span class="cstat-no" title="statement not covered" >return await prisma.cart.delete({ where: { id } }); </span>} catch (error) { <span class="cstat-no" title="statement not covered" >normalizeDbError(error, { repository: 'cart', operation: 'delete' }); </span>}</span>
+  async delete(id) {
+    try { return await prisma.cart.delete({ where: { id } }); } catch (error) { normalizeDbError(error, { repository: 'cart', operation: 'delete' }); }
   },
-<span class="fstat-no" title="function not covered" >  as</span>ync list(params = <span class="branch-0 cbranch-no" title="branch not covered" >{})</span> {
-    const { skip = <span class="branch-0 cbranch-no" title="branch not covered" >0,</span> take = <span class="branch-0 cbranch-no" title="branch not covered" >50,</span> where = <span class="branch-0 cbranch-no" title="branch not covered" >{},</span> orderBy = <span class="branch-0 cbranch-no" title="branch not covered" >{ createdAt: 'desc' } </span>} = <span class="cstat-no" title="statement not covered" >params;</span>
-<span class="cstat-no" title="statement not covered" >    try { <span class="cstat-no" title="statement not covered" >return await prisma.cart.findMany({ skip, take, where, orderBy, include: { items: true } }); </span>} catch (error) { <span class="cstat-no" title="statement not covered" >normalizeDbError(error, { repository: 'cart', operation: 'list' }); </span>}</span>
+  async list(params = {}) {
+    const { skip = 0, take = 50, where = {}, orderBy = { createdAt: 'desc' } } = params;
+    try { return await prisma.cart.findMany({ skip, take, where, orderBy, include: { items: true } }); } catch (error) { normalizeDbError(error, { repository: 'cart', operation: 'list' }); }
   },
 &nbsp;
-<span class="fstat-no" title="function not covered" >  as</span>ync upsertItem(cartId, productId, quantity) {
-<span class="cstat-no" title="statement not covered" >    try {</span>
-<span class="cstat-no" title="statement not covered" >      return await prisma.cartItem.upsert({</span>
+  async upsertItem(cartId, productId, quantity) {
+    try {
+      return await prisma.cartItem.upsert({
         where: { cartId_productId: { cartId, productId } },
         create: { cartId, productId, quantity },
         update: { quantity },
       });
     } catch (error) {
-<span class="cstat-no" title="statement not covered" >      normalizeDbError(error, { repository: 'cart', operation: 'upsertItem' });</span>
+      normalizeDbError(error, { repository: 'cart', operation: 'upsertItem' });
     }
   },
 };
@@ -172,7 +172,7 @@ export default cartRepository;</pre></td></tr></table></pre>
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-02-19T11:18:53.734Z
+                at 2026-02-20T10:20:33.002Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

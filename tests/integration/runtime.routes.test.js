@@ -24,7 +24,7 @@ const validCheckoutPayload = {
     postalCode: '97600',
     country: 'FR',
   },
-  items: [{ id: '00000000-0000-0000-0000-000000000999', quantity: 1, price: 99.9 }],
+  items: [{ id: '00000000-0000-0000-0000-000000000999', quantity: 1 }],
 };
 
 describe('runtime business routes', () => {
@@ -172,17 +172,18 @@ describe('runtime business routes', () => {
     expect(res.body.meta.isGuestCheckout).toBe(false);
   });
 
-  test('orders create returns 403 for tampered guest claims', async () => {
+  test('orders create returns 401 for tampered guest claims', async () => {
+    const tamperedGuestToken = `${token('guest', '00000000-0000-0000-0000-000000000123', false)}x`;
     const res = await request(app)
       .post('/api/orders')
-      .set('Authorization', `Bearer ${token('guest', '00000000-0000-0000-0000-000000000123', false)}`)
+      .set('Authorization', `Bearer ${tamperedGuestToken}`)
       .send({
         ...validCheckoutPayload,
         idempotencyKey: 'idem-runtime-test-tamper-123',
       });
 
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe('FORBIDDEN');
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe('UNAUTHORIZED');
   });
   
   test('payments create-intent computes amount from DB and returns metadata', async () => {
@@ -203,6 +204,12 @@ describe('runtime business routes', () => {
     expect(res.body.data.metadata.orderId).toBe('00000000-0000-0000-0000-000000000777');
     expect(res.body.data.metadata.userId).toBe('00000000-0000-0000-0000-000000000123');
     expect(res.body.data.metadata.idempotencyKey).toBe('idem-payment-intent-123');
+    expect(orderRepository.createPendingPaymentOrder).toHaveBeenCalledWith(expect.objectContaining({
+      userId: '00000000-0000-0000-0000-000000000123',
+      idempotencyKey: 'idem-payment-intent-123',
+      expectedTotalAmountMinor: 12050,
+      items: [{ productId: validCheckoutPayload.items[0].id, quantity: 1 }],
+    }));
   });
 
 
@@ -229,6 +236,14 @@ describe('runtime business routes', () => {
     expect([r1.status, r2.status].sort()).toEqual([200, 201]);
     expect(r1.body.data.metadata.orderId).toBe('00000000-0000-0000-0000-000000000901');
     expect(r2.body.data.metadata.orderId).toBe('00000000-0000-0000-0000-000000000901');
+    expect(orderRepository.createPendingPaymentOrder).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      expectedTotalAmountMinor: 4900,
+      items: [{ productId: validCheckoutPayload.items[0].id, quantity: 1 }],
+    }));
+    expect(orderRepository.createPendingPaymentOrder).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      expectedTotalAmountMinor: 4900,
+      items: [{ productId: validCheckoutPayload.items[0].id, quantity: 1 }],
+    }));
   });
 
   test('stripe webhook verifies signature and calls atomic payment finalization', async () => {
@@ -432,6 +447,40 @@ describe('runtime business routes', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
+  test('orders rejects client price injection and does not call repository', async () => {
+    const createOrderSpy = jest.spyOn(orderRepository, 'createIdempotentWithItemsAndUpdateStock');
+
+    const res = await request(app)
+      .post('/api/orders')
+      .set('Authorization', `Bearer ${token('customer', '00000000-0000-0000-0000-000000000123')}`)
+      .send({
+        ...validCheckoutPayload,
+        items: [{ ...validCheckoutPayload.items[0], price: 99.9 }],
+        idempotencyKey: 'idem-runtime-test-price-injection-order',
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    expect(createOrderSpy).not.toHaveBeenCalled();
+  });
+
+  test('payments rejects client price injection and does not call repository', async () => {
+    const createPendingOrderSpy = jest.spyOn(orderRepository, 'createPendingPaymentOrder');
+
+    const res = await request(app)
+      .post('/api/payments/create-intent')
+      .set('Authorization', `Bearer ${token('customer', '00000000-0000-0000-0000-000000000123')}`)
+      .send({
+        ...validCheckoutPayload,
+        items: [{ ...validCheckoutPayload.items[0], price: 99.9 }],
+        idempotencyKey: 'idem-runtime-test-price-injection-payment',
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    expect(createPendingOrderSpy).not.toHaveBeenCalled();
+  });
+  
   test('orders route validates uuid params', async () => {
     const res = await request(app)
       .get('/api/orders/not-uuid')

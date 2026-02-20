@@ -9,6 +9,7 @@ import { logger } from '../utils/logger.js';
 import { createWebhookIdempotencyStore } from '../lib/webhook-idempotency-store.js';
 import { toMinorUnits } from '../utils/minor-units.js';
 import { parseJsonWithStrictMonetaryValidation } from '../utils/strict-monetary-json.js';
+import { getRateLimitRedisClient } from '../middlewares/rateLimit.js';
 
 const router = express.Router();
 const MAX_WEBHOOK_BODY_SIZE_BYTES = 1024 * 1024;
@@ -41,9 +42,24 @@ function parseRawJsonBody(rawBody) {
 }
 
 function getIdempotencyStore(req) {
-  if (!req.app.locals.webhookIdempotencyStore) {
-    req.app.locals.webhookIdempotencyStore = createWebhookIdempotencyStore();
+  if (req.app.locals.webhookIdempotencyStore) {
+    return req.app.locals.webhookIdempotencyStore;
   }
+
+  const env = process.env;
+  const strictMode = env.NODE_ENV === 'production' || String(env.WEBHOOK_IDEMPOTENCY_STRICT || '').toLowerCase() === 'true';
+  const allowTestFallback = env.NODE_ENV === 'test' && String(env.WEBHOOK_IDEMPOTENCY_ALLOW_TEST_FALLBACK || '').toLowerCase() === 'true';
+
+  const redisClient = req.app.locals.webhookIdempotencyRedisClient || getRateLimitRedisClient();
+  const hasRedisBackend = Boolean(redisClient && typeof redisClient.set === 'function');
+
+  if (!hasRedisBackend && (strictMode || !allowTestFallback)) {
+    return null;
+  }
+
+  req.app.locals.webhookIdempotencyStore = createWebhookIdempotencyStore({
+    redisClient: hasRedisBackend ? redisClient : null,
+  });
   return req.app.locals.webhookIdempotencyStore;
 }
 
@@ -54,7 +70,29 @@ function isOrderStateProcessable(order) {
 async function claimEventOrIgnore({ req, res, provider, eventId, orderId }) {
   const correlationId = getCorrelationId(req);
   const idempotencyStore = getIdempotencyStore(req);
-  const claim = await idempotencyStore.claim({ provider, eventId });
+  if (!idempotencyStore) {
+    logger.error('webhook_idempotency_backend_unavailable', {
+      provider,
+      eventId,
+      orderId,
+      correlationId,
+    });
+    return sendApiError(req, res, 503, 'SERVICE_UNAVAILABLE', 'Webhook idempotency backend unavailable');
+  }
+
+  let claim;
+  try {
+    claim = await idempotencyStore.claim({ provider, eventId });
+  } catch (error) {
+    logger.error('webhook_idempotency_claim_failed', {
+      provider,
+      eventId,
+      orderId,
+      correlationId,
+      reason: error?.message,
+    });
+    return sendApiError(req, res, 503, 'SERVICE_UNAVAILABLE', 'Webhook idempotency backend unavailable');
+  }
 
   if (!claim.accepted) {
     logger.warn('webhook_replay_detected', {
