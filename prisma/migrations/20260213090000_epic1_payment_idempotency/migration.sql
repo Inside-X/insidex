@@ -1,4 +1,12 @@
 -- EPIC-1 payment idempotency and webhook deduplication hardening
+DO $$
+BEGIN
+  IF to_regclass('public.orders') IS NULL THEN
+    RAISE EXCEPTION 'Expected table orders missing at this migration step; check migration order.';
+  END IF;
+END
+$$;
+
 ALTER TABLE "orders"
   ADD COLUMN "idempotency_key" VARCHAR(128),
   ADD COLUMN "stripe_payment_intent_id" VARCHAR(255);
