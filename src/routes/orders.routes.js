@@ -8,15 +8,9 @@ import checkoutCustomerAccess, { enforceOrderOwnership } from '../middlewares/ch
 import { sendApiError } from '../utils/api-error.js';
 import { orderRepository } from '../repositories/order.repository.js';
 import { logger } from '../utils/logger.js';
+import { assertDatabaseReady, isDependencyUnavailableError } from '../lib/critical-dependencies.js';
 
 const router = express.Router();
-
-
-function isDependencyUnavailableError(error) {
-  const transientCodes = new Set(['DB_OPERATION_FAILED', 'ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN']);
-  if (transientCodes.has(error?.code)) return true;
-  return error?.statusCode === 502 || error?.statusCode === 503;
-}
 
 
 router.post(
@@ -28,6 +22,8 @@ router.post(
   enforceOrderOwnership,
   async (req, res, next) => {
     try {
+      await assertDatabaseReady();
+
       const result = await orderRepository.createIdempotentWithItemsAndUpdateStock({
         userId: req.auth.sub,
         items: req.body.items,
@@ -50,7 +46,12 @@ router.post(
       return res.status(result.replayed ? 200 : 201).json(response);
     } catch (error) {
       if (isDependencyUnavailableError(error)) {
-        logger.error('orders_dependency_unavailable', { reason: error?.code || error?.message });
+        logger.error('critical_dependency_unavailable', {
+          endpoint: 'POST /api/orders',
+          reasonCode: 'db_unavailable',
+          reason: error?.code || error?.message,
+          correlationId: req.requestId || req.get('x-request-id') || 'unknown',
+        });
         return sendApiError(req, res, 503, 'SERVICE_UNAVAILABLE', 'Critical dependency unavailable');
       }
       return next(error);

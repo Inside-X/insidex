@@ -159,3 +159,52 @@ For money-critical routes and webhooks, unavailable critical dependencies must r
 Consistency targets:
 - API code: `SERVICE_UNAVAILABLE` for dependency outages.
 - Structured logs include reason/dependency identifiers (`critical_dependency_unavailable`, mismatch reason codes).
+
+## Fail-Closed Dependency Policy
+
+### Critical dependency inventory
+
+- `POST /api/orders`
+  - Critical: Prisma/PostgreSQL connectivity and transaction begin.
+  - Rule: preflight DB transaction must succeed before business computation or repository mutation.
+- `POST /api/payments/create-intent`
+  - Critical: Prisma/PostgreSQL connectivity and transaction begin (plus product read path).
+  - Rule: preflight DB transaction must succeed before computing order totals or repository writes.
+- `POST /api/webhooks/stripe`
+  - Critical in strict mode: Redis idempotency backend + DB readiness.
+  - Critical during provider call: Stripe SDK signature construct/verification path.
+  - Rule: strict prechecks execute first and can short-circuit before reading/parsing payload-dependent data, signature verification, provider work, or mutation paths.
+- `POST /api/webhooks/paypal`
+  - Critical in strict mode: Redis idempotency backend + DB readiness.
+  - Critical during provider call: PayPal verification SDK/network path.
+  - Rule: strict prechecks execute first and can short-circuit before payload parsing/verification, provider calls, or mutation paths.
+- Webhook idempotency layers
+  - Critical: Redis route-level claim store in strict mode.
+  - Critical: DB idempotency transaction path (`payment_webhook_events` uniqueness).
+
+### Deterministic status-code mapping
+
+- `503 SERVICE_UNAVAILABLE`
+  - `critical_dependency_unavailable`
+  - `db_unavailable`
+  - `redis_unavailable`
+  - `provider_timeout`
+  - `provider_verify_failed_due_to_dependency`
+- `400/401/403`
+  - Preserved for validation/authn/authz failures and trust violations (non-infra).
+
+### Strict mode rules
+
+- Strict mode is enabled when `NODE_ENV=production` **or** `WEBHOOK_IDEMPOTENCY_STRICT=true`.
+- In strict mode, webhook requests require healthy Redis idempotency backend and DB readiness.
+- If prechecks fail, handlers immediately return `503` and skip all verification, SDK calls, and mutation logic.
+
+### Payload-agnostic early-fail anti-butterfly rule
+
+- Early dependency-fail branches must stay payload-agnostic and O(1):
+  - no payload content logs,
+  - no raw-body/HMAC/signature verify work,
+  - no provider SDK/network calls,
+  - no queue/analytics side-effects,
+  - no repository mutation or DB writes.
+- Early-fail logs only include endpoint, correlation id, dependency, and reason code.

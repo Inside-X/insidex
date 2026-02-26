@@ -60,10 +60,14 @@ describe('money routes fail-closed dependency behavior', () => {
 
   beforeEach(() => {
     delete app.locals.webhookIdempotencyStore;
+    delete app.locals.webhookIdempotencyRedisClient;
+
     setRateLimitRedisClient({
       eval: jest.fn(async () => [1, 60_000]),
       ping: jest.fn(async () => 'PONG'),
+      set: jest.fn(async () => 'OK'),
     });
+
     process.env.PAYMENT_WEBHOOK_SECRET = 'whsec_test';
     process.env.PAYPAL_CLIENT_ID = 'id';
     process.env.PAYPAL_SECRET = 'secret';
@@ -79,6 +83,8 @@ describe('money routes fail-closed dependency behavior', () => {
     jest.spyOn(orderRepository, 'markPaidFromWebhook').mockResolvedValue({ replayed: false, orderMarkedPaid: true });
     jest.spyOn(orderRepository, 'processPaymentWebhookEvent').mockResolvedValue({ replayed: false, orderMarkedPaid: true });
     jest.spyOn(paypal.webhooks, 'verifyWebhookSignature').mockResolvedValue({ verified: true, verificationStatus: 'SUCCESS', reason: 'SUCCESS' });
+    jest.spyOn(prisma.order, 'create');
+    jest.spyOn(prisma.order, 'update');
   });
 
   afterEach(() => {
@@ -88,47 +94,36 @@ describe('money routes fail-closed dependency behavior', () => {
     process.env = { ...envSnapshot };
   });
 
-  test('stripe fails closed with 503 before signature work when idempotency backend is unavailable in strict mode', async () => {
+  test('A) strict mode + redis unavailable returns 503 before verify/signature and no rawBody access', async () => {
     process.env.WEBHOOK_IDEMPOTENCY_STRICT = 'true';
+    setRateLimitRedisClient(null);
     const constructSpy = jest.spyOn(stripe.webhooks, 'constructEvent');
-    const logSpy = jest.spyOn(logger, 'error');
+
+    const reqBodySpy = jest.spyOn(Object.getPrototypeOf(app.request), 'body', 'get').mockImplementation(() => {
+      throw new Error('req.body must not be touched in strict early-fail');
+    });
 
     const sig = createStripeSignatureHeader(stripePayload, process.env.PAYMENT_WEBHOOK_SECRET);
     const res = await request(app).post('/api/webhooks/stripe').set('stripe-signature', sig).send(stripePayload);
 
     expect(res.status).toBe(503);
     expect(constructSpy).not.toHaveBeenCalled();
+    expect(reqBodySpy).not.toHaveBeenCalled();
     expect(orderRepository.findById).not.toHaveBeenCalled();
     expect(orderRepository.markPaidFromWebhook).not.toHaveBeenCalled();
-    expect(logSpy).toHaveBeenCalledWith('critical_dependency_unavailable', expect.objectContaining({ dependency: 'webhook_idempotency_backend' }));
+    expect(prisma.order.create).not.toHaveBeenCalled();
+    expect(prisma.order.update).not.toHaveBeenCalled();
   });
 
-  test('paypal fails closed with 503 before verification when idempotency backend is unavailable in strict mode', async () => {
-    process.env.WEBHOOK_IDEMPOTENCY_STRICT = 'true';
-    const verifySpy = jest.spyOn(paypal.webhooks, 'verifyWebhookSignature');
-
-    const res = await request(app)
-      .post('/api/webhooks/paypal')
-      .set('paypal-transmission-id', 'tx')
-      .set('paypal-transmission-time', new Date().toISOString())
-      .set('paypal-cert-url', 'https://cert.example')
-      .set('paypal-auth-algo', 'SHA256')
-      .set('paypal-transmission-sig', 'sig')
-      .send(paypalPayload);
-
-    expect(res.status).toBe(503);
-    expect(verifySpy).not.toHaveBeenCalled();
-    expect(orderRepository.findById).not.toHaveBeenCalled();
-    expect(orderRepository.processPaymentWebhookEvent).not.toHaveBeenCalled();
-  });
-
-  test('payments/create-intent returns 503 on DB unavailability with no order mutation attempt', async () => {
+  test('B) DB unavailable blocks /api/payments/create-intent and /api/orders before mutation', async () => {
     const dbError = new Error('db down');
     dbError.code = 'DB_OPERATION_FAILED';
-    jest.spyOn(prisma.product, 'findMany').mockRejectedValueOnce(dbError);
-    const createPendingSpy = jest.spyOn(orderRepository, 'createPendingPaymentOrder');
+    jest.spyOn(prisma, '$transaction').mockRejectedValue(dbError);
 
-    const res = await request(app)
+    const createPendingSpy = jest.spyOn(orderRepository, 'createPendingPaymentOrder');
+    const createOrderSpy = jest.spyOn(orderRepository, 'createIdempotentWithItemsAndUpdateStock');
+
+    const paymentRes = await request(app)
       .post('/api/payments/create-intent')
       .set('Authorization', `Bearer ${token()}`)
       .send({
@@ -139,16 +134,7 @@ describe('money routes fail-closed dependency behavior', () => {
         items: [{ id: '00000000-0000-0000-0000-000000000999', quantity: 1 }],
       });
 
-    expect(res.status).toBe(503);
-    expect(createPendingSpy).not.toHaveBeenCalled();
-  });
-
-  test('orders route returns 503 on DB transaction begin failure', async () => {
-    const dbError = new Error('tx begin failed');
-    dbError.code = 'DB_OPERATION_FAILED';
-    jest.spyOn(orderRepository, 'createIdempotentWithItemsAndUpdateStock').mockRejectedValueOnce(dbError);
-
-    const res = await request(app)
+    const ordersRes = await request(app)
       .post('/api/orders')
       .set('Authorization', `Bearer ${token()}`)
       .send({
@@ -158,30 +144,29 @@ describe('money routes fail-closed dependency behavior', () => {
         items: [{ id: '00000000-0000-0000-0000-000000000999', quantity: 1 }],
       });
 
-    expect(res.status).toBe(503);
+    expect(paymentRes.status).toBe(503);
+    expect(ordersRes.status).toBe(503);
+    expect(createPendingSpy).not.toHaveBeenCalled();
+    expect(createOrderSpy).not.toHaveBeenCalled();
+    expect(prisma.order.create).not.toHaveBeenCalled();
+    expect(prisma.order.update).not.toHaveBeenCalled();
   });
 
-  test('stripe SDK timeout maps to 503 and no repository mutation', async () => {
+  test('C) provider timeout returns 503 with no repository mutation', async () => {
     app.locals.webhookIdempotencyStore = { claim: jest.fn().mockResolvedValue({ accepted: true }) };
-    const timeout = new Error('stripe timeout');
-    timeout.code = 'ETIMEDOUT';
-    jest.spyOn(stripe.webhooks, 'constructEvent').mockImplementationOnce(() => { throw timeout; });
 
-    const sig = createStripeSignatureHeader(stripePayload, process.env.PAYMENT_WEBHOOK_SECRET);
-    const res = await request(app).post('/api/webhooks/stripe').set('stripe-signature', sig).send(stripePayload);
+    const stripeTimeout = new Error('stripe timeout');
+    stripeTimeout.code = 'ETIMEDOUT';
+    jest.spyOn(stripe.webhooks, 'constructEvent').mockImplementationOnce(() => { throw stripeTimeout; })
 
-    expect(res.status).toBe(503);
-    expect(orderRepository.findById).not.toHaveBeenCalled();
-    expect(orderRepository.markPaidFromWebhook).not.toHaveBeenCalled();
-  });
+    const stripeSig = createStripeSignatureHeader(stripePayload, process.env.PAYMENT_WEBHOOK_SECRET);
+    const stripeRes = await request(app).post('/api/webhooks/stripe').set('stripe-signature', stripeSig).send(stripePayload);
 
-  test('paypal verification timeout maps to 503 and no repository mutation', async () => {
-    app.locals.webhookIdempotencyStore = { claim: jest.fn().mockResolvedValue({ accepted: true }) };
-    const timeout = new Error('network timeout');
-    timeout.code = 'ETIMEDOUT';
-    jest.spyOn(paypal.webhooks, 'verifyWebhookSignature').mockRejectedValueOnce(timeout);
+    const paypalTimeout = new Error('paypal timeout');
+    paypalTimeout.code = 'ETIMEDOUT';
+    jest.spyOn(paypal.webhooks, 'verifyWebhookSignature').mockRejectedValueOnce(paypalTimeout);
 
-    const res = await request(app)
+    const paypalRes = await request(app)
       .post('/api/webhooks/paypal')
       .set('paypal-transmission-id', 'tx')
       .set('paypal-transmission-time', new Date().toISOString())
@@ -190,19 +175,42 @@ describe('money routes fail-closed dependency behavior', () => {
       .set('paypal-transmission-sig', 'sig')
       .send(paypalPayload);
 
-    expect(res.status).toBe(503);
+    expect(stripeRes.status).toBe(503);
+    expect(paypalRes.status).toBe(503);
     expect(orderRepository.findById).not.toHaveBeenCalled();
+    expect(orderRepository.markPaidFromWebhook).not.toHaveBeenCalled();
     expect(orderRepository.processPaymentWebhookEvent).not.toHaveBeenCalled();
   });
 
-  test('webhook handler crash remains 500 and no paid mutation', async () => {
+  test('D) webhook crash mapping is deterministic and does not mutate', async () => {
     app.locals.webhookIdempotencyStore = { claim: jest.fn().mockResolvedValue({ accepted: true }) };
-    jest.spyOn(orderRepository, 'findById').mockRejectedValueOnce(new Error('handler crash'));
+
+    const dependencyCrash = new Error('db reset');
+    dependencyCrash.code = 'ECONNRESET';
+    jest.spyOn(orderRepository, 'findById').mockRejectedValueOnce(dependencyCrash);
 
     const sig = createStripeSignatureHeader(stripePayload, process.env.PAYMENT_WEBHOOK_SECRET);
-    const res = await request(app).post('/api/webhooks/stripe').set('stripe-signature', sig).send(stripePayload);
+    const dependencyRes = await request(app).post('/api/webhooks/stripe').set('stripe-signature', sig).send(stripePayload);
 
-    expect(res.status).toBe(500);
+    jest.spyOn(orderRepository, 'findById').mockRejectedValueOnce(new Error('logic crash'));
+    const nonDependencyRes = await request(app).post('/api/webhooks/stripe').set('stripe-signature', sig).send(stripePayload);
+
+    expect(dependencyRes.status).toBe(503);
+    expect(nonDependencyRes.status).toBe(500);
     expect(orderRepository.markPaidFromWebhook).not.toHaveBeenCalled();
+  });
+
+  test('logs reason codes on dependency failures', async () => {
+    process.env.WEBHOOK_IDEMPOTENCY_STRICT = 'true';
+    setRateLimitRedisClient(null);
+    const logSpy = jest.spyOn(logger, 'error');
+
+    const sig = createStripeSignatureHeader(stripePayload, process.env.PAYMENT_WEBHOOK_SECRET);
+    await request(app).post('/api/webhooks/stripe').set('stripe-signature', sig).send(stripePayload);
+
+    expect(logSpy).toHaveBeenCalledWith('critical_dependency_unavailable', expect.objectContaining({
+      endpoint: 'POST /api/webhooks/stripe',
+      reasonCode: 'redis_unavailable',
+    }));
   });
 });

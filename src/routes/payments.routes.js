@@ -10,16 +10,10 @@ import { orderRepository } from '../repositories/order.repository.js';
 import { sendApiError } from '../utils/api-error.js';
 import { multiplyMinorUnits, sumMinorUnits, toMinorUnits } from '../utils/minor-units.js';
 import { logger } from '../utils/logger.js';
+import { assertDatabaseReady, isDependencyUnavailableError } from '../lib/critical-dependencies.js';
 
 const router = express.Router();
 const SUPPORTED_CURRENCIES = new Set(['EUR', 'USD']);
-
-
-function isDependencyUnavailableError(error) {
-  const transientCodes = new Set(['DB_OPERATION_FAILED', 'ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN']);
-  if (transientCodes.has(error?.code)) return true;
-  return error?.statusCode === 502 || error?.statusCode === 503;
-}
 
 
 function normalizeCurrency(currency) {
@@ -30,6 +24,8 @@ function normalizeCurrency(currency) {
 
 router.post('/create-intent', strictValidate(paymentsSchemas.createIntent), ensureCheckoutSessionJWT, authenticateJWT, checkoutCustomerAccess, async (req, res, next) => {
   try {
+    await assertDatabaseReady();
+
     const currency = normalizeCurrency(req.body.currency);
     if (!SUPPORTED_CURRENCIES.has(currency)) {
       return sendApiError(req, res, 400, 'VALIDATION_ERROR', 'Unsupported currency');
@@ -88,7 +84,12 @@ router.post('/create-intent', strictValidate(paymentsSchemas.createIntent), ensu
     });
   } catch (error) {
     if (isDependencyUnavailableError(error)) {
-      logger.error('payments_dependency_unavailable', { reason: error?.code || error?.message });
+      logger.error('critical_dependency_unavailable', {
+        endpoint: 'POST /api/payments/create-intent',
+        reasonCode: 'db_unavailable',
+        reason: error?.code || error?.message,
+        correlationId: req.requestId || req.get('x-request-id') || 'unknown',
+      });
       return sendApiError(req, res, 503, 'SERVICE_UNAVAILABLE', 'Critical dependency unavailable');
     }
     return next(error);

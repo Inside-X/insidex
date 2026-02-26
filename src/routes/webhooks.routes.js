@@ -10,21 +10,19 @@ import { createWebhookIdempotencyStore } from '../lib/webhook-idempotency-store.
 import { toMinorUnits } from '../utils/minor-units.js';
 import { parseJsonWithStrictMonetaryValidation } from '../utils/strict-monetary-json.js';
 import { getRateLimitRedisClient } from '../middlewares/rateLimit.js';
+import { assertDatabaseReady, getDependencyReasonCode, isDependencyUnavailableError } from '../lib/critical-dependencies.js';
 
 const router = express.Router();
 const MAX_WEBHOOK_BODY_SIZE_BYTES = 1024 * 1024;
 const ALLOWED_ORDER_STATUSES = new Set(['pending']);
 
 
-function isDependencyUnavailableError(error) {
-  const transientCodes = new Set(['DB_OPERATION_FAILED', 'ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN']);
-  if (transientCodes.has(error?.code)) return true;
-  return error?.statusCode === 502 || error?.statusCode === 503;
-}
-
-function sendDependencyUnavailable(req, res, dependency, error) {
+function sendDependencyUnavailable(req, res, dependency, error, endpoint) {
+  const reasonCode = getDependencyReasonCode(dependency, error);
   logger.error('critical_dependency_unavailable', {
+    endpoint,
     dependency,
+    reasonCode,
     reason: error?.code || error?.message || 'unavailable',
     correlationId: getCorrelationId(req),
   });
@@ -136,19 +134,36 @@ async function claimEventOrIgnore({ req, res, provider, eventId, orderId }) {
   return null;
 }
 
+async function ensureWebhookStrictDependencies({ req, res, endpoint }) {
+  if (!isWebhookIdempotencyStrict()) return false;
+
+  const earlyStore = getIdempotencyStore(req);
+  if (!earlyStore) {
+    sendDependencyUnavailable(req, res, 'redis', undefined, endpoint);
+    return true;
+  }
+
+  try {
+    await assertDatabaseReady();
+  } catch (error) {
+    sendDependencyUnavailable(req, res, 'db', error, endpoint);
+    return true;
+  }
+
+  return false;
+}
+
 router.post('/stripe', async (req, res, next) => {
   const correlationId = getCorrelationId(req);
   try {
+    const endpoint = 'POST /api/webhooks/stripe';
+    if (await ensureWebhookStrictDependencies({ req, res, endpoint })) {
+      return undefined;
+    }
+
     const signature = req.get('stripe-signature');
     const secret = process.env.PAYMENT_WEBHOOK_SECRET;
     const rawBody = req.body;
-
-    if (isWebhookIdempotencyStrict()) {
-      const earlyStore = getIdempotencyStore(req);
-      if (!earlyStore) {
-        return sendDependencyUnavailable(req, res, 'webhook_idempotency_backend');
-      }
-    }
 
     logger.info('webhook_received', {
       provider: 'stripe',
@@ -171,7 +186,7 @@ router.post('/stripe', async (req, res, next) => {
       payload = stripe.webhooks.constructEvent(rawBody, signature, secret, { toleranceSeconds: 300 });
     } catch (error) {
       if (isDependencyUnavailableError(error)) {
-        return sendDependencyUnavailable(req, res, 'stripe_sdk', error);
+        return sendDependencyUnavailable(req, res, 'provider_timeout', error, endpoint);
       }
       logger.warn('stripe_webhook_signature_validation_failed', {
         reason: error.message,
@@ -282,7 +297,7 @@ router.post('/stripe', async (req, res, next) => {
     }
 
     if (isDependencyUnavailableError(error)) {
-      return sendDependencyUnavailable(req, res, 'webhook_processing', error);
+      return sendDependencyUnavailable(req, res, 'db', error, 'POST /api/webhooks/stripe');
     }
 
     return next(error);
@@ -292,15 +307,13 @@ router.post('/stripe', async (req, res, next) => {
 router.post('/paypal', async (req, res, next) => {
   const correlationId = getCorrelationId(req);
   try {
+    const endpoint = 'POST /api/webhooks/paypal';
+    if (await ensureWebhookStrictDependencies({ req, res, endpoint })) {
+      return undefined;
+    }
+
     const rawBody = req.body;
     const contentLength = Number(req.get('content-length') || 0);
-
-    if (isWebhookIdempotencyStrict()) {
-      const earlyStore = getIdempotencyStore(req);
-      if (!earlyStore) {
-        return sendDependencyUnavailable(req, res, 'webhook_idempotency_backend');
-      }
-    }
 
     if (contentLength > MAX_WEBHOOK_BODY_SIZE_BYTES) {
       return sendApiError(req, res, 413, 'PAYLOAD_TOO_LARGE', 'Payload too large');
@@ -332,7 +345,7 @@ router.post('/paypal', async (req, res, next) => {
       });
     } catch (error) {
       if (isDependencyUnavailableError(error)) {
-        return sendDependencyUnavailable(req, res, 'paypal_verification', error);
+        return sendDependencyUnavailable(req, res, 'provider_timeout', error, endpoint);
       }
       throw error;
     }
@@ -441,6 +454,11 @@ router.post('/paypal', async (req, res, next) => {
   } catch (error) {
     if (error instanceof ZodError || error instanceof SyntaxError) {
       return sendApiError(req, res, error.statusCode || 400, 'VALIDATION_ERROR', 'Invalid request payload');
+    }
+
+
+    if (isDependencyUnavailableError(error)) {
+      return sendDependencyUnavailable(req, res, 'db', error, 'POST /api/webhooks/paypal');
     }
     
     return next(error);
