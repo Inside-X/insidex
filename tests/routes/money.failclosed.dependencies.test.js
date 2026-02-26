@@ -58,6 +58,12 @@ const paypalPayload = {
 describe('money routes fail-closed dependency behavior', () => {
   const envSnapshot = { ...process.env };
 
+  test('route modules import without dependency guard resolution errors', async () => {
+    await expect(import('../../src/routes/orders.routes.js')).resolves.toBeTruthy();
+    await expect(import('../../src/routes/payments.routes.js')).resolves.toBeTruthy();
+    await expect(import('../../src/routes/webhooks.routes.js')).resolves.toBeTruthy();
+  });
+  
   beforeEach(() => {
     delete app.locals.webhookIdempotencyStore;
     delete app.locals.webhookIdempotencyRedisClient;
