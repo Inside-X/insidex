@@ -71,19 +71,15 @@ describe('destructive financial flow audit', () => {
   });
 
   test('payment intent retry after timeout enforces idempotency and does not duplicate money mutation', async () => {
-    jest.spyOn(prisma.product, 'findMany').mockResolvedValue([{ id: baseCheckout.items[0].id, price: '12.00' }]);
+    const preflightSpy = jest.spyOn(prisma, '$transaction')
+      .mockRejectedValueOnce(Object.assign(new Error('db timeout'), { code: 'ETIMEDOUT' }))
+      .mockResolvedValue(true);
+    const productReadSpy = jest.spyOn(prisma.product, 'findMany').mockResolvedValue([{ id: baseCheckout.items[0].id, price: '12.00' }]);
+    const dependencyLogSpy = jest.spyOn(logger, 'error');
 
     let logicalMutationCount = 0;
-    let attempt = 0;
     const seen = new Set();
-    jest.spyOn(orderRepository, 'createPendingPaymentOrder').mockImplementation(async ({ idempotencyKey }) => {
-      attempt += 1;
-      if (attempt === 1) {
-        const timeout = new Error('gateway timeout');
-        timeout.code = 'ETIMEDOUT';
-        throw timeout;
-      }
-
+    const paymentMutationSpy = jest.spyOn(orderRepository, 'createPendingPaymentOrder').mockImplementation(async ({ idempotencyKey }) => {
       if (!seen.has(idempotencyKey)) {
         seen.add(idempotencyKey);
         logicalMutationCount += 1;
@@ -103,9 +99,16 @@ describe('destructive financial flow audit', () => {
       .set('Authorization', `Bearer ${authToken()}`)
       .send({ ...baseCheckout, idempotencyKey: 'idem-timeout-retry-12345' });
 
-    expect(first.status).toBe(500);
+    expect(first.status).toBe(503);
     expect(second.status).toBe(201);
+    expect(preflightSpy).toHaveBeenCalledTimes(2);
+    expect(productReadSpy).toHaveBeenCalledTimes(1);
+    expect(paymentMutationSpy).toHaveBeenCalledTimes(1);
     expect(logicalMutationCount).toBe(1);
+    expect(dependencyLogSpy).toHaveBeenCalledWith(
+      'critical_dependency_unavailable',
+      expect.objectContaining({ reasonCode: 'db_unavailable' }),
+    );
   });
 
   test('concurrent checkout on same cart idempotency key yields one mutation and one replay', async () => {
