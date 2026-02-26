@@ -159,6 +159,7 @@ For money-critical routes and webhooks, unavailable critical dependencies must r
 Consistency targets:
 - API code: `SERVICE_UNAVAILABLE` for dependency outages.
 - Structured logs include reason/dependency identifiers (`critical_dependency_unavailable`, mismatch reason codes).
+- Deterministic dependency reason codes for fail-closed logging: `redis_unavailable`, `db_unavailable`, `provider_timeout`, `dependency_unknown`.
 
 ## Fail-Closed Dependency Policy
 
@@ -198,6 +199,18 @@ Consistency targets:
 - Strict mode is enabled when `NODE_ENV=production` **or** `WEBHOOK_IDEMPOTENCY_STRICT=true`.
 - In strict mode, webhook requests require healthy Redis idempotency backend and DB readiness.
 - If prechecks fail, handlers immediately return `503` and skip all verification, SDK calls, and mutation logic.
+
+### Middleware ordering invariant (webhooks)
+
+To preserve anti-butterfly guarantees in strict mode, webhook strict dependency guard middleware must execute before any body parser and before global `/api` rate limiting:
+
+1. `webhookStrictDependencyGuard` for `/api/webhooks/stripe` and `/api/webhooks/paypal`
+2. `express.raw(...)` parser for webhook paths
+3. shared middlewares
+4. global `/api` rate limiter
+5. webhook route handlers
+
+Result: when strict precheck fails, requests return `503` before raw stream/body parsing, signature verification, provider SDK calls, idempotency claims, or repository mutation paths.
 
 ### Payload-agnostic early-fail anti-butterfly rule
 

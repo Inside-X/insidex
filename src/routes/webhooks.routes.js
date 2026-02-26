@@ -10,24 +10,12 @@ import { createWebhookIdempotencyStore } from '../lib/webhook-idempotency-store.
 import { toMinorUnits } from '../utils/minor-units.js';
 import { parseJsonWithStrictMonetaryValidation } from '../utils/strict-monetary-json.js';
 import { getRateLimitRedisClient } from '../middlewares/rateLimit.js';
-import { assertDatabaseReady, getDependencyReasonCode, isDependencyUnavailableError } from '../lib/critical-dependencies.js';
+import { isDependencyUnavailableError } from '../lib/critical-dependencies.js';
+import { sendDependencyUnavailable } from '../middlewares/webhookStrictDependencyGuard.js';
 
 const router = express.Router();
 const MAX_WEBHOOK_BODY_SIZE_BYTES = 1024 * 1024;
 const ALLOWED_ORDER_STATUSES = new Set(['pending']);
-
-
-function sendDependencyUnavailable(req, res, dependency, error, endpoint) {
-  const reasonCode = getDependencyReasonCode(dependency, error);
-  logger.error('critical_dependency_unavailable', {
-    endpoint,
-    dependency,
-    reasonCode,
-    reason: error?.code || error?.message || 'unavailable',
-    correlationId: getCorrelationId(req),
-  });
-  return sendApiError(req, res, 503, 'SERVICE_UNAVAILABLE', 'Critical dependency unavailable');
-}
 
 
 function normalizeCurrency(currency) {
@@ -57,10 +45,6 @@ function parseRawJsonBody(rawBody) {
 }
 
 
-function isWebhookIdempotencyStrict() {
-  const env = process.env;
-  return env.NODE_ENV === 'production' || String(env.WEBHOOK_IDEMPOTENCY_STRICT || '').toLowerCase() === 'true';
-}
 
 function getIdempotencyStore(req) {
   if (req.app.locals.webhookIdempotencyStore) {
@@ -134,33 +118,11 @@ async function claimEventOrIgnore({ req, res, provider, eventId, orderId }) {
   return null;
 }
 
-async function ensureWebhookStrictDependencies({ req, res, endpoint }) {
-  if (!isWebhookIdempotencyStrict()) return false;
-
-  const earlyStore = getIdempotencyStore(req);
-  if (!earlyStore) {
-    sendDependencyUnavailable(req, res, 'redis', undefined, endpoint);
-    return true;
-  }
-
-  try {
-    await assertDatabaseReady();
-  } catch (error) {
-    sendDependencyUnavailable(req, res, 'db', error, endpoint);
-    return true;
-  }
-
-  return false;
-}
 
 router.post('/stripe', async (req, res, next) => {
   const correlationId = getCorrelationId(req);
   try {
     const endpoint = 'POST /api/webhooks/stripe';
-    if (await ensureWebhookStrictDependencies({ req, res, endpoint })) {
-      return undefined;
-    }
-
     const signature = req.get('stripe-signature');
     const secret = process.env.PAYMENT_WEBHOOK_SECRET;
     const rawBody = req.body;
@@ -308,10 +270,6 @@ router.post('/paypal', async (req, res, next) => {
   const correlationId = getCorrelationId(req);
   try {
     const endpoint = 'POST /api/webhooks/paypal';
-    if (await ensureWebhookStrictDependencies({ req, res, endpoint })) {
-      return undefined;
-    }
-
     const rawBody = req.body;
     const contentLength = Number(req.get('content-length') || 0);
 
@@ -460,7 +418,7 @@ router.post('/paypal', async (req, res, next) => {
     if (isDependencyUnavailableError(error)) {
       return sendDependencyUnavailable(req, res, 'db', error, 'POST /api/webhooks/paypal');
     }
-    
+
     return next(error);
   }
 });

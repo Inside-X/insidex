@@ -1,14 +1,65 @@
 import { jest } from '@jest/globals';
+import express from 'express';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import app from '../../src/app.js';
+import webhooksRouter from '../../src/routes/webhooks.routes.js';
 import prisma from '../../src/lib/prisma.js';
 import stripe from '../../src/lib/stripe.js';
 import paypal from '../../src/lib/paypal.js';
 import { createStripeSignatureHeader } from '../helpers/stripe-signature.js';
 import { orderRepository } from '../../src/repositories/order.repository.js';
 import { logger } from '../../src/utils/logger.js';
-import { setRateLimitRedisClient } from '../../src/middlewares/rateLimit.js';
+import { apiRateLimiter, setRateLimitRedisClient } from '../../src/middlewares/rateLimit.js';
+import requestContext from '../../src/middlewares/requestContext.js';
+import requestLogger from '../../src/middlewares/requestLogger.js';
+import errorHandler from '../../src/middlewares/error-handler.js';
+import { webhookStrictDependencyGuard } from '../../src/middlewares/webhookStrictDependencyGuard.js';
+
+const GUARDED_BODY_FIELDS = ['body', 'rawBody', 'raw'];
+
+function withRequestBodyAccessTrap() {
+  const streamOnSpy = jest.fn();
+  const streamReadSpy = jest.fn();
+  const trappedApp = express();
+  trappedApp.use((req, _res, next) => {
+    for (const field of GUARDED_BODY_FIELDS) {
+      Object.defineProperty(req, field, {
+        configurable: true,
+        enumerable: false,
+        get() {
+          throw new Error(`req.${field} must not be touched`);
+        },
+      });
+    }
+
+    const originalOn = req.on.bind(req);
+    req.on = (...args) => {
+      streamOnSpy(args[0]);
+      if (args[0] === 'data' || args[0] === 'readable') {
+        throw new Error('request stream must not be read');
+      }
+      return originalOn(...args);
+    };
+
+    const originalRead = req.read?.bind(req);
+    req.read = (...args) => {
+      streamReadSpy();
+      if (originalRead) return originalRead(...args);
+      return null;
+    };
+
+    next();
+  });
+  trappedApp.use(requestContext);
+  trappedApp.use(requestLogger);
+  trappedApp.use('/api/webhooks/stripe', webhookStrictDependencyGuard);
+  trappedApp.use('/api/webhooks/paypal', webhookStrictDependencyGuard);
+  trappedApp.use('/api', apiRateLimiter);
+  trappedApp.use('/api/webhooks', webhooksRouter);
+  trappedApp.use(errorHandler);
+  return { trappedApp, streamOnSpy, streamReadSpy };
+}
 
 function token(sub = '00000000-0000-0000-0000-000000000123') {
   return jwt.sign({ sub, role: 'customer' }, process.env.JWT_ACCESS_SECRET, {
@@ -62,8 +113,9 @@ describe('money routes fail-closed dependency behavior', () => {
     await expect(import('../../src/routes/orders.routes.js')).resolves.toBeTruthy();
     await expect(import('../../src/routes/payments.routes.js')).resolves.toBeTruthy();
     await expect(import('../../src/routes/webhooks.routes.js')).resolves.toBeTruthy();
+    await expect(import('../../src/middlewares/webhookStrictDependencyGuard.js')).resolves.toBeTruthy();
   });
-  
+
   beforeEach(() => {
     delete app.locals.webhookIdempotencyStore;
     delete app.locals.webhookIdempotencyRedisClient;
@@ -102,21 +154,51 @@ describe('money routes fail-closed dependency behavior', () => {
 
   test('A) strict mode + redis unavailable returns 503 before verify/signature and no rawBody access', async () => {
     process.env.WEBHOOK_IDEMPOTENCY_STRICT = 'true';
-    setRateLimitRedisClient(null);
-    const constructSpy = jest.spyOn(stripe.webhooks, 'constructEvent');
-
-    const reqBodySpy = jest.spyOn(Object.getPrototypeOf(app.request), 'body', 'get').mockImplementation(() => {
-      throw new Error('req.body must not be touched in strict early-fail');
+    setRateLimitRedisClient({
+      eval: jest.fn(async () => [1, 60_000]),
+      ping: jest.fn(async () => 'PONG'),
     });
+    const constructSpy = jest.spyOn(stripe.webhooks, 'constructEvent');
+    const { trappedApp, streamOnSpy } = withRequestBodyAccessTrap();
 
     const sig = createStripeSignatureHeader(stripePayload, process.env.PAYMENT_WEBHOOK_SECRET);
-    const res = await request(app).post('/api/webhooks/stripe').set('stripe-signature', sig).send(stripePayload);
+    const res = await request(trappedApp).post('/api/webhooks/stripe').set('stripe-signature', sig).send(stripePayload);
 
     expect(res.status).toBe(503);
     expect(constructSpy).not.toHaveBeenCalled();
-    expect(reqBodySpy).not.toHaveBeenCalled();
+    expect(streamOnSpy).not.toHaveBeenCalledWith('data');
+    expect(streamOnSpy).not.toHaveBeenCalledWith('readable');
     expect(orderRepository.findById).not.toHaveBeenCalled();
     expect(orderRepository.markPaidFromWebhook).not.toHaveBeenCalled();
+    expect(prisma.order.create).not.toHaveBeenCalled();
+    expect(prisma.order.update).not.toHaveBeenCalled();
+  });
+
+
+  test('A2) strict mode + redis unavailable blocks paypal verify before body/stream access', async () => {
+    process.env.WEBHOOK_IDEMPOTENCY_STRICT = 'true';
+    setRateLimitRedisClient({
+      eval: jest.fn(async () => [1, 60_000]),
+      ping: jest.fn(async () => 'PONG'),
+    });
+
+    const paypalVerifySpy = jest.spyOn(paypal.webhooks, 'verifyWebhookSignature');
+    const { trappedApp, streamOnSpy } = withRequestBodyAccessTrap();
+
+    const res = await request(trappedApp)
+      .post('/api/webhooks/paypal')
+      .set('paypal-transmission-id', 'tx')
+      .set('paypal-transmission-time', new Date().toISOString())
+      .set('paypal-cert-url', 'https://cert.example')
+      .set('paypal-auth-algo', 'SHA256')
+      .set('paypal-transmission-sig', 'sig')
+      .send(paypalPayload);
+
+    expect(res.status).toBe(503);
+    expect(paypalVerifySpy).not.toHaveBeenCalled();
+    expect(streamOnSpy).not.toHaveBeenCalledWith('data');
+    expect(streamOnSpy).not.toHaveBeenCalledWith('readable');
+    expect(orderRepository.processPaymentWebhookEvent).not.toHaveBeenCalled();
     expect(prisma.order.create).not.toHaveBeenCalled();
     expect(prisma.order.update).not.toHaveBeenCalled();
   });
@@ -208,14 +290,30 @@ describe('money routes fail-closed dependency behavior', () => {
 
   test('logs reason codes on dependency failures', async () => {
     process.env.WEBHOOK_IDEMPOTENCY_STRICT = 'true';
-    setRateLimitRedisClient(null);
+    setRateLimitRedisClient({
+      eval: jest.fn(async () => [1, 60_000]),
+      ping: jest.fn(async () => 'PONG'),
+    });
     const logSpy = jest.spyOn(logger, 'error');
 
     const sig = createStripeSignatureHeader(stripePayload, process.env.PAYMENT_WEBHOOK_SECRET);
     await request(app).post('/api/webhooks/stripe').set('stripe-signature', sig).send(stripePayload);
 
+    await request(app)
+      .post('/api/webhooks/paypal')
+      .set('paypal-transmission-id', 'tx')
+      .set('paypal-transmission-time', new Date().toISOString())
+      .set('paypal-cert-url', 'https://cert.example')
+      .set('paypal-auth-algo', 'SHA256')
+      .set('paypal-transmission-sig', 'sig')
+      .send(paypalPayload);
+
     expect(logSpy).toHaveBeenCalledWith('critical_dependency_unavailable', expect.objectContaining({
       endpoint: 'POST /api/webhooks/stripe',
+      reasonCode: 'redis_unavailable',
+    }));
+    expect(logSpy).toHaveBeenCalledWith('critical_dependency_unavailable', expect.objectContaining({
+      endpoint: 'POST /api/webhooks/paypal',
       reasonCode: 'redis_unavailable',
     }));
   });

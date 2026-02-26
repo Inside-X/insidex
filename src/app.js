@@ -16,13 +16,14 @@ import { securityHeaders } from './middlewares/securityHeaders.js';
 import { corsMiddleware } from './middlewares/cors.js';
 import { apiRateLimiter, isRateLimitBackendHealthy } from './middlewares/rateLimit.js';
 import { cookieParser } from './middlewares/cookieParser.js';
+import { webhookStrictDependencyGuard } from './middlewares/webhookStrictDependencyGuard.js';
 
 const app = express();
 
 app.use(securityHeaders);
 app.use(corsMiddleware);
-app.use('/api/webhooks/stripe', express.raw({ type: 'application/json', limit: '1mb' }));
-app.use('/api/webhooks/paypal', express.raw({ type: 'application/json', limit: '1mb' }));
+app.use('/api/webhooks/stripe', webhookStrictDependencyGuard, express.raw({ type: 'application/json', limit: '1mb' }));
+app.use('/api/webhooks/paypal', webhookStrictDependencyGuard, express.raw({ type: 'application/json', limit: '1mb' }));
 app.use(express.json());
 app.use(cookieParser);
 app.use(requestContext);

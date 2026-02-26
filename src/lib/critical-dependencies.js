@@ -15,5 +15,5 @@ export function getDependencyReasonCode(dependency, error) {
   if (dependency === 'db') return 'db_unavailable';
   if (dependency === 'redis') return 'redis_unavailable';
   if (dependency === 'provider_timeout') return 'provider_timeout';
-  return 'critical_dependency_unavailable';
+  return 'dependency_unknown';
 }
