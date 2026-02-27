@@ -99,6 +99,23 @@ describe('npm scripts governance guard', () => {
       );
     }
 
+    const jestScripts = ['test', 'test:e2e', 'test:coverage', 'test:coverage:jest', 'test:chaos'];
+    for (const scriptName of jestScripts) {
+      const cmd = scripts[scriptName];
+      if (typeof cmd !== 'string') {
+        continue;
+      }
+
+      if (/\bNODE_OPTIONS\s*=/.test(cmd)) {
+        failInvariant(
+          'windows shell compatibility for jest scripts',
+          `${scriptName}: ${cmd}`,
+          `${scriptName} must not use POSIX env assignment for NODE_OPTIONS`,
+          'Pass Node flags directly (for example: node --experimental-vm-modules ./node_modules/jest/bin/jest.js ...).'
+        );
+      }
+    }
+    
     const coverageCi = scripts['test:coverage:ci'];
     if (!coverageCi.includes('node scripts/ci/run-coverage-ci.js')) {
       failInvariant(

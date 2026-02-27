@@ -5,13 +5,28 @@ import path from 'node:path';
 import jestConfig from '../../jest.config.js';
 
 const SCHEMAS_DIR = path.resolve('src/validation/schemas');
-const toPosixPath = (relativePath) => relativePath.replaceAll('\\', '/');
+function normalizeRelPath(inputPath) {
+  return String(inputPath)
+    .replaceAll('\\', '/')
+    .replace(/^[A-Za-z]:\//, '')
+    .replace(/^\.\//, '')
+    .replace(/\/+/g, '/');
+}
+
+function normalizeCoverageEntry(entry) {
+  const normalized = String(entry).trim();
+  if (normalized.startsWith('!')) {
+    return `!${normalizeRelPath(normalized.slice(1))}`;
+  }
+
+  return normalizeRelPath(normalized);
+}
 
 const EXPECTED_ALLOWLIST = [
   'src/validation/schemas/common.schema.js',
   'src/validation/schemas/index.js',
 ];
-const ALLOWLIST = EXPECTED_ALLOWLIST.map(toPosixPath);
+const ALLOWLIST = EXPECTED_ALLOWLIST.map(normalizeRelPath);
 const EXACT_COVERAGE_EXCLUSIONS = ALLOWLIST.map((filePath) => `!${filePath}`);
 
 function listSchemaJsFiles(dirPath) {
@@ -65,7 +80,7 @@ function isExportOnlyBarrel(source) {
 describe('coverage guard for export-only schema barrels', () => {
   test('requires explicit coverage exclusion decisions for export-only barrels', () => {
     const schemaFiles = listSchemaJsFiles(SCHEMAS_DIR)
-      .map((absolutePath) => toPosixPath(path.relative(process.cwd(), absolutePath)))
+      .map((absolutePath) => normalizeRelPath(path.relative(process.cwd(), absolutePath)))
       .sort();
 
     const exportOnlyBarrels = schemaFiles.filter((relativePath) => {
@@ -89,9 +104,14 @@ describe('coverage guard for export-only schema barrels', () => {
   });
 
   test('allowlisted export-only barrels are excluded from coverage via exact paths', () => {
-    expect(ALLOWLIST).toEqual(EXPECTED_ALLOWLIST.map(toPosixPath));
+    expect(ALLOWLIST).toEqual(EXPECTED_ALLOWLIST.map(normalizeRelPath));
 
-    const collectCoverageFrom = (jestConfig.collectCoverageFrom ?? []).map(toPosixPath);
+    const posixPath = 'src/validation/schemas/common.schema.js';
+    const windowsPath = 'src\\validation\\schemas\\common.schema.js';
+    expect(normalizeRelPath(posixPath)).toBe(normalizeRelPath(windowsPath));
+    expect(ALLOWLIST).toContain(normalizeRelPath(windowsPath));
+
+    const collectCoverageFrom = (jestConfig.collectCoverageFrom ?? []).map(normalizeCoverageEntry);
 
     for (const exclusion of EXACT_COVERAGE_EXCLUSIONS) {
       expect(collectCoverageFrom).toContain(exclusion);
