@@ -1,0 +1,73 @@
+############################################
+# InsideX / Node.js / Prisma - .gitignore
+############################################
+
+# Dependencies
+node_modules/
+
+# Env files (keep examples)
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Coverage / test outputs
+coverage/
+.nyc_output/
+.jest-cache/
+jest-cache/
+reports/
+test-results/
+playwright-report/
+blob-report/
+
+# Build outputs
+dist/
+build/
+out/
+.tmp/
+tmp/
+
+# Framework-specific (harmless if unused)
+.next/
+.vercel/
+.svelte-kit/
+.nuxt/
+.output/
+
+# Cache
+.cache/
+.eslintcache
+*.tsbuildinfo
+
+# Prisma / DB artifacts (keep prisma/migrations/)
+prisma/dev.db*
+prisma/*.db
+prisma/*.db-journal
+prisma/*.db-wal
+prisma/*.db-shm
+
+# Prisma engines/cache can appear outside node_modules in some setups
+.prisma/
+**/.prisma/
+**/.cache/prisma/
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
