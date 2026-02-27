@@ -8,6 +8,7 @@
     "test": "node node_modules/prisma/build/index.js generate && cross-env NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js",
     "test:e2e": "node node_modules/prisma/build/index.js generate && cross-env NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js tests/admin-ui-visibility.e2e.test.js",
     "test:coverage": "node node_modules/prisma/build/index.js generate && cross-env NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js --coverage",
+    "test:coverage:jest": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand --coverage",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
@@ -15,7 +16,7 @@
     "prisma:seed": "node prisma/seed.js",
     "db:import": "node scripts/import-json-to-db.js",
     "db:verify:integration": "node scripts/verify-db-integration.js",
-   "epic:1.4:verify": "node scripts/verify-epic-1.4.js",
+    "epic:1.4:verify": "node scripts/verify-epic-1.4.js",
     "scan:floats": "node scripts/scan-float-usage.js"
   },
   "dependencies": {

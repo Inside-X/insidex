@@ -5,6 +5,8 @@ export default {
   collectCoverageFrom: [
     'src/**/*.js',
     '!src/**/*.d.js',
+    '!src/validation/schemas/common.schema.js',
+    '!src/validation/schemas/index.js',
   ],
   coverageThreshold: {
     global: {

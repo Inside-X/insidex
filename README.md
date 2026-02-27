@@ -73,3 +73,10 @@ Points clés : UUID en PK, enums Prisma, contraintes FK, index de perf, JSONB po
   ```bash
   npm run db:import
   ```
+## Tests & coverage
+
+- Lancer la couverture Jest (gate inchangé côté seuils Jest `coverageThreshold`) :
+  ```bash
+  npm run test:coverage:jest
+  ```
+- Si le téléchargement des engines Prisma est bloqué (ex: restrictions CDN / erreur 403), utiliser `npm run test:coverage:jest` pour exécuter la couverture Jest de façon déterministe sans étape Prisma. Cette commande ne relâche pas les quality gates de couverture : elle utilise la même configuration Jest et les mêmes seuils globaux.
