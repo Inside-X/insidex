@@ -16,13 +16,26 @@ export function shouldFallbackToCoverageJest(output) {
   return STRICT_PRISMA_ENGINE_PATTERNS.some((pattern) => pattern.test(output));
 }
 
-function npmCommand() {
-  return process.platform === 'win32' ? 'npm.cmd' : 'npm';
+export function buildNpmSpawnSpec(platform, npmArgs) {
+  if (platform === 'win32') {
+    return {
+      command: 'cmd.exe',
+      args: ['/d', '/s', '/c', 'npm', ...npmArgs],
+    };
+  }
+
+  return {
+    command: 'npm',
+    args: npmArgs,
+  };
 }
 
-function runNpmScript(args) {
+function runNpmScript(scriptName) {
+  const npmArgs = ['run', scriptName];
+  const spawnSpec = buildNpmSpawnSpec(process.platform, npmArgs);
+
   return new Promise((resolve, reject) => {
-    const child = spawn(npmCommand(), args, {
+    const child = spawn(spawnSpec.command, spawnSpec.args, {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: process.env,
     });
@@ -52,7 +65,7 @@ function runNpmScript(args) {
 }
 
 export async function runCoverageCi() {
-  const primary = await runNpmScript(['run', 'test:coverage']);
+  const primary = await runNpmScript('test:coverage');
 
   if (primary.code === 0) {
     return 0;
@@ -62,7 +75,7 @@ export async function runCoverageCi() {
     return primary.code;
   }
 
-  const fallback = await runNpmScript(['run', 'test:coverage:jest']);
+  const fallback = await runNpmScript('test:coverage:jest');
   return fallback.code;
 }
 

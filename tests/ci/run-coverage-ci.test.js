@@ -1,3 +1,5 @@
+import { describe, expect, test } from '@jest/globals';
+
 import { shouldFallbackToCoverageJest } from '../../scripts/ci/run-coverage-ci.js';
 
 describe('shouldFallbackToCoverageJest', () => {

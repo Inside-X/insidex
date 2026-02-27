@@ -5,10 +5,13 @@ import path from 'node:path';
 import jestConfig from '../../jest.config.js';
 
 const SCHEMAS_DIR = path.resolve('src/validation/schemas');
-const ALLOWLIST = [
+const toPosixPath = (relativePath) => relativePath.replaceAll('\\', '/');
+
+const EXPECTED_ALLOWLIST = [
   'src/validation/schemas/common.schema.js',
   'src/validation/schemas/index.js',
 ];
+const ALLOWLIST = EXPECTED_ALLOWLIST.map(toPosixPath);
 const EXACT_COVERAGE_EXCLUSIONS = ALLOWLIST.map((filePath) => `!${filePath}`);
 
 function listSchemaJsFiles(dirPath) {
@@ -62,7 +65,7 @@ function isExportOnlyBarrel(source) {
 describe('coverage guard for export-only schema barrels', () => {
   test('requires explicit coverage exclusion decisions for export-only barrels', () => {
     const schemaFiles = listSchemaJsFiles(SCHEMAS_DIR)
-      .map((absolutePath) => path.relative(process.cwd(), absolutePath).replaceAll('\\\\', '/'))
+      .map((absolutePath) => toPosixPath(path.relative(process.cwd(), absolutePath)))
       .sort();
 
     const exportOnlyBarrels = schemaFiles.filter((relativePath) => {
@@ -86,7 +89,9 @@ describe('coverage guard for export-only schema barrels', () => {
   });
 
   test('allowlisted export-only barrels are excluded from coverage via exact paths', () => {
-    const collectCoverageFrom = jestConfig.collectCoverageFrom ?? [];
+    expect(ALLOWLIST).toEqual(EXPECTED_ALLOWLIST.map(toPosixPath));
+
+    const collectCoverageFrom = (jestConfig.collectCoverageFrom ?? []).map(toPosixPath);
 
     for (const exclusion of EXACT_COVERAGE_EXCLUSIONS) {
       expect(collectCoverageFrom).toContain(exclusion);
