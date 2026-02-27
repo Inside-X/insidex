@@ -51,10 +51,12 @@ function resolveLogLevel(statusCode) {
 export default function errorHandler(err, req, res, _next) {
   const { statusCode, payload } = normalizePayload(err, req);
   const level = resolveLogLevel(statusCode);
+  const correlationId = req?.correlationId || req?.requestId;
 
   logger[level]('api_error', {
     code: payload.error.code,
     message: payload.error.message,
+    correlationId,
     requestId: req?.requestId,
     details: payload.error.details,
     name: err?.name,

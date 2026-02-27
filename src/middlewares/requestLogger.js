@@ -2,10 +2,19 @@ import { logger } from '../utils/logger.js';
 
 export function requestLogger(req, res, next) {
   const startedAt = Date.now();
+  const correlationId = req.correlationId || req.requestId;
+
+  logger.debug('http_request_started', {
+    correlationId,
+    requestId: req.requestId,
+    method: req.method,
+    path: req.originalUrl,
+  });
 
   res.on('finish', () => {
     const elapsedMs = Date.now() - startedAt;
     const entry = {
+      correlationId,
       requestId: req.requestId,
       method: req.method,
       path: req.originalUrl,

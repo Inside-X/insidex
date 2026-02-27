@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test": "node node_modules/prisma/build/index.js generate && cross-env NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js",
-    "test:e2e": "node node_modules/prisma/build/index.js generate && cross-env NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js tests/admin-ui-visibility.e2e.test.js",
-    "test:coverage": "node node_modules/prisma/build/index.js generate && cross-env NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js --coverage",
+    "test": "node node_modules/prisma/build/index.js generate && NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js",
+    "test:e2e": "node node_modules/prisma/build/index.js generate && NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js tests/admin-ui-visibility.e2e.test.js",
+    "test:coverage": "node node_modules/prisma/build/index.js generate && NODE_OPTIONS=--experimental-vm-modules node ./node_modules/jest/bin/jest.js --coverage",
     "test:coverage:jest": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand --coverage",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
@@ -17,7 +17,9 @@
     "db:import": "node scripts/import-json-to-db.js",
     "db:verify:integration": "node scripts/verify-db-integration.js",
     "epic:1.4:verify": "node scripts/verify-epic-1.4.js",
-    "scan:floats": "node scripts/scan-float-usage.js"
+    "scan:floats": "node scripts/scan-float-usage.js",
+    "test:coverage:ci": "node scripts/ci/run-coverage-ci.js",
+    "test:chaos": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand --detectOpenHandles --testPathPattern=\"tests[\\/]+chaos[\\/]+.*\\.test\\.js\""
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
