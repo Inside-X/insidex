@@ -12,6 +12,18 @@ function buildRawBodySpy() {
   });
 }
 
+async function setupRateLimitModuleSpy() {
+  const actualRateLimit = await import('../../src/middlewares/rateLimit.js');
+  const apiRateLimiterSpy = jest.fn((req, res, next) => actualRateLimit.apiRateLimiter(req, res, next));
+
+  await jest.unstable_mockModule('../../src/middlewares/rateLimit.js', () => ({
+    ...actualRateLimit,
+    apiRateLimiter: apiRateLimiterSpy,
+  }));
+
+  return { actualRateLimit, apiRateLimiterSpy };
+}
+
 describe('webhooks middleware ordering runtime guard (real app wiring)', () => {
   const originalNodeEnv = process.env.NODE_ENV;
   const originalStrict = process.env.WEBHOOK_IDEMPOTENCY_STRICT;
@@ -32,6 +44,9 @@ describe('webhooks middleware ordering runtime guard (real app wiring)', () => {
 
     if (originalCorsOrigin === undefined) delete process.env.CORS_ORIGIN;
     else process.env.CORS_ORIGIN = originalCorsOrigin;
+
+    jest.clearAllMocks();
+    jest.resetModules();
   });
 
   test('POST /api/webhooks/stripe short-circuits 503 before raw-body, verification, DB preflight, and /api rate limiter', async () => {
@@ -44,7 +59,6 @@ describe('webhooks middleware ordering runtime guard (real app wiring)', () => {
       throw new Error('db preflight must not be called when redis idempotency backend is unavailable');
     });
     const rawBodySpy = buildRawBodySpy();
-    const apiRateLimiterSpy = jest.fn((_req, _res, next) => next());
 
     await jest.unstable_mockModule('../../src/utils/logger.js', () => ({ logger }));
     await jest.unstable_mockModule('../../src/lib/stripe.js', () => ({ default: { webhooks: { constructEvent: stripeConstructEvent } } }));
@@ -54,21 +68,18 @@ describe('webhooks middleware ordering runtime guard (real app wiring)', () => {
       getDependencyReasonCode: (dependency) => (dependency === 'redis' ? 'redis_unavailable' : dependency === 'db' ? 'db_unavailable' : 'dependency_unknown'),
       isDependencyUnavailableError: jest.fn(() => false),
     }));
-    await jest.unstable_mockModule('../../src/middlewares/rateLimit.js', () => ({
-      apiRateLimiter: apiRateLimiterSpy,
-      strictAuthRateLimiter: jest.fn((_req, _res, next) => next()),
-      isRateLimitBackendHealthy: jest.fn().mockResolvedValue(true),
-      getRateLimitRedisClient: jest.fn(() => ({ incr: jest.fn().mockResolvedValue(1) })), // operational but lacks set
-      setRateLimitRedisClient: jest.fn(),
-      resetRateLimiters: jest.fn(),
-      createRateLimiter: jest.fn(),
-      resolveClientIp: jest.fn(),
-      endpointToken: jest.fn(),
-      default: jest.fn(),
-    }));
     await jest.unstable_mockModule('raw-body', () => ({ default: rawBodySpy }));
 
+    const { actualRateLimit, apiRateLimiterSpy } = await setupRateLimitModuleSpy();
+    const rateLimitRedisClient = {
+      incr: jest.fn().mockResolvedValue(1),
+      set: jest.fn().mockResolvedValue('OK'),
+      ping: jest.fn().mockResolvedValue('PONG'),
+    };
+    actualRateLimit.setRateLimitRedisClient(rateLimitRedisClient);
+
     const app = (await import('../../src/app.js')).default;
+    app.locals.webhookIdempotencyRedisClient = { incr: jest.fn().mockResolvedValue(1) }; // idempotency backend only: unavailable for set(NX)
 
     const res = await request(app)
       .post('/api/webhooks/stripe')
@@ -83,6 +94,8 @@ describe('webhooks middleware ordering runtime guard (real app wiring)', () => {
     expect(paypalVerify).not.toHaveBeenCalled();
     expect(assertDatabaseReady).not.toHaveBeenCalled();
     expect(apiRateLimiterSpy).not.toHaveBeenCalled();
+    expect(rateLimitRedisClient.incr).not.toHaveBeenCalled();
+    expect(rateLimitRedisClient.set).not.toHaveBeenCalled();
 
     expect(logger.error).toHaveBeenCalledWith(
       'critical_dependency_unavailable',
@@ -104,7 +117,6 @@ describe('webhooks middleware ordering runtime guard (real app wiring)', () => {
       throw new Error('db preflight must not be called when redis idempotency backend is unavailable');
     });
     const rawBodySpy = buildRawBodySpy();
-    const apiRateLimiterSpy = jest.fn((_req, _res, next) => next());
 
     await jest.unstable_mockModule('../../src/utils/logger.js', () => ({ logger }));
     await jest.unstable_mockModule('../../src/lib/stripe.js', () => ({ default: { webhooks: { constructEvent: stripeConstructEvent } } }));
@@ -114,21 +126,18 @@ describe('webhooks middleware ordering runtime guard (real app wiring)', () => {
       getDependencyReasonCode: (dependency) => (dependency === 'redis' ? 'redis_unavailable' : dependency === 'db' ? 'db_unavailable' : 'dependency_unknown'),
       isDependencyUnavailableError: jest.fn(() => false),
     }));
-    await jest.unstable_mockModule('../../src/middlewares/rateLimit.js', () => ({
-      apiRateLimiter: apiRateLimiterSpy,
-      strictAuthRateLimiter: jest.fn((_req, _res, next) => next()),
-      isRateLimitBackendHealthy: jest.fn().mockResolvedValue(true),
-      getRateLimitRedisClient: jest.fn(() => ({ incr: jest.fn().mockResolvedValue(1) })), // operational but lacks set
-      setRateLimitRedisClient: jest.fn(),
-      resetRateLimiters: jest.fn(),
-      createRateLimiter: jest.fn(),
-      resolveClientIp: jest.fn(),
-      endpointToken: jest.fn(),
-      default: jest.fn(),
-    }));
     await jest.unstable_mockModule('raw-body', () => ({ default: rawBodySpy }));
 
+    const { actualRateLimit, apiRateLimiterSpy } = await setupRateLimitModuleSpy();
+    const rateLimitRedisClient = {
+      incr: jest.fn().mockResolvedValue(1),
+      set: jest.fn().mockResolvedValue('OK'),
+      ping: jest.fn().mockResolvedValue('PONG'),
+    };
+    actualRateLimit.setRateLimitRedisClient(rateLimitRedisClient);
+
     const app = (await import('../../src/app.js')).default;
+    app.locals.webhookIdempotencyRedisClient = { incr: jest.fn().mockResolvedValue(1) }; // idempotency backend only: unavailable for set(NX)
 
     const res = await request(app)
       .post('/api/webhooks/paypal')
@@ -142,6 +151,8 @@ describe('webhooks middleware ordering runtime guard (real app wiring)', () => {
     expect(paypalVerify).not.toHaveBeenCalled();
     expect(assertDatabaseReady).not.toHaveBeenCalled();
     expect(apiRateLimiterSpy).not.toHaveBeenCalled();
+    expect(rateLimitRedisClient.incr).not.toHaveBeenCalled();
+    expect(rateLimitRedisClient.set).not.toHaveBeenCalled();
 
     expect(logger.error).toHaveBeenCalledWith(
       'critical_dependency_unavailable',

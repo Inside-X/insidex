@@ -184,4 +184,329 @@ describe('webhooks.routes', () => {
     expect(res.json).toHaveBeenCalledWith({ data: { ignored: true, reason: 'amount_mismatch' } });
     expect(processPaymentWebhookEvent).not.toHaveBeenCalled();
   });
+
+
+  test('stripe propagates non-transition error branch to next', async () => {
+    const next = jest.fn();
+    const claim = jest.fn().mockResolvedValue({ accepted: true });
+
+    const routes = await loadRoute('../../src/routes/webhooks.routes.js', {
+      zod: () => ({ ZodError: class ZodError extends Error {} }),
+      '../../src/lib/stripe.js': () => ({ default: { webhooks: { constructEvent: jest.fn(() => ({ id: 'evt_throw_branch', type: 'payment_intent.succeeded', data: { object: { id: 'pi1', status: 'succeeded', amount_received: 1000, currency: 'EUR', metadata: { orderId: 'o1', userId: 'u1', idempotencyKey: 'k1' } } } })) } } }),
+      '../../src/lib/paypal.js': () => ({ default: { webhooks: { verifyWebhookSignature: jest.fn() } } }),
+      '../../src/validation/schemas/index.js': () => ({ paymentsSchemas: { stripeWebhook: { parse: jest.fn((x) => x) }, paypalWebhook: { parse: jest.fn((x) => x) } } }),
+      '../../src/utils/api-error.js': () => ({ sendApiError: jest.fn((_req, res, status) => res.status(status).json({})) }),
+      '../../src/repositories/order.repository.js': () => ({ orderRepository: { findById: jest.fn().mockResolvedValue({ id: 'o1', status: 'pending', totalAmount: '10.00', currency: 'EUR' }), markPaidFromWebhook: jest.fn(), processPaymentWebhookEvent: jest.fn() } }),
+      '../../src/utils/logger.js': () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }),
+      '../../src/lib/webhook-idempotency-store.js': () => ({ createWebhookIdempotencyStore: () => ({ claim }) }),
+      '../../src/domain/order-state-machine.js': () => ({ OrderInvalidTransitionError: class OrderInvalidTransitionError extends Error {}, nextStatusForEvent: jest.fn(() => 'paid'), assertValidTransition: jest.fn(() => { throw new Error('unexpected transition checker crash'); }) }),
+      '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
+    });
+
+    process.env.PAYMENT_WEBHOOK_SECRET = 'sec';
+    const stripe = routes.find((r) => r.path === '/stripe').handlers.at(-1);
+    const req = { get: (h) => (h === 'stripe-signature' ? 'sig' : null), body: Buffer.from('{}'), app: { locals: { webhookIdempotencyStore: { claim } } } };
+    const res = { status: jest.fn(() => res), json: jest.fn() };
+
+    await stripe(req, res, next);
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  test('paypal parseRawJsonBody enforces raw buffer size limit when content-length is small', async () => {
+    const sendApiError = jest.fn((_req, res, status) => res.status(status).json({}));
+    const routes = await loadRoute('../../src/routes/webhooks.routes.js', {
+      zod: () => ({ ZodError: class ZodError extends Error {} }),
+      '../../src/lib/stripe.js': () => ({ default: { webhooks: { constructEvent: jest.fn() } } }),
+      '../../src/lib/paypal.js': () => ({ default: { webhooks: { verifyWebhookSignature: jest.fn() } } }),
+      '../../src/validation/schemas/index.js': () => ({ paymentsSchemas: { stripeWebhook: { parse: jest.fn((x) => x) }, paypalWebhook: { parse: jest.fn((x) => x) } } }),
+      '../../src/utils/api-error.js': () => ({ sendApiError }),
+      '../../src/repositories/order.repository.js': () => ({ orderRepository: { findById: jest.fn(), markPaidFromWebhook: jest.fn(), processPaymentWebhookEvent: jest.fn() } }),
+      '../../src/utils/logger.js': () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }),
+      '../../src/lib/webhook-idempotency-store.js': () => ({ createWebhookIdempotencyStore: () => ({ claim: jest.fn().mockResolvedValue({ accepted: true }) }) }),
+      '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
+    });
+
+    const paypal = routes.find((r) => r.path === '/paypal').handlers.at(-1);
+    const req = { get: (h) => (h === 'content-length' ? '10' : null), body: Buffer.alloc(1024 * 1024 + 1), app: { locals: {} } };
+    const res = { status: jest.fn(() => res), json: jest.fn() };
+    const next = jest.fn();
+
+    await paypal(req, res, next);
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next.mock.calls[0][0].statusCode).toBe(413);
+  });
+
+  test('stripe returns 400 when idempotency claim marks invalid_event_id', async () => {
+    const sendApiError = jest.fn((_req, res, status) => res.status(status).json({}));
+    const claim = jest.fn().mockResolvedValue({ accepted: false, reason: 'invalid_event_id' });
+
+    const routes = await loadRoute('../../src/routes/webhooks.routes.js', {
+      zod: () => ({ ZodError: class ZodError extends Error {} }),
+      '../../src/lib/stripe.js': () => ({
+        default: {
+          webhooks: {
+            constructEvent: jest.fn(() => ({
+              id: 'evt_bad_id',
+              type: 'payment_intent.succeeded',
+              data: { object: { id: 'pi1', status: 'succeeded', amount_received: 1000, currency: 'EUR', metadata: { orderId: 'o1', userId: 'u1', idempotencyKey: 'k1' } } },
+            })),
+          },
+        },
+      }),
+      '../../src/lib/paypal.js': () => ({ default: { webhooks: { verifyWebhookSignature: jest.fn() } } }),
+      '../../src/validation/schemas/index.js': () => ({ paymentsSchemas: { stripeWebhook: { parse: jest.fn((x) => x) }, paypalWebhook: { parse: jest.fn((x) => x) } } }),
+      '../../src/utils/api-error.js': () => ({ sendApiError }),
+      '../../src/repositories/order.repository.js': () => ({ orderRepository: { findById: jest.fn(), markPaidFromWebhook: jest.fn(), processPaymentWebhookEvent: jest.fn() } }),
+      '../../src/utils/logger.js': () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }),
+      '../../src/lib/webhook-idempotency-store.js': () => ({ createWebhookIdempotencyStore: () => ({ claim }) }),
+      '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
+    });
+
+    process.env.PAYMENT_WEBHOOK_SECRET = 'sec';
+    const stripe = routes.find((r) => r.path === '/stripe').handlers.at(-1);
+    const req = { get: (h) => (h === 'stripe-signature' ? 'sig' : null), body: Buffer.from('{}'), app: { locals: { webhookIdempotencyStore: { claim } } } };
+    const res = { status: jest.fn(() => res), json: jest.fn() };
+
+    await stripe(req, res, jest.fn());
+    expect(sendApiError).toHaveBeenCalledWith(req, res, 400, 'VALIDATION_ERROR', 'Invalid event id');
+  });
+
+  test('stripe returns unsupported_event_type when state-mapper yields null for succeeded event', async () => {
+    const claim = jest.fn().mockResolvedValue({ accepted: true });
+    const constructEvent = jest.fn(() => ({
+      id: 'evt_map_null',
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi1',
+          status: 'succeeded',
+          amount_received: 1000,
+          currency: 'EUR',
+          metadata: { orderId: 'o1', userId: 'u1', idempotencyKey: 'k1' },
+        },
+      },
+    }));
+
+    const routes = await loadRoute('../../src/routes/webhooks.routes.js', {
+      zod: () => ({ ZodError: class ZodError extends Error {} }),
+      '../../src/lib/stripe.js': () => ({ default: { webhooks: { constructEvent } } }),
+      '../../src/lib/paypal.js': () => ({ default: { webhooks: { verifyWebhookSignature: jest.fn() } } }),
+      '../../src/validation/schemas/index.js': () => ({ paymentsSchemas: { stripeWebhook: { parse: jest.fn((x) => x) }, paypalWebhook: { parse: jest.fn((x) => x) } } }),
+      '../../src/utils/api-error.js': () => ({ sendApiError: jest.fn((_req, res, status) => res.status(status).json({})) }),
+      '../../src/repositories/order.repository.js': () => ({ orderRepository: { findById: jest.fn().mockResolvedValue({ id: 'o1', status: 'pending', totalAmount: '10.00', currency: 'EUR' }), markPaidFromWebhook: jest.fn(), processPaymentWebhookEvent: jest.fn() } }),
+      '../../src/utils/logger.js': () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }),
+      '../../src/lib/webhook-idempotency-store.js': () => ({ createWebhookIdempotencyStore: () => ({ claim }) }),
+      '../../src/domain/order-state-machine.js': () => ({
+        OrderInvalidTransitionError: class OrderInvalidTransitionError extends Error {},
+        nextStatusForEvent: jest.fn(() => null),
+        assertValidTransition: jest.fn(),
+      }),
+      '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
+    });
+
+    process.env.PAYMENT_WEBHOOK_SECRET = 'sec';
+    const stripe = routes.find((r) => r.path === '/stripe').handlers.at(-1);
+    const req = { get: (h) => (h === 'stripe-signature' ? 'sig' : null), body: Buffer.from('{}'), app: { locals: {} } };
+    const res = { status: jest.fn(() => res), json: jest.fn() };
+
+    await stripe(req, res, jest.fn());
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ data: { ignored: true, reason: 'unsupported_event_type' } });
+  });
+
+  test('paypal returns 400 when COMPLETED capture has no resource id', async () => {
+    const sendApiError = jest.fn((_req, res, status) => res.status(status).json({}));
+    const claim = jest.fn().mockResolvedValue({ accepted: true });
+
+    const routes = await loadRoute('../../src/routes/webhooks.routes.js', {
+      zod: () => ({ ZodError: class ZodError extends Error {} }),
+      '../../src/lib/stripe.js': () => ({ default: { webhooks: { constructEvent: jest.fn() } } }),
+      '../../src/lib/paypal.js': () => ({ default: { webhooks: { verifyWebhookSignature: jest.fn().mockResolvedValue({ verified: true, verificationStatus: 'SUCCESS' }) } } }),
+      '../../src/validation/schemas/index.js': () => ({ paymentsSchemas: { stripeWebhook: { parse: jest.fn((x) => x) }, paypalWebhook: { parse: jest.fn((x) => x) } } }),
+      '../../src/utils/api-error.js': () => ({ sendApiError }),
+      '../../src/repositories/order.repository.js': () => ({ orderRepository: { findById: jest.fn().mockResolvedValue({ id: 'o1', status: 'pending', totalAmount: '10.00', currency: 'EUR' }), markPaidFromWebhook: jest.fn(), processPaymentWebhookEvent: jest.fn() } }),
+      '../../src/utils/logger.js': () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }),
+      '../../src/lib/webhook-idempotency-store.js': () => ({ createWebhookIdempotencyStore: () => ({ claim }) }),
+      '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn((amount) => (amount === '10.00' ? 1000 : 1000)) }),
+    });
+
+    const paypal = routes.find((r) => r.path === '/paypal').handlers.at(-1);
+    const body = { eventId: 'evt_missing_cap', orderId: 'o1', metadata: { orderId: 'o1', userId: 'u1', idempotencyKey: 'idem' }, payload: { capture: { amount: '10.00', currency: 'EUR', status: 'COMPLETED' } } };
+    const req = { get: (h) => (h === 'content-length' ? '10' : 'header'), body: Buffer.from(JSON.stringify(body)), app: { locals: {} } };
+    const res = { status: jest.fn(() => res), json: jest.fn() };
+
+    await paypal(req, res, jest.fn());
+    expect(sendApiError).toHaveBeenCalledWith(req, res, 400, 'VALIDATION_ERROR', 'Missing capture/resource id');
+  });
+
+
+  test('allows test fallback idempotency store when redis backend is absent', async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.WEBHOOK_IDEMPOTENCY_ALLOW_TEST_FALLBACK = 'true';
+
+    const claim = jest.fn().mockResolvedValue({ accepted: true });
+    const createWebhookIdempotencyStore = jest.fn(() => ({ claim }));
+    const constructEvent = jest.fn(() => ({
+      id: 'evt_fallback',
+      type: 'payment_intent.succeeded',
+      data: {
+        object: {
+          id: 'pi1',
+          status: 'succeeded',
+          amount_received: 1000,
+          currency: 'EUR',
+          metadata: { orderId: 'o1', userId: 'u1', idempotencyKey: 'k1' },
+        },
+      },
+    }));
+
+    const routes = await loadRoute('../../src/routes/webhooks.routes.js', {
+      zod: () => ({ ZodError: class ZodError extends Error {} }),
+      '../../src/lib/stripe.js': () => ({ default: { webhooks: { constructEvent } } }),
+      '../../src/lib/paypal.js': () => ({ default: { webhooks: { verifyWebhookSignature: jest.fn() } } }),
+      '../../src/validation/schemas/index.js': () => ({ paymentsSchemas: { stripeWebhook: { parse: jest.fn((x) => x) }, paypalWebhook: { parse: jest.fn((x) => x) } } }),
+      '../../src/utils/api-error.js': () => ({ sendApiError: jest.fn((_req, res, status) => res.status(status).json({})) }),
+      '../../src/repositories/order.repository.js': () => ({ orderRepository: { findById: jest.fn().mockResolvedValue(null), markPaidFromWebhook: jest.fn(), processPaymentWebhookEvent: jest.fn() } }),
+      '../../src/utils/logger.js': () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }),
+      '../../src/lib/webhook-idempotency-store.js': () => ({ createWebhookIdempotencyStore }),
+      '../../src/middlewares/rateLimit.js': () => ({ getRateLimitRedisClient: jest.fn(() => null) }),
+      '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
+    });
+
+    process.env.PAYMENT_WEBHOOK_SECRET = 'sec';
+    const stripe = routes.find((r) => r.path === '/stripe').handlers.at(-1);
+    const req = { get: (h) => (h === 'stripe-signature' ? 'sig' : null), body: Buffer.from('{}'), app: { locals: {} } };
+    const res = { status: jest.fn(() => res), json: jest.fn() };
+
+    await stripe(req, res, jest.fn());
+
+    expect(createWebhookIdempotencyStore).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(200);
+
+    delete process.env.WEBHOOK_IDEMPOTENCY_ALLOW_TEST_FALLBACK;
+  });
+
+
+  test('paypal maps provider-timeout verification error to dependency unavailable', async () => {
+    const sendDependencyUnavailable = jest.fn((_req, res, _dep, _err, _ep) => res.status(503).json({}));
+    const claim = jest.fn().mockResolvedValue({ accepted: true });
+
+    const routes = await loadRoute('../../src/routes/webhooks.routes.js', {
+      zod: () => ({ ZodError: class ZodError extends Error {} }),
+      '../../src/lib/stripe.js': () => ({ default: { webhooks: { constructEvent: jest.fn() } } }),
+      '../../src/lib/paypal.js': () => ({ default: { webhooks: { verifyWebhookSignature: jest.fn().mockRejectedValue(Object.assign(new Error('timeout'), { code: 'ETIMEDOUT' })) } } }),
+      '../../src/validation/schemas/index.js': () => ({ paymentsSchemas: { stripeWebhook: { parse: jest.fn((x) => x) }, paypalWebhook: { parse: jest.fn((x) => x) } } }),
+      '../../src/utils/api-error.js': () => ({ sendApiError: jest.fn((_req, res, status) => res.status(status).json({})) }),
+      '../../src/repositories/order.repository.js': () => ({ orderRepository: { findById: jest.fn(), markPaidFromWebhook: jest.fn(), processPaymentWebhookEvent: jest.fn() } }),
+      '../../src/utils/logger.js': () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }),
+      '../../src/lib/webhook-idempotency-store.js': () => ({ createWebhookIdempotencyStore: () => ({ claim }) }),
+      '../../src/lib/critical-dependencies.js': () => ({ isDependencyUnavailableError: jest.fn(() => true) }),
+      '../../src/middlewares/webhookStrictDependencyGuard.js': () => ({ sendDependencyUnavailable }),
+      '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
+    });
+
+    const paypal = routes.find((r) => r.path === '/paypal').handlers.at(-1);
+    const body = { eventId: 'evt_timeout', orderId: 'o1', metadata: { orderId: 'o1' }, payload: { capture: { amount: '10.00', currency: 'EUR', status: 'COMPLETED', id: 'cap_1' } } };
+    const req = { get: (h) => (h === 'content-length' ? '10' : 'hdr'), body: Buffer.from(JSON.stringify(body)), app: { locals: { webhookIdempotencyStore: { claim } } } };
+    const res = { status: jest.fn(() => res), json: jest.fn() };
+
+    await paypal(req, res, jest.fn());
+    expect(sendDependencyUnavailable).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(503);
+  });
+
+  test('paypal maps repository dependency failures to dependency unavailable', async () => {
+    const sendDependencyUnavailable = jest.fn((_req, res, _dep, _err, _ep) => res.status(503).json({}));
+    const claim = jest.fn().mockResolvedValue({ accepted: true });
+
+    const routes = await loadRoute('../../src/routes/webhooks.routes.js', {
+      zod: () => ({ ZodError: class ZodError extends Error {} }),
+      '../../src/lib/stripe.js': () => ({ default: { webhooks: { constructEvent: jest.fn() } } }),
+      '../../src/lib/paypal.js': () => ({ default: { webhooks: { verifyWebhookSignature: jest.fn().mockResolvedValue({ verified: true, verificationStatus: 'SUCCESS' }) } } }),
+      '../../src/validation/schemas/index.js': () => ({ paymentsSchemas: { stripeWebhook: { parse: jest.fn((x) => x) }, paypalWebhook: { parse: jest.fn((x) => x) } } }),
+      '../../src/utils/api-error.js': () => ({ sendApiError: jest.fn((_req, res, status) => res.status(status).json({})) }),
+      '../../src/repositories/order.repository.js': () => ({ orderRepository: { findById: jest.fn().mockRejectedValue(Object.assign(new Error('db'), { code: 'ECONNRESET' })), markPaidFromWebhook: jest.fn(), processPaymentWebhookEvent: jest.fn() } }),
+      '../../src/utils/logger.js': () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }),
+      '../../src/lib/webhook-idempotency-store.js': () => ({ createWebhookIdempotencyStore: () => ({ claim }) }),
+      '../../src/lib/critical-dependencies.js': () => ({ isDependencyUnavailableError: jest.fn(() => true) }),
+      '../../src/middlewares/webhookStrictDependencyGuard.js': () => ({ sendDependencyUnavailable }),
+      '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
+    });
+
+    const paypal = routes.find((r) => r.path === '/paypal').handlers.at(-1);
+    const body = { eventId: 'evt_db', orderId: 'o1', metadata: { orderId: 'o1' }, payload: { capture: { amount: '10.00', currency: 'EUR', status: 'COMPLETED', id: 'cap_1' } } };
+    const req = { get: (h) => (h === 'content-length' ? '10' : 'hdr'), body: Buffer.from(JSON.stringify(body)), app: { locals: { webhookIdempotencyStore: { claim } } } };
+    const res = { status: jest.fn(() => res), json: jest.fn() };
+
+    await paypal(req, res, jest.fn());
+    expect(sendDependencyUnavailable).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(503);
+  });
+
+
+  test('paypal defaults missing content-length header to zero', async () => {
+    const claim = jest.fn().mockResolvedValue({ accepted: true });
+
+    const routes = await loadRoute('../../src/routes/webhooks.routes.js', {
+      zod: () => ({ ZodError: class ZodError extends Error {} }),
+      '../../src/lib/stripe.js': () => ({ default: { webhooks: { constructEvent: jest.fn() } } }),
+      '../../src/lib/paypal.js': () => ({ default: { webhooks: { verifyWebhookSignature: jest.fn().mockResolvedValue({ verified: true, verificationStatus: 'SUCCESS' }) } } }),
+      '../../src/validation/schemas/index.js': () => ({ paymentsSchemas: { stripeWebhook: { parse: jest.fn((x) => x) }, paypalWebhook: { parse: jest.fn((x) => x) } } }),
+      '../../src/utils/api-error.js': () => ({ sendApiError: jest.fn((_req, res, status) => res.status(status).json({})) }),
+      '../../src/repositories/order.repository.js': () => ({ orderRepository: { findById: jest.fn().mockResolvedValue(null), markPaidFromWebhook: jest.fn(), processPaymentWebhookEvent: jest.fn() } }),
+      '../../src/utils/logger.js': () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }),
+      '../../src/lib/webhook-idempotency-store.js': () => ({ createWebhookIdempotencyStore: () => ({ claim }) }),
+      '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
+    });
+
+    const paypal = routes.find((r) => r.path === '/paypal').handlers.at(-1);
+    const body = { eventId: 'evt_no_cl', orderId: 'o1', metadata: { orderId: 'o1', userId: 'u1', idempotencyKey: 'idem' }, payload: { capture: { amount: '10.00', currency: 'EUR', status: 'COMPLETED', id: 'cap_1' } } };
+    const req = { get: () => undefined, body: Buffer.from(JSON.stringify(body)), app: { locals: { webhookIdempotencyStore: { claim } } } };
+    const res = { status: jest.fn(() => res), json: jest.fn() };
+
+    await paypal(req, res, jest.fn());
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+
+  test('stripe treats missing payment currency as mismatch', async () => {
+    const claim = jest.fn().mockResolvedValue({ accepted: true });
+
+    const routes = await loadRoute('../../src/routes/webhooks.routes.js', {
+      zod: () => ({ ZodError: class ZodError extends Error {} }),
+      '../../src/lib/stripe.js': () => ({
+        default: {
+          webhooks: {
+            constructEvent: jest.fn(() => ({
+              id: 'evt_currency_missing',
+              type: 'payment_intent.succeeded',
+              data: { object: { id: 'pi1', status: 'succeeded', amount_received: 1000, metadata: { orderId: 'o1', userId: 'u1', idempotencyKey: 'k1' } } },
+            })),
+          },
+        },
+      }),
+      '../../src/lib/paypal.js': () => ({ default: { webhooks: { verifyWebhookSignature: jest.fn() } } }),
+      '../../src/validation/schemas/index.js': () => ({ paymentsSchemas: { stripeWebhook: { parse: jest.fn((x) => x) }, paypalWebhook: { parse: jest.fn((x) => x) } } }),
+      '../../src/utils/api-error.js': () => ({ sendApiError: jest.fn((_req, res, status) => res.status(status).json({})) }),
+      '../../src/repositories/order.repository.js': () => ({ orderRepository: { findById: jest.fn().mockResolvedValue({ id: 'o1', status: 'pending', totalAmount: '10.00', currency: 'EUR' }), markPaidFromWebhook: jest.fn(), processPaymentWebhookEvent: jest.fn() } }),
+      '../../src/utils/logger.js': () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }),
+      '../../src/lib/webhook-idempotency-store.js': () => ({ createWebhookIdempotencyStore: () => ({ claim }) }),
+      '../../src/domain/order-state-machine.js': () => ({
+        OrderInvalidTransitionError: class OrderInvalidTransitionError extends Error {},
+        nextStatusForEvent: jest.fn(() => 'paid'),
+        assertValidTransition: jest.fn(() => true),
+      }),
+      '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
+    });
+
+    process.env.PAYMENT_WEBHOOK_SECRET = 'sec';
+    const stripe = routes.find((r) => r.path === '/stripe').handlers.at(-1);
+    const req = { get: (h) => (h === 'stripe-signature' ? 'sig' : null), body: Buffer.from('{}'), app: { locals: { webhookIdempotencyStore: { claim } } } };
+    const res = { status: jest.fn(() => res), json: jest.fn() };
+
+    await stripe(req, res, jest.fn());
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ data: { ignored: true, reason: 'currency_mismatch' } });
+  });
+
 });

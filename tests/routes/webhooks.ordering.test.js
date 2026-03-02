@@ -50,8 +50,8 @@ describe('webhooks event ordering guards', () => {
     const sig = createStripeSignatureHeader(stripePayload, process.env.PAYMENT_WEBHOOK_SECRET);
     const res = await request(app).post('/api/webhooks/stripe').set('stripe-signature', sig).send(stripePayload);
 
-    expect(res.status).toBe(200);
-    expect(res.body.data.reason).toBe('order_state_incompatible');
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('ORDER_INVALID_TRANSITION');
   });
 
   test('event during update/inconsistent state is ignored', async () => {
@@ -60,8 +60,8 @@ describe('webhooks event ordering guards', () => {
     const sig = createStripeSignatureHeader(stripePayload, process.env.PAYMENT_WEBHOOK_SECRET);
     const res = await request(app).post('/api/webhooks/stripe').set('stripe-signature', sig).send(stripePayload);
 
-    expect(res.status).toBe(200);
-    expect(res.body.data.reason).toBe('order_state_incompatible');
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('ORDER_INVALID_TRANSITION');
   });
 
   test('already paid status is ignored', async () => {
@@ -70,7 +70,7 @@ describe('webhooks event ordering guards', () => {
     const sig = createStripeSignatureHeader(stripePayload, process.env.PAYMENT_WEBHOOK_SECRET);
     const res = await request(app).post('/api/webhooks/stripe').set('stripe-signature', sig).send(stripePayload);
 
-    expect(res.status).toBe(200);
-    expect(res.body.data.reason).toBe('order_state_incompatible');
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('ORDER_INVALID_TRANSITION');
   });
 });

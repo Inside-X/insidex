@@ -13,5 +13,47 @@ export default {
       branches: 90,
       statements: 95,
     },
+    'src/routes/payments.routes.js': {
+      branches: 90,
+      functions: 95,
+      lines: 95,
+      statements: 95,
+    },
+    'src/routes/orders.routes.js': {
+      branches: 90,
+      functions: 95,
+      lines: 95,
+      statements: 95,
+    },
+    'src/routes/webhooks.routes.js': {
+      branches: 90,
+      functions: 95,
+      lines: 95,
+      statements: 95,
+    },
+    'src/middlewares/webhookStrictDependencyGuard.js': {
+      branches: 90,
+      functions: 95,
+      lines: 95,
+      statements: 95,
+    },
+    'src/lib/critical-dependencies.js': {
+      branches: 90,
+      functions: 95,
+      lines: 95,
+      statements: 95,
+    },
+    'src/utils/minor-units.js': {
+      branches: 90,
+      functions: 95,
+      lines: 95,
+      statements: 95,
+    },
+    'src/lib/webhook-idempotency-store.js': {
+      branches: 90,
+      functions: 95,
+      lines: 95,
+      statements: 95,
+    },
   },
 };

@@ -12,12 +12,10 @@ import { parseJsonWithStrictMonetaryValidation } from '../utils/strict-monetary-
 import { getRateLimitRedisClient } from '../middlewares/rateLimit.js';
 import { isDependencyUnavailableError } from '../lib/critical-dependencies.js';
 import { sendDependencyUnavailable } from '../middlewares/webhookStrictDependencyGuard.js';
+import { assertValidTransition, nextStatusForEvent, OrderInvalidTransitionError } from '../domain/order-state-machine.js';
 
 const router = express.Router();
 const MAX_WEBHOOK_BODY_SIZE_BYTES = 1024 * 1024;
-const ALLOWED_ORDER_STATUSES = new Set(['pending']);
-
-
 function normalizeCurrency(currency) {
   return String(currency || '').trim().toLowerCase();
 }
@@ -68,8 +66,17 @@ function getIdempotencyStore(req) {
   return req.app.locals.webhookIdempotencyStore;
 }
 
-function isOrderStateProcessable(order) {
-  return ALLOWED_ORDER_STATUSES.has(order.status);
+function rejectInvalidTransition({ req, res, orderId, fromStatus, toStatus, provider, eventType, correlationId }) {
+  logger.warn('order_transition_rejected', {
+    orderId,
+    from: fromStatus,
+    to: toStatus,
+    provider,
+    eventType,
+    correlationId,
+  });
+
+  return sendApiError(req, res, 409, 'ORDER_INVALID_TRANSITION', 'Invalid order status transition');
 }
 
 async function claimEventOrIgnore({ req, res, provider, eventId, orderId }) {
@@ -198,16 +205,35 @@ router.post('/stripe', async (req, res, next) => {
       return res.status(200).json({ data: { ignored: true, reason: 'order_not_found' } });
     }
 
-    if (!isOrderStateProcessable(order)) {
-      logger.error('webhook_order_state_incompatible', {
+    const targetStatus = nextStatusForEvent({
+      provider: 'stripe',
+      eventType: validatedPayload.type,
+      currentStatus: order.status,
+    });
+
+    if (!targetStatus) {
+      return res.status(200).json({ data: { ignored: true, reason: 'unsupported_event_type' } });
+    }
+
+    try {
+      assertValidTransition(order.status, targetStatus, {
         provider: 'stripe',
-        eventId: validatedPayload.id,
-        orderId: order.id,
-        status: order.status,
-        reason: 'order_state_incompatible',
-        correlationId,
+        eventType: validatedPayload.type,
       });
-      return res.status(200).json({ data: { ignored: true, reason: 'order_state_incompatible' } });
+    } catch (error) {
+      if (error instanceof OrderInvalidTransitionError) {
+        return rejectInvalidTransition({
+          req,
+          res,
+          orderId: order.id,
+          fromStatus: order.status,
+          toStatus: targetStatus,
+          provider: 'stripe',
+          eventType: validatedPayload.type,
+          correlationId,
+        });
+      }
+      throw error;
     }
 
     const expectedMinor = toMinorUnits(order.totalAmount, order.currency || 'EUR');
@@ -333,16 +359,31 @@ router.post('/paypal', async (req, res, next) => {
       return res.status(200).json({ data: { ignored: true, reason: 'order_not_found' } });
     }
 
-    if (!isOrderStateProcessable(order)) {
-      logger.error('webhook_order_state_incompatible', {
+    const targetStatus = nextStatusForEvent({
+      provider: 'paypal',
+      eventType: 'PAYMENT.CAPTURE.COMPLETED',
+      currentStatus: order.status,
+    });
+
+    try {
+      assertValidTransition(order.status, targetStatus, {
         provider: 'paypal',
-        eventId: payload.eventId,
-        orderId: order.id,
-        status: order.status,
-        reason: 'order_state_incompatible',
-        correlationId,
+        eventType: 'PAYMENT.CAPTURE.COMPLETED',
       });
-      return res.status(200).json({ data: { ignored: true, reason: 'order_state_incompatible' } });
+    } catch (error) {
+      if (error instanceof OrderInvalidTransitionError) {
+        return rejectInvalidTransition({
+          req,
+          res,
+          orderId: order.id,
+          fromStatus: order.status,
+          toStatus: targetStatus,
+          provider: 'paypal',
+          eventType: 'PAYMENT.CAPTURE.COMPLETED',
+          correlationId,
+        });
+      }
+      throw error;
     }
 
     const capture = payload.payload?.capture || {};

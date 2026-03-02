@@ -50,8 +50,8 @@ describe('paypal webhook route branches', () => {
   test('ignores incompatible order state', async () => {
     orderRepository.findById.mockResolvedValueOnce({ id: '00000000-0000-0000-0000-000000000111', totalAmount: 12, currency: 'EUR', status: 'cancelled' });
     const res = await request(app).post('/api/webhooks/paypal').send(paypalPayload({ eventId: 'evt_paypal_state' }));
-    expect(res.status).toBe(200);
-    expect(res.body.data.reason).toBe('order_state_incompatible');
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('ORDER_INVALID_TRANSITION');
   });
 
   test('ignores amount mismatch', async () => {

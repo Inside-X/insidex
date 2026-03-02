@@ -137,4 +137,72 @@ describe('webhookStrictDependencyGuard', () => {
     expect(next).toHaveBeenCalledTimes(1);
     expect(res.status).not.toHaveBeenCalled();
   });
+
+
+  test('strict mode uses app.locals webhook redis backend before rate-limit redis', async () => {
+    process.env.NODE_ENV = 'production';
+    const { module, getRateLimitRedisClient, assertDatabaseReady } = await loadGuardModule({
+      strictEnvValue: undefined,
+      redisClient: null,
+      assertDatabaseReadyImpl: async () => true,
+    });
+
+    const req = {
+      baseUrl: '/api/webhooks',
+      path: '/stripe',
+      app: { locals: { webhookIdempotencyRedisClient: { set: jest.fn() } } },
+      get: jest.fn(() => undefined),
+    };
+    const res = { status: jest.fn(() => res), json: jest.fn() };
+    const next = jest.fn();
+
+    await module.webhookStrictDependencyGuard(req, res, next);
+
+    expect(getRateLimitRedisClient).not.toHaveBeenCalled();
+    expect(assertDatabaseReady).toHaveBeenCalledTimes(1);
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  test('sendDependencyUnavailable works when correlation id is unavailable', async () => {
+    process.env.NODE_ENV = 'production';
+    const { module } = await loadGuardModule({ strictEnvValue: undefined, redisClient: null });
+    const req = { originalUrl: '/api/webhooks/stripe', app: { locals: {} }, get: jest.fn(() => undefined) };
+    const res = { status: jest.fn(() => res), json: jest.fn() };
+
+    module.sendDependencyUnavailable(req, res, 'redis', undefined, 'POST /api/webhooks/stripe');
+
+    expect(res.status).toHaveBeenCalledWith(503);
+  });
+
+  test('sendDependencyUnavailable uses x-request-id fallback when requestId is absent', async () => {
+    process.env.NODE_ENV = 'production';
+    const { module } = await loadGuardModule({ strictEnvValue: undefined, redisClient: null });
+    const req = { originalUrl: '/api/webhooks/paypal', app: { locals: {} }, get: jest.fn(() => 'cid-from-header') };
+    const res = { status: jest.fn(() => res), json: jest.fn() };
+
+    module.sendDependencyUnavailable(req, res, 'redis', undefined, 'POST /api/webhooks/paypal');
+
+    expect(req.get).toHaveBeenCalledWith('x-request-id');
+    expect(res.status).toHaveBeenCalledWith(503);
+  });
+
+
+  test('strict mode handles empty webhook path expression', async () => {
+    process.env.NODE_ENV = 'production';
+    const { module, assertDatabaseReady } = await loadGuardModule({
+      strictEnvValue: undefined,
+      redisClient: { set: jest.fn() },
+      assertDatabaseReadyImpl: async () => true,
+    });
+
+    const req = { app: { locals: {} }, get: jest.fn(() => undefined) };
+    const res = { status: jest.fn(() => res), json: jest.fn() };
+    const next = jest.fn();
+
+    await module.webhookStrictDependencyGuard(req, res, next);
+
+    expect(assertDatabaseReady).toHaveBeenCalledTimes(1);
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+  
 });

@@ -1,6 +1,7 @@
 import prisma from '../lib/prisma.js';
 import { normalizeDbError } from '../lib/db-error.js';
 import { fromMinorUnits, multiplyMinorUnits, sumMinorUnits, toMinorUnits } from '../utils/minor-units.js';
+import { assertValidTransition } from '../domain/order-state-machine.js';
 
 function uniqueProductItems(items) {
   const byProduct = new Map();
@@ -90,6 +91,7 @@ export const orderRepository = {
 
   async createIdempotentWithItemsAndUpdateStock({ userId, items, idempotencyKey, stripePaymentIntentId = null, status = 'pending' }) {
     const normalizedItems = uniqueProductItems(items);
+    assertValidTransition(null, status, { operation: 'createIdempotentWithItemsAndUpdateStock' });
 
     try {
       return await prisma.$transaction(async (tx) => {
@@ -179,6 +181,7 @@ export const orderRepository = {
    */
   async createPendingPaymentOrder({ userId, items, idempotencyKey, stripePaymentIntentId, expectedTotalAmount = undefined, expectedTotalAmountMinor = undefined }) {
     const normalizedItems = uniqueProductItems(items);
+    assertValidTransition(null, 'pending', { operation: 'createPendingPaymentOrder' });
 
     try {
       return await prisma.$transaction(async (tx) => {

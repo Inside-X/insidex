@@ -6,6 +6,7 @@ import {
   multiplyMinorUnitsRatio,
   multiplyMinorUnitsBigInt,
   sumMinorUnitsBigInt,
+  getCurrencyExponent,
 } from '../../src/utils/minor-units.js';
 
 describe('minor-units destructive financial audit suite', () => {
@@ -33,6 +34,14 @@ describe('minor-units destructive financial audit suite', () => {
       expect(toMinorUnits('1.234', ' bhd ')).toEqual(1234);
     });
 
+
+
+    it('exposes deterministic currency exponents', () => {
+      expect(getCurrencyExponent('EUR')).toBe(2);
+      expect(getCurrencyExponent('JPY')).toBe(0);
+      expect(getCurrencyExponent('BHD')).toBe(3);
+    });
+    
     it('throws deterministic errors for unsupported currencies', () => {
       // Rationale: unknown currency should fail-closed with explicit, deterministic messages and codes.
       expect(() => toMinorUnits('1.00', 'AUD')).toThrow('Unsupported currency for minor units: AUD');

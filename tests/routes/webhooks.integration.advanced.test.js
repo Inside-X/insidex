@@ -62,8 +62,8 @@ describe('advanced webhook integration scenarios', () => {
     const afterCancel = stripeEvent({ id: 'evt_full_3' });
     const cancelSig = createStripeSignatureHeader(afterCancel, process.env.PAYMENT_WEBHOOK_SECRET);
     const cancelRes = await request(app).post('/api/webhooks/stripe').set('stripe-signature', cancelSig).send(afterCancel);
-    expect(cancelRes.status).toBe(200);
-    expect(cancelRes.body.data.reason).toBe('order_state_incompatible');
+    expect(cancelRes.status).toBe(409);
+    expect(cancelRes.body.error.code).toBe('ORDER_INVALID_TRANSITION');
 
     const oldTs = Math.floor(Date.now() / 1000) - 301;
     const expiredEvent = stripeEvent({ id: 'evt_full_4' });
