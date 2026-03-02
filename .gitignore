@@ -71,3 +71,8 @@ Desktop.ini
 .idea/
 *.swp
 *.swo
+# generated test artifacts (repo hygiene)
+coverage/
+tmp/
+*.lcov
+.nyc_output/
