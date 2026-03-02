@@ -12,8 +12,8 @@ function failInvariant(invariant, found, expected, fix) {
   ].join('\n'));
 }
 
-describe('run-coverage-ci allowlist governance', () => {
-  test('enforces narrow Prisma fallback classifier and forbids broad fallback matching', () => {
+describe('run-coverage-ci governance', () => {
+  test('keeps narrow Prisma classifier helper and enforces fail-fast primary coverage gate', () => {
     if (!fs.existsSync(RUNNER_PATH)) {
       failInvariant(
         'runner existence',
@@ -40,8 +40,8 @@ describe('run-coverage-ci allowlist governance', () => {
         failInvariant(
           'narrow allowlist token presence',
           `missing token: ${token}`,
-          'runner must include strict Prisma engine download/checksum allowlist signals',
-          `Add strict matcher token ${token} to the fallback allowlist classifier.`
+        'runner must include strict Prisma engine download/checksum classifier signals',
+          `Add strict matcher token ${token} to the Prisma classifier helper.`
         );
       }
     }
@@ -50,26 +50,26 @@ describe('run-coverage-ci allowlist governance', () => {
       failInvariant(
         'broad prisma matcher forbidden',
         '/prisma/i matcher detected',
-        'no broad /prisma/i fallback matchers',
+        'no broad /prisma/i classifier matchers',
         'Use narrow multi-signal patterns (Prisma + engine + download/fetch/checksum) only.'
       );
     }
 
     if (/return\s+true\s*;/.test(text) && !text.includes('STRICT_PRISMA_ENGINE_PATTERNS.some')) {
       failInvariant(
-        'generic fallback forbidden',
+        'generic classifier forbidden',
         'classifier appears to return true generically',
-        'fallback must be conditional on strict allowlist pattern matches only',
+        'classifier must be conditional on strict allowlist pattern matches only',
         'Keep shouldFallbackToCoverageJest tied to strict pattern list and never default-true.'
       );
     }
 
-    if (!text.includes('if (!shouldFallbackToCoverageJest(primary.combinedOutput))')) {
+    if (!text.includes("const primary = await runNpmScript('test:coverage');") || !text.includes('return primary.code;')) {
       failInvariant(
-        'generic Jest failure fallback protection',
-        'missing non-allowlisted fast-fail guard',
-        'generic failures must return primary non-zero code without fallback',
-        'Retain guard that exits on non-allowlisted failures before fallback.'
+        'primary gate fail-fast behavior',
+        'missing direct return of primary coverage gate status code',
+        'coverage CI runner must return primary test:coverage status without fallback reruns',
+        'Return primary.code directly from runCoverageCi().'
       );
     }
   });

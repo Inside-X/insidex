@@ -67,16 +67,7 @@ function runNpmScript(scriptName) {
 export async function runCoverageCi() {
   const primary = await runNpmScript('test:coverage');
 
-  if (primary.code === 0) {
-    return 0;
-  }
-
-  if (!shouldFallbackToCoverageJest(primary.combinedOutput)) {
-    return primary.code;
-  }
-
-  const fallback = await runNpmScript('test:coverage:jest');
-  return fallback.code;
+  return primary.code;
 }
 
 async function main() {
