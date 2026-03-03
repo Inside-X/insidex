@@ -29,24 +29,52 @@ function hasValidCorsOrigin(origin) {
   }
 }
 
-export function validateBootConfig(env = process.env) {
-  const errors = [];
+function resolvePaymentsProvider(env = process.env) {
+  const provider = String(env.PAYMENTS_PROVIDER || 'stripe').trim().toLowerCase();
+  if (!['stripe', 'paypal', 'both'].includes(provider)) {
+    return null;
+  }
+
+  return provider;
+}
+
+function validatePaymentsConfig(env, errors) {
   const paymentsEnabled = parseBoolean(env.PAYMENTS_ENABLED);
-  const paypalEnabled = parseBoolean(env.PAYPAL_ENABLED);
+  if (!paymentsEnabled) return;
 
-  errors.push(...getJwtConfigValidationErrors(env));
-
-  if (!env.STRIPE_SECRET) {
-    errors.push('STRIPE_SECRET is required');
+  const provider = resolvePaymentsProvider(env);
+  if (!provider) {
+    errors.push('PAYMENTS_PROVIDER must be one of: stripe, paypal, both when PAYMENTS_ENABLED=true');
+    return;
   }
 
   if (!env.PAYMENT_WEBHOOK_SECRET) {
-    errors.push('PAYMENT_WEBHOOK_SECRET is required');
+    errors.push('PAYMENT_WEBHOOK_SECRET is required when PAYMENTS_ENABLED=true');
   }
 
-  if (!env.PAYPAL_SECRET) {
-    errors.push('PAYPAL_SECRET is required');
+  if ((provider === 'stripe' || provider === 'both') && !env.STRIPE_SECRET) {
+    errors.push(`STRIPE_SECRET is required when PAYMENTS_ENABLED=true and PAYMENTS_PROVIDER=${provider}`);
   }
+
+  if (provider === 'paypal' || provider === 'both') {
+    if (!env.PAYPAL_SECRET) {
+      errors.push(`PAYPAL_SECRET is required when PAYMENTS_ENABLED=true and PAYMENTS_PROVIDER=${provider}`);
+    }
+    if (!env.PAYPAL_CLIENT_ID) {
+      errors.push(`PAYPAL_CLIENT_ID is required when PAYMENTS_ENABLED=true and PAYMENTS_PROVIDER=${provider}`);
+    }
+    if (!env.PAYPAL_WEBHOOK_ID) {
+      errors.push(`PAYPAL_WEBHOOK_ID is required when PAYMENTS_ENABLED=true and PAYMENTS_PROVIDER=${provider}`);
+    }
+  }
+}
+
+export function validateBootConfig(env = process.env) {
+  const errors = [];
+
+  errors.push(...getJwtConfigValidationErrors(env));
+
+  validatePaymentsConfig(env, errors);
 
   if (!env.REDIS_URL) {
     errors.push('REDIS_URL is required');
@@ -58,14 +86,6 @@ export function validateBootConfig(env = process.env) {
   
   if (!env.DATABASE_URL) {
     errors.push('DATABASE_URL is required');
-  }
-  
-  if (paymentsEnabled && !env.STRIPE_SECRET) {
-    errors.push('STRIPE_SECRET is required when PAYMENTS_ENABLED=true');
-  }
-
-  if (paypalEnabled && !env.PAYPAL_SECRET) {
-    errors.push('PAYPAL_SECRET is required when PAYPAL_ENABLED=true');
   }
 
   const corsOrigins = parseCorsWhitelist(env.CORS_ORIGIN);

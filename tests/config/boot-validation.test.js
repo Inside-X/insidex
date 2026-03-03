@@ -7,7 +7,7 @@ describe('boot configuration validation', () => {
     const result = validateBootConfig({
       NODE_ENV: 'production',
       PAYMENTS_ENABLED: 'true',
-      PAYPAL_ENABLED: 'true',
+      PAYMENTS_PROVIDER: 'both',
       CORS_ORIGIN: '*',
     });
 
@@ -21,9 +21,11 @@ describe('boot configuration validation', () => {
       'JWT_REFRESH_ISSUER is required',
       'JWT_REFRESH_AUDIENCE is required',
       'JWT_REFRESH_EXPIRY is required',
-      'STRIPE_SECRET is required when PAYMENTS_ENABLED=true',
-      'PAYMENT_WEBHOOK_SECRET is required',
-      'PAYPAL_SECRET is required when PAYPAL_ENABLED=true',
+      'PAYMENT_WEBHOOK_SECRET is required when PAYMENTS_ENABLED=true',
+      'STRIPE_SECRET is required when PAYMENTS_ENABLED=true and PAYMENTS_PROVIDER=both',
+      'PAYPAL_SECRET is required when PAYMENTS_ENABLED=true and PAYMENTS_PROVIDER=both',
+      'PAYPAL_CLIENT_ID is required when PAYMENTS_ENABLED=true and PAYMENTS_PROVIDER=both',
+      'PAYPAL_WEBHOOK_ID is required when PAYMENTS_ENABLED=true and PAYMENTS_PROVIDER=both',
       'REDIS_URL is required',
       'JWT_SECRET is required',
       'DATABASE_URL is required',
@@ -77,7 +79,7 @@ describe('boot configuration validation', () => {
     });
 
     expect(loggerSpy).toHaveBeenCalledWith('boot_config_invalid', expect.objectContaining({
-      errors: expect.arrayContaining(['JWT_ACCESS_SECRET is required', 'JWT_REFRESH_SECRET is required', 'PAYMENT_WEBHOOK_SECRET is required']),
+      errors: expect.arrayContaining(['JWT_ACCESS_SECRET is required', 'JWT_REFRESH_SECRET is required']),
     }));
     expect(exitSpy).toHaveBeenCalledWith(1);
 
