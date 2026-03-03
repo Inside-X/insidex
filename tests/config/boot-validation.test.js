@@ -21,7 +21,7 @@ describe('boot configuration validation', () => {
       'JWT_REFRESH_ISSUER is required',
       'JWT_REFRESH_AUDIENCE is required',
       'JWT_REFRESH_EXPIRY is required',
-      'PAYMENT_WEBHOOK_SECRET is required when PAYMENTS_ENABLED=true',
+      'PAYMENT_WEBHOOK_SECRET is required when PAYMENTS_ENABLED=true and PAYMENTS_PROVIDER=both',
       'STRIPE_SECRET is required when PAYMENTS_ENABLED=true and PAYMENTS_PROVIDER=both',
       'PAYPAL_SECRET is required when PAYMENTS_ENABLED=true and PAYMENTS_PROVIDER=both',
       'PAYPAL_CLIENT_ID is required when PAYMENTS_ENABLED=true and PAYMENTS_PROVIDER=both',

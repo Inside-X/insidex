@@ -48,8 +48,8 @@ function validatePaymentsConfig(env, errors) {
     return;
   }
 
-  if (!env.PAYMENT_WEBHOOK_SECRET) {
-    errors.push('PAYMENT_WEBHOOK_SECRET is required when PAYMENTS_ENABLED=true');
+  if ((provider === 'stripe' || provider === 'both') && !env.PAYMENT_WEBHOOK_SECRET) {
+    errors.push(`PAYMENT_WEBHOOK_SECRET is required when PAYMENTS_ENABLED=true and PAYMENTS_PROVIDER=${provider}`);
   }
 
   if ((provider === 'stripe' || provider === 'both') && !env.STRIPE_SECRET) {
