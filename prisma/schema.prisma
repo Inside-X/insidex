@@ -97,6 +97,7 @@ model Order {
   items                 OrderItem[]
 
   webhookEvents PaymentWebhookEvent[]
+  events        OrderEvent[]
 
   @@index([userId, createdAt], map: "idx_orders_user_created_at")
   @@index([status, createdAt], map: "idx_orders_status_created_at")
@@ -119,6 +120,25 @@ model PaymentWebhookEvent {
   @@index([provider, createdAt], map: "idx_payment_webhook_events_provider_created_at")
   @@index([orderId], map: "idx_payment_webhook_events_order_id")
   @@map("payment_webhook_events")
+}
+
+
+model OrderEvent {
+  id             String      @id @default(uuid()) @db.Uuid
+  orderId        String      @map("order_id") @db.Uuid
+  type           String      @db.VarChar(64)
+  fromStatus     OrderStatus @map("from_status")
+  toStatus       OrderStatus @map("to_status")
+  source         String      @db.VarChar(20)
+  sourceEventId  String?     @map("source_event_id") @db.VarChar(255)
+  idempotencyKey String?     @map("idempotency_key") @db.VarChar(128)
+  correlationId  String?     @map("correlation_id") @db.VarChar(128)
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  order          Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt], map: "idx_order_events_order_created_at")
+  @@unique([orderId, source, sourceEventId], map: "uq_order_events_order_source_event")
+  @@map("order_events")
 }
 
 model OrderItem {

@@ -11,6 +11,7 @@ function buildPrismaState(overrides = {}) {
     orders: [],
     orderItems: [],
     webhookEvents: [],
+    orderEvents: [],
     seq: 0,
     ...overrides,
   };
@@ -64,7 +65,8 @@ function createPrismaMock(state, options = {}) {
         const order = working.orders.find((candidate) => {
           const matchesUser = where.userId ? candidate.userId === where.userId : true;
           const matchesKey = where.idempotencyKey ? candidate.idempotencyKey === where.idempotencyKey : true;
-          return matchesUser && matchesKey;
+          const matchesIntent = where.stripePaymentIntentId ? candidate.stripePaymentIntentId === where.stripePaymentIntentId : true;
+          return matchesUser && matchesKey && matchesIntent;
         });
         if (!order) return null;
         if (!include?.items) return order;
@@ -111,6 +113,21 @@ function createPrismaMock(state, options = {}) {
           throw err;
         }
         working.webhookEvents.push(data);
+        return data;
+      }),
+    },
+    orderEvent: {
+      create: jest.fn(async ({ data }) => {
+        if (options.failOnOrderEventCreate) {
+          throw new Error('Order event insert failed');
+        }
+        if (data.sourceEventId && working.orderEvents.some((event) => event.orderId === data.orderId && event.source === data.source && event.sourceEventId === data.sourceEventId)) {
+          const err = new Error('Unique constraint');
+          err.code = 'P2002';
+          err.meta = { target: ['order_id', 'source', 'source_event_id'] };
+          throw err;
+        }
+        working.orderEvents.push(data);
         return data;
       }),
     },
@@ -313,6 +330,131 @@ describe('orderRepository transactional guards', () => {
     expect(state.orderItems).toHaveLength(0);
     expect(state.products[0].stock).toBe(5);
   });
+
+  test('writes exactly one order_event for a valid webhook transition', async () => {
+    const state = buildPrismaState({
+      orders: [{
+        id: 'order-event-once',
+        userId: 'u',
+        idempotencyKey: 'idem-order-event-once',
+        stripePaymentIntentId: 'pi-order-event-once',
+        status: 'pending',
+        totalAmount: 10,
+      }],
+    });
+    Object.assign(prisma, createPrismaMock(state));
+
+    await expect(orderRepository.markPaidFromWebhook({
+      provider: 'stripe',
+      eventId: 'evt-order-event-once',
+      paymentIntentId: 'pi-order-event-once',
+      orderId: 'order-event-once',
+      userId: 'u',
+      expectedIdempotencyKey: 'idem-order-event-once',
+      payload: {},
+      correlationId: 'corr-1',
+    })).resolves.toEqual({ replayed: false, orderMarkedPaid: true });
+
+    expect(state.orderEvents).toHaveLength(1);
+    expect(state.orderEvents[0]).toMatchObject({
+      orderId: 'order-event-once',
+      fromStatus: 'pending',
+      toStatus: 'paid',
+      source: 'stripe',
+      sourceEventId: 'evt-order-event-once',
+      correlationId: 'corr-1',
+    });
+  });
+
+  test('replay does not duplicate order_event rows', async () => {
+    const state = buildPrismaState({
+      orders: [{
+        id: 'order-event-replay',
+        userId: 'u',
+        idempotencyKey: 'idem-order-event-replay',
+        stripePaymentIntentId: 'pi-order-event-replay',
+        status: 'pending',
+        totalAmount: 10,
+      }],
+    });
+    Object.assign(prisma, createPrismaMock(state));
+
+    await orderRepository.markPaidFromWebhook({
+      provider: 'stripe',
+      eventId: 'evt-order-event-replay',
+      paymentIntentId: 'pi-order-event-replay',
+      orderId: 'order-event-replay',
+      userId: 'u',
+      expectedIdempotencyKey: 'idem-order-event-replay',
+      payload: {},
+    });
+
+    await expect(orderRepository.markPaidFromWebhook({
+      provider: 'stripe',
+      eventId: 'evt-order-event-replay',
+      paymentIntentId: 'pi-order-event-replay',
+      orderId: 'order-event-replay',
+      userId: 'u',
+      expectedIdempotencyKey: 'idem-order-event-replay',
+      payload: {},
+    })).resolves.toEqual({ replayed: true, orderMarkedPaid: false });
+
+    expect(state.orderEvents).toHaveLength(1);
+  });
+
+  test('invalid transition path writes no order_event rows', async () => {
+    const state = buildPrismaState({
+      orders: [{
+        id: 'order-event-invalid',
+        userId: 'u',
+        idempotencyKey: 'idem-order-event-invalid',
+        stripePaymentIntentId: 'pi-order-event-invalid',
+        status: 'paid',
+        totalAmount: 10,
+      }],
+    });
+    Object.assign(prisma, createPrismaMock(state));
+
+    await expect(orderRepository.markPaidFromWebhook({
+      provider: 'stripe',
+      eventId: 'evt-order-event-invalid',
+      paymentIntentId: 'pi-order-event-invalid',
+      orderId: 'order-event-invalid',
+      userId: 'u',
+      expectedIdempotencyKey: 'idem-order-event-invalid',
+      payload: {},
+    })).resolves.toEqual({ replayed: true, orderMarkedPaid: false });
+
+    expect(state.orderEvents).toHaveLength(0);
+  });
+
+  test('order status and order_event insert stay atomic on order_event failure', async () => {
+    const state = buildPrismaState({
+      orders: [{
+        id: 'order-event-atomic',
+        userId: 'u',
+        idempotencyKey: 'idem-order-event-atomic',
+        stripePaymentIntentId: 'pi-order-event-atomic',
+        status: 'pending',
+        totalAmount: 10,
+      }],
+    });
+    Object.assign(prisma, createPrismaMock(state, { failOnOrderEventCreate: true }));
+
+    await expect(orderRepository.markPaidFromWebhook({
+      provider: 'stripe',
+      eventId: 'evt-order-event-atomic',
+      paymentIntentId: 'pi-order-event-atomic',
+      orderId: 'order-event-atomic',
+      userId: 'u',
+      expectedIdempotencyKey: 'idem-order-event-atomic',
+      payload: {},
+    })).rejects.toThrow('Database operation failed');
+
+    expect(state.orders[0].status).toBe('pending');
+    expect(state.orderEvents).toHaveLength(0);
+  });
+  
 });
 
 

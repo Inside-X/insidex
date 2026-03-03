@@ -145,4 +145,48 @@ describe('boot configuration validation', () => {
     expect(exitSpy).not.toHaveBeenCalled();
     exitSpy.mockRestore();
   });
+
+  test('validateBootConfig fails when CORS_ORIGIN is missing', () => {
+    const result = validateBootConfig({
+      NODE_ENV: 'production',
+      JWT_ACCESS_SECRET: 'test-jwt-access-secret-1234567890abcdef',
+      JWT_ACCESS_ISSUER: 'insidex-auth',
+      JWT_ACCESS_AUDIENCE: 'insidex-api',
+      JWT_ACCESS_EXPIRY: '15m',
+      JWT_REFRESH_SECRET: 'test-jwt-refresh-secret-1234567890abcdef',
+      JWT_REFRESH_ISSUER: 'insidex-auth-refresh',
+      JWT_REFRESH_AUDIENCE: 'insidex-api-refresh',
+      JWT_REFRESH_EXPIRY: '30m',
+      JWT_SECRET: 'test-jwt-unified-secret-1234567890abcdef',
+      REDIS_URL: 'redis://127.0.0.1:6379',
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/app',
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('CORS_ORIGIN must define at least one origin');
+  });
+
+  test('assertProductionBootConfigOrExit does not exit when production config is valid', () => {
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => undefined);
+
+    assertProductionBootConfigOrExit({
+      NODE_ENV: 'production',
+      JWT_ACCESS_SECRET: 'test-jwt-access-secret-1234567890abcdef',
+      JWT_ACCESS_ISSUER: 'insidex-auth',
+      JWT_ACCESS_AUDIENCE: 'insidex-api',
+      JWT_ACCESS_EXPIRY: '15m',
+      JWT_REFRESH_SECRET: 'test-jwt-refresh-secret-1234567890abcdef',
+      JWT_REFRESH_ISSUER: 'insidex-auth-refresh',
+      JWT_REFRESH_AUDIENCE: 'insidex-api-refresh',
+      JWT_REFRESH_EXPIRY: '30m',
+      JWT_SECRET: 'test-jwt-unified-secret-1234567890abcdef',
+      REDIS_URL: 'redis://127.0.0.1:6379',
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/app',
+      CORS_ORIGIN: 'https://app.example.com',
+    });
+
+    expect(exitSpy).not.toHaveBeenCalled();
+    exitSpy.mockRestore();
+  });
+  
 });

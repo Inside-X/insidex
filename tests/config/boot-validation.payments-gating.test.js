@@ -69,4 +69,47 @@ describe('boot validation payments gating', () => {
 
     expect(exitSpy).not.toHaveBeenCalled();
   });
+
+  test('requires valid provider value when payments are enabled', async () => {
+    const { validateBootConfig } = await import('../../src/config/boot-validation.js');
+
+    const result = validateBootConfig({
+      ...baseProductionEnv(),
+      PAYMENTS_ENABLED: 'true',
+      PAYMENTS_PROVIDER: 'bogus',
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('PAYMENTS_PROVIDER must be one of: stripe, paypal, both when PAYMENTS_ENABLED=true');
+  });
+
+  test('accepts full stripe config when payments are enabled', async () => {
+    const { validateBootConfig } = await import('../../src/config/boot-validation.js');
+
+    const result = validateBootConfig({
+      ...baseProductionEnv(),
+      PAYMENTS_ENABLED: 'true',
+      PAYMENTS_PROVIDER: 'stripe',
+      PAYMENT_WEBHOOK_SECRET: 'whsec_123',
+      STRIPE_SECRET: 'sk_test_123',
+    });
+
+    expect(result.valid).toBe(true);
+  });
+
+  test('accepts full paypal config when payments are enabled', async () => {
+    const { validateBootConfig } = await import('../../src/config/boot-validation.js');
+
+    const result = validateBootConfig({
+      ...baseProductionEnv(),
+      PAYMENTS_ENABLED: 'true',
+      PAYMENTS_PROVIDER: 'paypal',
+      PAYPAL_SECRET: 'pp_secret_123',
+      PAYPAL_CLIENT_ID: 'pp_client_123',
+      PAYPAL_WEBHOOK_ID: 'pp_wh_123',
+    });
+
+    expect(result.valid).toBe(true);
+  });
+  
 });

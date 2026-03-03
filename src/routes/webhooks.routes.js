@@ -271,6 +271,7 @@ router.post('/stripe', async (req, res, next) => {
       expectedIdempotencyKey: metadata.idempotencyKey,
       provider: 'stripe',
       payload: validatedPayload,
+      correlationId,
     });
 
     return res.status(200).json({ data: result });
@@ -447,6 +448,7 @@ router.post('/paypal', async (req, res, next) => {
         metadata: payload.metadata,
         payload: payload.payload || {},
       },
+      correlationId,
     });
 
     return res.status(200).json({ data: result });

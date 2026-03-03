@@ -6,7 +6,8 @@ import { showToast } from './modules/toast.js';
 import { renderTexts } from './modules/renderTexts.js';
 import { addAddress, addOrder, setActiveEmail, upsertProfile } from './modules/accountData.js';
 import { initAnalytics, trackAnalyticsEvent } from './modules/analytics.js';
-import { buildCheckoutPayload, confirmStripePayment, createPaymentIntent, generateIdempotencyKey, storeGuestSession } from './modules/guestCheckoutApi.js';
+import { confirmStripePayment, storeGuestSession } from './modules/guestCheckoutApi.js';
+import { createCheckoutPaymentIntent, resetCheckoutAttemptIdempotencyKey } from './modules/checkoutPaymentAttempt.js';
 import {
   fromMinorUnitsNumber,
   multiplyMinorUnits,
@@ -44,6 +45,7 @@ const selectors = {
   paymentOutcome: document.getElementById('paymentOutcome'),
   cardFields: document.getElementById('cardFields'),
   paymentMethods: Array.from(document.querySelectorAll('input[name="paymentMethod"]')),
+  placeOrderBtn: document.getElementById('placeOrderBtn'),
 };
 
 function minorToDecimal(minorUnits) {
@@ -73,6 +75,37 @@ function setPaymentStatus(message, status = '') {
   if (status) {
     selectors.paymentStatus.classList.add(`is-${status}`);
   }
+}
+
+
+function setSubmitDisabled(disabled) {
+  if (selectors.placeOrderBtn) {
+    selectors.placeOrderBtn.disabled = disabled;
+  }
+}
+
+function mapCreateIntentErrorMessage(error) {
+  switch (error?.code) {
+    case 'dependency_unavailable':
+      return 'Service de paiement temporairement indisponible. Réessayez.';
+    case 'validation_error':
+      return 'Données de paiement invalides. Vérifiez le formulaire.';
+    case 'invalid_transition':
+      return 'État de commande invalide. Rechargez puis réessayez.';
+    default:
+      return 'Impossible d initialiser le paiement.'; 
+  }
+}
+
+function renderRetryButton(onRetry) {
+  const retryButton = document.createElement('button');
+  retryButton.type = 'button';
+  retryButton.className = 'btn btn-outline';
+  retryButton.textContent = 'Réessayer';
+  retryButton.addEventListener('click', () => {
+    onRetry();
+  }, { once: true });
+  selectors.paymentStatus.append(' ', retryButton);
 }
 
 async function processPayment({ paymentIntent, testOutcome }) {
@@ -200,6 +233,7 @@ async function renderCartSummary() {
 
   if (checkoutItemsState.length === 0) {
     selectors.items.innerHTML = '<p>Votre panier est vide pour le moment.</p>';
+    resetCheckoutAttemptIdempotencyKey();
     updateTotals();
     return;
   }
@@ -268,28 +302,36 @@ async function handleSubmit(event) {
     quantity: item.qty,
   }));
 
-  const checkoutPayload = buildCheckoutPayload({
-    email,
-    address: {
-      line1: address.line,
-      city: address.city,
-      postalCode: address.postalCode,
-      country: address.country,
-    },
-    items: paymentItems,
-    idempotencyKey: generateIdempotencyKey(),
-  });
-
-  const accessToken = localStorage.getItem('insidex_access_token');
   let paymentIntent;
 
   try {
-    const paymentIntentResponse = await createPaymentIntent(checkoutPayload, accessToken);
+    const { skipped, response: paymentIntentResponse } = await createCheckoutPaymentIntent({
+      checkoutItems: paymentItems,
+      onPendingChange: (isPending) => {
+        setSubmitDisabled(isPending);
+      },
+    });
+
+    if (skipped) {
+      return;
+    }
+
     paymentIntent = paymentIntentResponse.data;
     storeGuestSession(paymentIntentResponse.meta, email);
   } catch (error) {
-    setPaymentStatus(error.message || 'Paiement indisponible.', 'error');
-    showToast(error.message || "Impossible d'initialiser le paiement.", 'error');
+    const message = mapCreateIntentErrorMessage(error);
+    setPaymentStatus(message, 'error');
+
+    if (error?.code === 'dependency_unavailable') {
+      showToast(message, 'warning');
+      renderRetryButton(() => {
+        handleSubmit({ preventDefault: () => {} });
+      });
+      return;
+    }
+
+    resetCheckoutAttemptIdempotencyKey();
+    showToast(message, 'error');
     return;
   }
 
@@ -349,6 +391,7 @@ async function handleSubmit(event) {
   }
  
   await clearCart();
+  resetCheckoutAttemptIdempotencyKey();
   await updateBadge();
   await renderCartSummary();
   showToast('✅ Commande finalisée ! Un conseiller vous recontacte rapidement.', 'success');

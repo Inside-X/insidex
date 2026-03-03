@@ -11,7 +11,7 @@
 | `PAYMENTS_ENABLED` | `src/config/boot-validation.js:39-41` | Optional toggle | `false` | When `true` in production, provider keys are enforced at boot. |
 | `PAYMENTS_PROVIDER` | `src/config/boot-validation.js:31-36`, `src/config/boot-validation.js:43-46` | Required if `PAYMENTS_ENABLED=true` | `stripe` | Allowed values: `stripe`, `paypal`, `both`. |
 | `STRIPE_SECRET` | `src/config/boot-validation.js:52-54` | Prod + payments enabled + provider includes Stripe | none | Format: `sk_live_*` (prod), `sk_test_*` (non-prod). |
-| `PAYMENT_WEBHOOK_SECRET` | `src/config/boot-validation.js:48-50`, `src/routes/webhooks.routes.js:134` | Prod + payments enabled | none | Shared webhook verification secret; format `whsec_*`. |
+| `PAYMENT_WEBHOOK_SECRET` | `src/config/boot-validation.js:48-50`, `src/routes/webhooks.routes.js:134` | Prod + payments enabled + provider includes Stripe (`stripe`/`both`) | none | Shared webhook verification secret; format `whsec_*`. |
 | `PAYPAL_CLIENT_ID` | `src/config/boot-validation.js:60-62`, `src/lib/paypal.js:15` | Prod + payments enabled + provider includes PayPal | none | Do not print in logs. |
 | `PAYPAL_SECRET` | `src/config/boot-validation.js:57-59`, `src/lib/paypal.js:16` | Prod + payments enabled + provider includes PayPal | none | Do not print in logs. |
 | `PAYPAL_WEBHOOK_ID` | `src/config/boot-validation.js:63-65`, `src/lib/paypal.js:68` | Prod + payments enabled + provider includes PayPal | none | Required for webhook verification API call. |

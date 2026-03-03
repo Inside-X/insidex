@@ -71,6 +71,50 @@ function extractWebhookResourceId({ provider, paymentIntentId = null, payload = 
   return null;
 }
 
+
+function resolveOrderEventSource(provider) {
+  if (provider === 'stripe' || provider === 'paypal') return provider;
+  return 'system';
+}
+
+async function updateOrderPaidAndRecordEvent({ tx, order, where, stripePaymentIntentId = null, provider, sourceEventId = null, correlationId = null }) {
+  const fromStatus = order.status;
+  const updateResult = await tx.order.updateMany({
+    where,
+    data: {
+      status: 'paid',
+      ...(stripePaymentIntentId ? { stripePaymentIntentId } : {}),
+    },
+  });
+
+  if (updateResult.count !== 1) {
+    return { replayed: false, orderMarkedPaid: false };
+  }
+
+  // Dedupe strategy: unique(orderId, source, sourceEventId) prevents duplicate history rows for replayed provider events.
+  try {
+    await tx.orderEvent.create({
+      data: {
+        orderId: order.id,
+        type: 'status_transition',
+        fromStatus,
+        toStatus: 'paid',
+        source: resolveOrderEventSource(provider),
+        sourceEventId,
+        idempotencyKey: order.idempotencyKey || null,
+        correlationId,
+      },
+    });
+  } catch (error) {
+    if (isUniqueConstraintOnTarget(error, 'source_event_id') || error?.code === 'P2002') {
+      return { replayed: true, orderMarkedPaid: false };
+    }
+    throw error;
+  }
+
+  return { replayed: false, orderMarkedPaid: true };
+}
+
 export const orderRepository = {
   async create(data) {
     try { return await prisma.order.create({ data }); } catch (error) { normalizeDbError(error, { repository: 'order', operation: 'create' }); }
@@ -264,7 +308,7 @@ export const orderRepository = {
     }
   },
 
-  async markPaidFromWebhook({ eventId, paymentIntentId, orderId, userId, expectedIdempotencyKey, provider = 'stripe', payload = {} }) {
+  async markPaidFromWebhook({ eventId, paymentIntentId, orderId, userId, expectedIdempotencyKey, provider = 'stripe', payload = {}, correlationId = null }) {
     try {
       return await prisma.$transaction(async (tx) => {
         const resourceId = extractWebhookResourceId({ provider, paymentIntentId, payload });
@@ -303,22 +347,22 @@ export const orderRepository = {
           return { replayed: true, orderMarkedPaid: false };
         }
 
-        const updateResult = await tx.order.updateMany({
+        return updateOrderPaidAndRecordEvent({
+          tx,
+          order,
           where: { id: orderId, status: { not: 'paid' } },
-          data: {
-            status: 'paid',
-            stripePaymentIntentId: paymentIntentId || order.stripePaymentIntentId,
-          },
+          stripePaymentIntentId: paymentIntentId || order.stripePaymentIntentId,
+          provider,
+          sourceEventId: eventId,
+          correlationId,
         });
-
-        return { replayed: false, orderMarkedPaid: updateResult.count === 1 };
       });
     } catch (error) {
       normalizeDbError(error, { repository: 'order', operation: 'markPaidFromWebhook' });
     }
   },
 
-  async processPaymentWebhookEvent({ provider, eventId, orderId = null, stripePaymentIntentId = null, payload = {} }) {
+  async processPaymentWebhookEvent({ provider, eventId, orderId = null, stripePaymentIntentId = null, payload = {}, correlationId = null }) {
     try {
       return await prisma.$transaction(async (tx) => {
         const resourceId = extractWebhookResourceId({ provider, paymentIntentId: stripePaymentIntentId, payload });
@@ -352,22 +396,37 @@ export const orderRepository = {
             return { replayed: true, orderMarkedPaid: false };
           }
         }
-        
+
+        let order = null;
+        if (orderId) {
+          order = await tx.order.findUnique({ where: { id: orderId } });
+        } else if (stripePaymentIntentId) {
+          order = await tx.order.findFirst({ where: { stripePaymentIntentId } });
+        }
+
+        if (!order) {
+          return { replayed: false, orderMarkedPaid: false };
+        }
+
+        if (order.status === 'paid') {
+          return payload?.metadata?.idempotencyKey
+            ? { replayed: true, orderMarkedPaid: false }
+            : { replayed: false, orderMarkedPaid: false };
+        }
+
         const where = orderId
           ? { id: orderId, status: { not: 'paid' } }
           : { stripePaymentIntentId, status: { not: 'paid' } };
 
-        const data = {
-          status: 'paid',
-          ...(stripePaymentIntentId ? { stripePaymentIntentId } : {}),
-        };
-
-        const updateResult = await tx.order.updateMany({ where, data });
-
-        return {
-          replayed: false,
-          orderMarkedPaid: updateResult.count === 1,
-        };
+        return updateOrderPaidAndRecordEvent({
+          tx,
+          order,
+          where,
+          stripePaymentIntentId,
+          provider,
+          sourceEventId: eventId,
+          correlationId,
+        });
       });
     } catch (error) {
       normalizeDbError(error, { repository: 'order', operation: 'processPaymentWebhookEvent' });

@@ -10,6 +10,7 @@ function seedState() {
     orders: [],
     orderItems: [],
     webhookEvents: [],
+    orderEvents: [],
     seq: 0,
   };
 }
@@ -76,6 +77,19 @@ function attachIsolatedPrisma(state) {
           throw err;
         }
         working.webhookEvents.push(data);
+        return data;
+      },
+    },
+
+    orderEvent: {
+      create: async ({ data }) => {
+        if (data.sourceEventId && working.orderEvents.some((event) => event.orderId === data.orderId && event.source === data.source && event.sourceEventId === data.sourceEventId)) {
+          const err = new Error('Unique constraint');
+          err.code = 'P2002';
+          err.meta = { target: ['order_id', 'source', 'source_event_id'] };
+          throw err;
+        }
+        working.orderEvents.push(data);
         return data;
       },
     },
