@@ -11,6 +11,7 @@ test('checkout: create-intent 503 then retry reuses same idempotency key (items 
   page.on('pageerror', (e) => pageErrors.push(String(e)));
 
   const api404Responses = [];
+  const non2xxResponses = [];
   page.on('response', (response) => {
     if (api404Responses.length >= 5) return;
     const request = response.request();
@@ -18,6 +19,21 @@ test('checkout: create-intent 503 then retry reuses same idempotency key (items 
     if (response.status() === 404 && url.includes('/api/')) {
       api404Responses.push(`${request.method()} ${url}`);
     }
+  });
+
+  page.on('response', (response) => {
+    if (non2xxResponses.length >= 10) return;
+    const url = response.url();
+    if (!url.includes('/api/') && !url.includes('/data/')) return;
+
+    const status = response.status();
+    if (status >= 200 && status < 300) return;
+
+    non2xxResponses.push({
+      status,
+      method: response.request().method(),
+      url,
+    });
   });
 
   const cartResponseBodies = [];
@@ -43,6 +59,7 @@ test('checkout: create-intent 503 then retry reuses same idempotency key (items 
         baseline: 'Test',
         heroText: 'Test',
         ctaText: 'Test',
+        paymentsEnabled: true,
       }),
     });
   });
@@ -139,13 +156,43 @@ test('checkout: create-intent 503 then retry reuses same idempotency key (items 
   await page.selectOption('#country', 'Mayotte');
   await page.fill('#email', 'test@example.com');
   await page.fill('#phone', '0700000000');
+  await page.fill('#cardNumber', '4242 4242 4242 4242');
+  await page.fill('#cardExpiry', '12/30');
+  await page.fill('#cardCvc', '123');
   await page.check('#termsAccepted');
+
+  const formValidity = await page.evaluate(() => {
+    const form = document.getElementById('checkoutForm');
+    if (!form) return { valid: false, invalidFields: ['form#checkoutForm missing'] };
+
+    const invalidFields = Array.from(form.querySelectorAll(':invalid'))
+      .slice(0, 6)
+      .map((el) => {
+        const id = el.getAttribute('id');
+        const name = el.getAttribute('name');
+        return id || name || el.tagName.toLowerCase();
+      });
+
+    return {
+      valid: form.checkValidity(),
+      invalidFields,
+    };
+  });
+
+  if (!formValidity.valid) {
+    throw new Error(`Checkout form invalid before submit: ${formValidity.invalidFields.join(', ') || 'unknown fields'}`);
+  }
 
   const payBtn = page.locator('#placeOrderBtn');
   await expect(payBtn).toBeVisible();
   await expect(payBtn).toBeEnabled();
 
-  const reqPromise = page.waitForRequest('**/api/payments/create-intent**', { timeout: 5000 }).catch(() => null);
+  const reqPromise = page
+    .waitForRequest((request) => {
+      const url = new URL(request.url());
+      return request.method() === 'POST' && url.pathname === '/api/payments/create-intent';
+    }, { timeout: 5000 })
+    .catch(() => null);
 
   await payBtn.click();
 
@@ -156,6 +203,7 @@ test('checkout: create-intent 503 then retry reuses same idempotency key (items 
         'No create-intent request observed after clicking pay button.',
         `pageErrors (first 2): ${pageErrors.slice(0, 2).join(' | ') || 'none'}`,
         `api404Responses (first 5): ${api404Responses.join(' ; ') || 'none'}`,
+        `non2xxResponses (first 10): ${non2xxResponses.map((r) => `${r.status} ${r.method} ${r.url}`).join(' ; ') || 'none'}`,
         `apiRequests (first 10): ${apiRequests.slice(0, 10).map((r) => `${r.method} ${r.url}`).join(' ; ') || 'none'}`,
       ].join('\n')
     );
