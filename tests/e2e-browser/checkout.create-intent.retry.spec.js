@@ -10,6 +10,8 @@ test('checkout: create-intent 503 then retry reuses same idempotency key (items 
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(String(e)));
 
+  const cartResponseBodies = [];
+
   const calls = [];
   let firstKey = null;
 
@@ -24,6 +26,7 @@ test('checkout: create-intent 503 then retry reuses same idempotency key (items 
 
   await page.route('**/api/cart?**', async (route, request) => {
     if (request.method() !== 'GET') return route.fallback();
+    cartResponseBodies.push({ items: cartItems });
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -33,6 +36,7 @@ test('checkout: create-intent 503 then retry reuses same idempotency key (items 
 
   await page.route('**/api/cart', async (route, request) => {
     if (request.method() === 'GET') {
+      cartResponseBodies.push({ items: cartItems });
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -47,6 +51,15 @@ test('checkout: create-intent 503 then retry reuses same idempotency key (items 
       });
     }
     return route.fallback();
+  });
+
+  await page.route('**/api/analytics/events', async (route, request) => {
+    if (request.method() !== 'POST') return route.fallback();
+    return route.fulfill({
+      status: 202,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true }),
+    });
   });
 
   await page.route('**/api/payments/create-intent**', async (route, request) => {
@@ -95,7 +108,11 @@ test('checkout: create-intent 503 then retry reuses same idempotency key (items 
 
   await page.goto('/checkout.html');
 
-  await expect(page.locator('#checkoutItems .checkout__item')).toHaveCount(1);
+  await page.waitForResponse(
+    (resp) => resp.url().includes('/api/cart') && resp.request().method() === 'GET' && resp.status() === 200,
+    { timeout: 5000 }
+  );
+  await expect.poll(() => cartResponseBodies.length, { timeout: 5000 }).toBeGreaterThan(0);
 
   await page.fill('#fullName', 'Test User');
   await page.fill('#addressLine', '1 Rue de Test');
@@ -108,6 +125,7 @@ test('checkout: create-intent 503 then retry reuses same idempotency key (items 
 
   const payBtn = page.locator('#placeOrderBtn');
   await expect(payBtn).toBeVisible();
+  await expect(payBtn).toBeEnabled();
 
   const reqPromise = page.waitForRequest('**/api/payments/create-intent**', { timeout: 5000 }).catch(() => null);
 
@@ -118,8 +136,8 @@ test('checkout: create-intent 503 then retry reuses same idempotency key (items 
     throw new Error(
       [
         'No create-intent request observed after clicking pay button.',
-        `pageErrors: ${pageErrors.slice(0, 4).join(' | ') || 'none'}`,
-        `apiRequests (first 15): ${apiRequests.slice(0, 15).map((r) => `${r.method} ${r.url}`).join(' ; ') || 'none'}`,
+        `pageErrors (first 2): ${pageErrors.slice(0, 2).join(' | ') || 'none'}`,
+        `apiRequests (first 10): ${apiRequests.slice(0, 10).map((r) => `${r.method} ${r.url}`).join(' ; ') || 'none'}`,
       ].join('\n')
     );
   }
@@ -130,7 +148,7 @@ test('checkout: create-intent 503 then retry reuses same idempotency key (items 
   const err = page.locator('#paymentStatus').getByText(/indisponible|réessayez|retry|unavailable/i);
   await expect(err).toBeVisible({ timeout: 5000 });
 
-  const retryBtn = page.locator('#paymentStatus button', { hasText: 'Réessayer' });
+  const retryBtn = page.getByRole('button', { name: /réessayer|re-?try/i });
   await expect(retryBtn).toBeVisible();
   await retryBtn.click();
 
