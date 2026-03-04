@@ -3,6 +3,7 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   gate_tests:
@@ -52,3 +53,25 @@ jobs:
         run: npm ci
       - name: Run chaos gate
         run: npm run test:chaos
+
+  e2e_browser:
+    name: e2e_browser
+    runs-on: ubuntu-latest
+    # Prod-payments gate only: keep job defined/runnable, but non-blocking for dev by default.
+    if: ${{ vars.CI_GATING_PROFILE == 'prod-payments' }}
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-jammy
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+      - name: Run browser E2E tests (Chromium)
+        run: npm run test:e2e:browser

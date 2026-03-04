@@ -80,3 +80,14 @@ Points clés : UUID en PK, enums Prisma, contraintes FK, index de perf, JSONB po
   npm run test:coverage:jest
   ```
 - Si le téléchargement des engines Prisma est bloqué (ex: restrictions CDN / erreur 403), utiliser `npm run test:coverage:jest` pour exécuter la couverture Jest de façon déterministe sans étape Prisma. Cette commande ne relâche pas les quality gates de couverture : elle utilise la même configuration Jest et les mêmes seuils globaux.
+
+## Browser E2E (Playwright Chromium)
+
+- Local :
+  ```bash
+  npm ci
+  npm run prisma:generate
+  npm run test:e2e:browser
+  ```
+- CI : job `e2e_browser` (workflow `.github/workflows/ci.yml`) exécute les mêmes étapes dans l'image officielle Playwright `mcr.microsoft.com/playwright:v1.58.2-jammy`.
+- Gating : ce job est activé uniquement quand la variable de dépôt/environnement `CI_GATING_PROFILE` vaut `prod-payments` (sinon il reste défini et lançable via `workflow_dispatch` sans bloquer les flux dev).
