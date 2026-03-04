@@ -1,0 +1,10 @@
+{
+  "repo": "Inside-X/insidex",
+  "branch": "main",
+  "sha": "6bc33823fe8a18e4e7722a5ece1d076f3fb004b0",
+  "workflow": "CI",
+  "job": "e2e_browser",
+  "timestamp_utc": "2026-03-04T10:01:02Z",
+  "command": "npm run test:e2e:browser",
+  "result": "pass"
+}
