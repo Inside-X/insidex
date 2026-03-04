@@ -75,3 +75,25 @@ jobs:
         run: npm run prisma:generate
       - name: Run browser E2E tests (Chromium)
         run: npm run test:e2e:browser
+      - name: Write e2e browser proof
+        if: ${{ success() }}
+        run: |
+          cat > e2e_browser_proof.json <<EOF
+          {
+            "repo": "${GITHUB_REPOSITORY}",
+            "branch": "${GITHUB_REF_NAME}",
+            "sha": "${GITHUB_SHA}",
+            "workflow": "${GITHUB_WORKFLOW}",
+            "job": "${GITHUB_JOB}",
+            "timestamp_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "command": "npm run test:e2e:browser",
+            "result": "pass"
+          }
+          EOF
+      - name: Upload e2e browser proof artifact
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e_browser_proof
+          path: e2e_browser_proof.json
+          retention-days: 14
