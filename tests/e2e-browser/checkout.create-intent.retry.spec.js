@@ -10,6 +10,16 @@ test('checkout: create-intent 503 then retry reuses same idempotency key (items 
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(String(e)));
 
+  const api404Responses = [];
+  page.on('response', (response) => {
+    if (api404Responses.length >= 5) return;
+    const request = response.request();
+    const url = response.url();
+    if (response.status() === 404 && url.includes('/api/')) {
+      api404Responses.push(`${request.method()} ${url}`);
+    }
+  });
+
   const cartResponseBodies = [];
 
   const calls = [];
@@ -24,17 +34,25 @@ test('checkout: create-intent 503 then retry reuses same idempotency key (items 
     },
   };
 
-  await page.route('**/api/cart?**', async (route, request) => {
-    if (request.method() !== 'GET') return route.fallback();
-    cartResponseBodies.push({ items: cartItems });
+  await page.route('**/data/site.json', async (route) => {
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ items: cartItems }),
+      body: JSON.stringify({
+        brand: 'Insidex',
+        baseline: 'Test',
+        heroText: 'Test',
+        ctaText: 'Test',
+      }),
     });
   });
 
-  await page.route('**/api/cart', async (route, request) => {
+  await page.route('**/api/cart**', async (route, request) => {
+    const { pathname } = new URL(request.url());
+    if (pathname !== '/api/cart') {
+      return route.fallback();
+    }
+
     if (request.method() === 'GET') {
       cartResponseBodies.push({ items: cartItems });
       return route.fulfill({
@@ -137,6 +155,7 @@ test('checkout: create-intent 503 then retry reuses same idempotency key (items 
       [
         'No create-intent request observed after clicking pay button.',
         `pageErrors (first 2): ${pageErrors.slice(0, 2).join(' | ') || 'none'}`,
+        `api404Responses (first 5): ${api404Responses.join(' ; ') || 'none'}`,
         `apiRequests (first 10): ${apiRequests.slice(0, 10).map((r) => `${r.method} ${r.url}`).join(' ; ') || 'none'}`,
       ].join('\n')
     );
