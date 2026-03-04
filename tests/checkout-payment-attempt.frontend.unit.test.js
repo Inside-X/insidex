@@ -67,6 +67,32 @@ describe('checkout payment attempt helper', () => {
     expect(isCreateIntentInFlight()).toBe(false);
   });
 
+
+  test('payments_disabled keeps in-flight guard active and prevents duplicate submit', async () => {
+    let rejectRequest;
+    const blocker = new Promise((_, reject) => {
+      rejectRequest = reject;
+    });
+    const requestPaymentIntent = jest.fn().mockImplementation(() => blocker);
+
+    const first = createCheckoutPaymentIntent({
+      checkoutItems: [{ id: 'prod-1', qty: 1 }],
+      requestPaymentIntent,
+      keyFactory: () => 'idem_maint',
+    });
+
+    const second = await createCheckoutPaymentIntent({
+      checkoutItems: [{ id: 'prod-1', qty: 1 }],
+      requestPaymentIntent,
+    });
+
+    expect(second).toEqual({ skipped: true });
+    expect(requestPaymentIntent).toHaveBeenCalledTimes(1);
+
+    rejectRequest({ code: 'payments_disabled', status: 503 });
+    await expect(first).rejects.toEqual({ code: 'payments_disabled', status: 503 });
+  });
+  
   test('on retry after 503, idempotency key is reused', async () => {
     const requestPaymentIntent = jest.fn()
       .mockRejectedValueOnce({ code: 'dependency_unavailable', status: 503 })

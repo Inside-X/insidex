@@ -24,6 +24,10 @@ function normalizeCurrency(currency) {
 
 router.post('/create-intent', strictValidate(paymentsSchemas.createIntent), ensureCheckoutSessionJWT, authenticateJWT, checkoutCustomerAccess, async (req, res, next) => {
   try {
+    if (String(process.env.PAYMENTS_ENABLED).trim().toLowerCase() === 'false') {
+      return sendApiError(req, res, 503, 'payments_disabled', 'Paiements indisponibles (maintenance)');
+    }
+    
     await assertDatabaseReady();
 
     const currency = normalizeCurrency(req.body.currency);

@@ -41,3 +41,12 @@ In production, boot will fail fast before serving traffic when toggles require m
 ## Logging safety warning
 - Never log raw signatures, tokens, webhook secrets, provider secrets, or JWTs.
 - Keep using the existing logger redaction behavior in `src/utils/logger.js`.
+## Incident runbook
+- See `docs/ops/runbooks/payments_incidents.md` for incident response and rollback checklist.
+
+## Deploy and recovery runbooks
+- Deploy checklist: `docs/ops/runbooks/deploy_checklist.md`
+- Backup/restore drill: `docs/ops/runbooks/backup_restore_drill.md`
+
+## Release evidence
+- EPIC-2.4 release evidence pack: `docs/audit/EPIC2_4_RELEASE_EVIDENCE_PACK.md`

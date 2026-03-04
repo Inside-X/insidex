@@ -88,6 +88,8 @@ function mapCreateIntentErrorMessage(error) {
   switch (error?.code) {
     case 'dependency_unavailable':
       return 'Service de paiement temporairement indisponible. Réessayez.';
+    case 'payments_disabled':
+      return 'Paiements indisponibles (maintenance).';
     case 'validation_error':
       return 'Données de paiement invalides. Vérifiez le formulaire.';
     case 'invalid_transition':

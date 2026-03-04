@@ -56,6 +56,47 @@ describe('payments.routes', () => {
     expect(assertDatabaseReady).toHaveBeenCalledTimes(4);
   });
 
+
+  test('create-intent returns payments_disabled without side effects when PAYMENTS_ENABLED=false', async () => {
+    const previousPaymentsEnabled = process.env.PAYMENTS_ENABLED;
+    process.env.PAYMENTS_ENABLED = 'false';
+
+    const prisma = { product: { findMany: jest.fn() } };
+    const orderRepository = { createPendingPaymentOrder: jest.fn() };
+    const sendApiError = jest.fn((_req, res, status) => res.status(status).json({}));
+    const assertDatabaseReady = jest.fn().mockResolvedValue(undefined);
+
+    try {
+      const routes = await loadRoute('../../src/routes/payments.routes.js', {
+        '../../src/validation/schemas/index.js': () => schemaMocks(),
+        '../../src/validation/strict-validate.middleware.js': () => ({ strictValidate: jest.fn(() => pass) }),
+        '../../src/middlewares/checkoutIdentity.js': () => ({ default: pass }),
+        '../../src/middlewares/authenticate.js': () => ({ default: (req, _res, n) => { req.auth = { sub: 'u1', isGuest: false }; n(); } }),
+        '../../src/middlewares/checkoutCustomerAccess.js': () => ({ default: pass }),
+        '../../src/lib/prisma.js': () => ({ default: prisma }),
+        '../../src/repositories/order.repository.js': () => ({ orderRepository }),
+        '../../src/utils/api-error.js': () => ({ sendApiError }),
+        '../../src/lib/critical-dependencies.js': () => ({ assertDatabaseReady, isDependencyUnavailableError: jest.fn(() => false) }),
+      });
+
+      const h = routes[0].handlers.at(-1);
+      const req = { body: { currency: 'EUR', items: [{ id: 'p1', quantity: 1 }], idempotencyKey: 'k1234567890', email: 'e' }, auth: { sub: 'u1', isGuest: false } };
+      const res = { locals: {}, status: jest.fn(() => res), json: jest.fn() };
+      await h(req, res, jest.fn());
+
+      expect(sendApiError).toHaveBeenCalledWith(req, res, 503, 'payments_disabled', 'Paiements indisponibles (maintenance)');
+      expect(assertDatabaseReady).not.toHaveBeenCalled();
+      expect(prisma.product.findMany).not.toHaveBeenCalled();
+      expect(orderRepository.createPendingPaymentOrder).not.toHaveBeenCalled();
+    } finally {
+      if (previousPaymentsEnabled === undefined) {
+        delete process.env.PAYMENTS_ENABLED;
+      } else {
+        process.env.PAYMENTS_ENABLED = previousPaymentsEnabled;
+      }
+    }
+  });
+  
   test('create-intent fails closed with 503 on dependency outage before business logic', async () => {
     const prisma = { product: { findMany: jest.fn() } };
     const orderRepository = { createPendingPaymentOrder: jest.fn() };

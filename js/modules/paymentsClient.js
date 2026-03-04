@@ -33,6 +33,14 @@ function toMappedError({ status, payload, correlationId }) {
   }
 
   if (status === 503) {
+    if (payload?.error?.code === 'payments_disabled') {
+      return {
+        code: 'payments_disabled',
+        status,
+        ...(correlationId ? { correlationId } : {}),
+      };
+    }
+    
     const reasonCode = payload?.error?.reasonCode || payload?.reasonCode;
     return {
       code: 'dependency_unavailable',

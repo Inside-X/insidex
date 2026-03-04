@@ -78,6 +78,22 @@ describe('payments client adapter', () => {
     });
   });
 
+
+  test('maps 503 payments_disabled to maintenance code', async () => {
+    fetch.mockResolvedValue(makeResponse({
+      ok: false,
+      status: 503,
+      body: { error: { code: 'payments_disabled' } },
+      headers: { 'x-request-id': 'req-maint-503' },
+    }));
+
+    await expect(createPaymentIntent({ idempotencyKey: 'idem_1234567890', items: [] })).rejects.toEqual({
+      code: 'payments_disabled',
+      status: 503,
+      correlationId: 'req-maint-503',
+    });
+  });
+  
   test('maps 503 to dependency_unavailable with reasonCode when present', async () => {
     fetch.mockResolvedValue(makeResponse({
       ok: false,
