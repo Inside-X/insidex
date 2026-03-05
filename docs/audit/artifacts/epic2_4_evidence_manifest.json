@@ -8,5 +8,8 @@
     "docs/ops/runbooks/payments_incidents.md",
     "docs/ops/runbooks/deploy_checklist.md",
     "docs/ops/runbooks/backup_restore_drill.md"
-  ]
+  ],
+  "audited_runtime_sha": "6bc33823fe8a18e4e7722a5ece1d076f3fb004b0",
+  "pack_generated_sha": "e91be1667a2abcf42bdacdc77bdd66b94cad2d7a",
+  "ci_run_url": ""
 }
