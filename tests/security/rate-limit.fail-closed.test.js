@@ -34,6 +34,16 @@ describe('rate-limit fail-closed hardening', () => {
     expect(refresh.status).toBe(503);
   });
 
+
+  test('does not emit RATE_LIMIT_BACKEND_UNAVAILABLE on /api/products when redis client is configured', async () => {
+    setRateLimitRedisClient(createFakeRedisClient());
+
+    const res = await request(app).get('/api/products');
+
+    expect(res.status).not.toBe(503);
+    expect(res.body?.error?.code).not.toBe('RATE_LIMIT_BACKEND_UNAVAILABLE');
+  });
+  
   test('returns 503 on payment route when redis is down', async () => {
     setRateLimitRedisClient(null);
 

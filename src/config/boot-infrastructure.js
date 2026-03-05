@@ -29,6 +29,17 @@ export async function assertProductionInfrastructureOrExit({
   exit = process.exit,
 } = {}) {
   if (!isProduction(env)) {
+    try {
+      const redisClient = await connectRedis({ env, required: false });
+      if (redisClient && typeof onRedisClient === 'function') {
+        onRedisClient(redisClient);
+      }
+    } catch (error) {
+      onError('boot_infra_optional_redis_unavailable', {
+        event: 'boot_infra_optional_redis_unavailable',
+        message: readErrorMessage(error),
+      });
+    }
     return { ok: true };
   }
 

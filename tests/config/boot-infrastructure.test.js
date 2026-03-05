@@ -48,7 +48,10 @@ describe('boot infrastructure hardening', () => {
 
     const result = await assertProductionInfrastructureOrExit({
       env: { NODE_ENV: 'test' },
-      connectRedis: async () => { throw new Error('should not run'); },
+      connectRedis: async ({ required }) => {
+        expect(required).toBe(false);
+        return null;
+      },
       verifyRedis: async () => { throw new Error('should not run'); },
       connectDb: async () => { throw new Error('should not run'); },
       exit,
@@ -60,6 +63,53 @@ describe('boot infrastructure hardening', () => {
     expect(onError).not.toHaveBeenCalled();
   });
 
+
+  test('attempts optional redis wiring outside production when redis is configured', async () => {
+    const exit = jest.fn();
+    const onError = jest.fn();
+    const onRedisClient = jest.fn();
+    const redisClient = { ping: jest.fn() };
+
+    const result = await assertProductionInfrastructureOrExit({
+      env: { NODE_ENV: 'test', REDIS_URL: 'redis://localhost:6379' },
+      connectRedis: async ({ required }) => {
+        expect(required).toBe(false);
+        return redisClient;
+      },
+      verifyRedis: async () => { throw new Error('should not run'); },
+      connectDb: async () => { throw new Error('should not run'); },
+      onRedisClient,
+      exit,
+      onError,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(onRedisClient).toHaveBeenCalledWith(redisClient);
+    expect(onError).not.toHaveBeenCalled();
+    expect(exit).not.toHaveBeenCalled();
+  });
+
+  test('does not fail boot outside production when optional redis wiring fails', async () => {
+    const exit = jest.fn();
+    const onError = jest.fn();
+
+    const result = await assertProductionInfrastructureOrExit({
+      env: { NODE_ENV: 'test', REDIS_URL: 'redis://localhost:6379' },
+      connectRedis: async () => { throw new Error('redis down'); },
+      verifyRedis: async () => { throw new Error('should not run'); },
+      connectDb: async () => { throw new Error('should not run'); },
+      onRedisClient: jest.fn(),
+      exit,
+      onError,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(onError).toHaveBeenCalledWith('boot_infra_optional_redis_unavailable', expect.objectContaining({
+      event: 'boot_infra_optional_redis_unavailable',
+      message: 'redis down',
+    }));
+    expect(exit).not.toHaveBeenCalled();
+  });
   test('succeeds in production when dependencies are healthy and yields redis client callback', async () => {
     const exit = jest.fn();
     const onError = jest.fn();
