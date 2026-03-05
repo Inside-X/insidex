@@ -5,17 +5,32 @@ const currencyFormatter = new Intl.NumberFormat('fr-FR', {
   currency: 'EUR'
 });
 
+function placeholderImage() {
+  return {
+    url: 'assets/images/placeholder.png',
+    alt: 'Produit Inside X',
+    width: 640,
+    height: 480,
+    position: 0,
+  };
+}
+
 function buildProductCard(product) {
   const card = document.createElement('article');
   card.className = 'product-card';
   card.dataset.id = product.id;
   card.dataset.slug = product.slug;
+  card.setAttribute('data-testid', 'product-card');
+
+  const imageData = product.imageObjects?.[0] || placeholderImage();
 
   const image = document.createElement('img');
-  image.src = product.images?.[0] || '';
-  image.alt = product.title;
+  image.src = imageData.url;
+  image.alt = imageData.alt || product.title || 'Produit';
   image.loading = 'lazy';
   image.decoding = 'async';
+  image.width = Number(imageData.width) || 640;
+  image.height = Number(imageData.height) || 480;
 
   const info = document.createElement('div');
   info.className = 'product-info';
@@ -25,20 +40,14 @@ function buildProductCard(product) {
 
   const price = document.createElement('p');
   price.className = 'price product-price';
-  if (product.oldPrice) {
-    const oldPrice = document.createElement('span');
-    oldPrice.className = 'old';
-    oldPrice.textContent = currencyFormatter.format(product.oldPrice);
-    price.appendChild(oldPrice);
-  }
   const currentPrice = document.createElement('span');
   currentPrice.className = 'current';
-  currentPrice.textContent = currencyFormatter.format(product.price);
+  currentPrice.textContent = currencyFormatter.format(Number(product.price) || 0);
   price.appendChild(currentPrice);
 
   const benefit = document.createElement('p');
   benefit.className = 'product-benefit';
-  benefit.textContent = product.benefit || product.shortDescription || '';
+  benefit.textContent = product.shortDescription || '';
 
   const button = document.createElement('button');
   button.className = 'btn add-to-cart';
@@ -54,20 +63,63 @@ function buildProductCard(product) {
   return card;
 }
 
+function renderLoadingState(container) {
+  container.innerHTML = '';
+  const skeleton = document.createElement('div');
+  skeleton.className = 'products-loading';
+  skeleton.setAttribute('data-testid', 'products-loading');
+  skeleton.textContent = 'Chargement des produits…';
+  container.appendChild(skeleton);
+}
+
+function renderEmptyState(container) {
+  container.innerHTML = '';
+  const empty = document.createElement('p');
+  empty.className = 'products-empty';
+  empty.setAttribute('data-testid', 'products-empty');
+  empty.textContent = 'Aucun produit disponible pour le moment.';
+  container.appendChild(empty);
+}
+
+function renderErrorState(container) {
+  container.innerHTML = '';
+  const error = document.createElement('p');
+  error.className = 'products-error';
+  error.setAttribute('data-testid', 'products-error');
+  error.textContent = 'Impossible de charger les produits. Veuillez réessayer.';
+  container.appendChild(error);
+}
+
 export async function renderProducts({
   containerSelector = '#productsGrid',
   products = null,
-  showFeaturedOnly = true
 } = {}) {
   const container = document.querySelector(containerSelector);
   if (!container) {
     return 0;
   }
 
-  let visibleProducts = Array.isArray(products) ? products : await getPublishedProducts();
-  if (!Array.isArray(products) && showFeaturedOnly) {
-    visibleProducts = visibleProducts.filter((product) => product?.featured === true);
+  container.setAttribute('data-testid', 'product-grid');
+
+  let visibleProducts = [];
+  if (Array.isArray(products)) {
+    visibleProducts = products;
+  } else {
+    renderLoadingState(container);
+    try {
+      visibleProducts = await getPublishedProducts();
+    } catch (error) {
+      console.error('Erreur chargement catalogue:', error);
+      renderErrorState(container);
+      return 0;
+    }
   }
+
+  if (!Array.isArray(visibleProducts) || visibleProducts.length === 0) {
+    renderEmptyState(container);
+    return 0;
+  }
+  
   container.innerHTML = '';
   const fragment = document.createDocumentFragment();
 

@@ -104,16 +104,23 @@
     <section class="product-detail" aria-live="polite">
       <div class="product-detail__media">
         <img id="productImage" src="assets/images/placeholder.png" alt="Produit Inside X" loading="lazy" decoding="async" />
+        <div id="productGallery" class="product-detail__gallery" data-testid="pdp-carousel"></div>
       </div>
       <div class="product-detail__info">
+        <div id="productErrorBanner" class="product-error-banner" hidden aria-live="polite" data-testid="error-banner"></div>
         <h1 id="productTitle">Produit</h1>
         <p class="price">
           <span class="old" id="productOldPrice"></span>
           <span class="current" id="productPrice"></span>
         </p>
+        <p id="productStockBadge" class="product-stock-badge">unknown</p>
         <p id="productDescription" class="product-detail__description"></p>
+        <div id="productVariantPicker" class="product-variant-picker" data-testid="variant-picker" hidden></div>
         <ul id="productFeatures" class="product-detail__features"></ul>
-        <button class="btn" id="productAddBtn" type="button">Ajouter au panier</button>
+        <label for="productQuantity">Quantité</label>
+        <input id="productQuantity" type="number" min="1" value="1" />
+        <button class="btn" id="productAddBtn" data-testid="add-to-cart" type="button">Ajouter au panier</button>
+        <p id="productCtaReason" class="product-cta-reason" aria-live="polite"></p>
         <a class="btn btn-outline" href="index.html#produits">Retour aux produits</a>
       </div>
     </section>
