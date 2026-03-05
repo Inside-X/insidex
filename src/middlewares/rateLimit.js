@@ -4,6 +4,9 @@ import { createRateLimitRedisStore } from '../lib/rate-limit-redis-store.js';
 import { logger } from '../utils/logger.js';
 
 let rateLimitRedisClient = null;
+const devFallbackCounters = new Map();
+const DEV_FALLBACK_MAX_KEYS = 10_000;
+let hasLoggedDevFallbackActivation = false;
 
 export function setRateLimitRedisClient(client) {
   rateLimitRedisClient = client || null;
@@ -88,6 +91,28 @@ function createRateLimiter({ windowMs, max, code, message, keyBuilder, store }) 
       }
       return next();
     } catch {
+      if (process.env.NODE_ENV !== 'production') {
+        if (!hasLoggedDevFallbackActivation) {
+          hasLoggedDevFallbackActivation = true;
+          logger.warn('rate_limit_dev_fallback_enabled', {
+            level: 'warn',
+            event: 'rate_limit_dev_fallback_enabled',
+            mode: 'dev_fallback',
+          });
+        }
+        if (typeof res.setHeader === 'function') {
+          res.setHeader('X-RateLimit-Mode', 'dev_fallback');
+        }
+        const fallbackResult = incrementDevFallbackCounter(key, resolvedWindowMs);
+        const retryAfter = Math.max(0, Math.ceil((fallbackResult.resetTime.getTime() - Date.now()) / 1000));
+        if (typeof res.setHeader === 'function') {
+          res.setHeader('Retry-After', retryAfter);
+        }
+        if (fallbackResult.totalHits > resolvedMax) {
+          return sendApiError(req, res, 429, code, message);
+        }
+        return next();
+      }
       logger.error('rate_limit_backend_down', {
         level: 'error',
         event: 'rate_limit_backend_down',
@@ -99,6 +124,35 @@ function createRateLimiter({ windowMs, max, code, message, keyBuilder, store }) 
   rateLimiter.reset = () => store.reset?.();
 
   return rateLimiter;
+}
+
+function incrementDevFallbackCounter(key, windowMs) {
+  const now = Date.now();
+  const existing = devFallbackCounters.get(key);
+  if (existing && existing.expiresAt > now) {
+    existing.hits += 1;
+    return {
+      totalHits: existing.hits,
+      resetTime: new Date(existing.expiresAt),
+      source: 'dev_fallback',
+    };
+  }
+
+  const expiresAt = now + windowMs;
+  devFallbackCounters.set(key, { hits: 1, expiresAt });
+
+  if (devFallbackCounters.size > DEV_FALLBACK_MAX_KEYS) {
+    const oldestKey = devFallbackCounters.keys().next().value;
+    if (oldestKey) {
+      devFallbackCounters.delete(oldestKey);
+    }
+  }
+
+  return {
+    totalHits: 1,
+    resetTime: new Date(expiresAt),
+    source: 'dev_fallback',
+  };
 }
 
 const redisStore = createRateLimitRedisStore({ getRedisClient: () => rateLimitRedisClient });
@@ -124,6 +178,8 @@ export const strictAuthRateLimiter = createRateLimiter({
 export function resetRateLimiters() {
   apiRateLimiter.reset();
   strictAuthRateLimiter.reset();
+  devFallbackCounters.clear();
+  hasLoggedDevFallbackActivation = false;
 }
 
 export { createRateLimiter, resolveClientIp, endpointToken };

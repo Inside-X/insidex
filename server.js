@@ -12,6 +12,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 3000;
 
+const startupNodeEnv = String(process.env.NODE_ENV || '').trim() || 'unset';
+const isProductionMode = startupNodeEnv === 'production';
+
+logger.info('startup_environment', {
+  nodeEnv: startupNodeEnv,
+  hasRedisUrl: Boolean(String(process.env.REDIS_URL || '').trim()),
+  rateLimitMode: isProductionMode ? 'strict_fail_closed' : 'redis_or_dev_fallback',
+});
+
 assertProductionBootConfigOrExit();
 
 await assertProductionInfrastructureOrExit({

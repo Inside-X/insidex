@@ -2,7 +2,7 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import app from '../../src/app.js';
 import { logger } from '../../src/utils/logger.js';
-import { setRateLimitRedisClient } from '../../src/middlewares/rateLimit.js';
+import { resetRateLimiters, setRateLimitRedisClient } from '../../src/middlewares/rateLimit.js';
 import { createFakeRedisClient } from '../helpers/fake-redis-client.js';
 
 function authEnv() {
@@ -19,10 +19,21 @@ function authEnv() {
 describe('rate-limit fail-closed hardening', () => {
   beforeEach(() => {
     authEnv();
+    resetRateLimiters();
     setRateLimitRedisClient(createFakeRedisClient());
   });
 
+  afterEach(() => {
+    process.env.NODE_ENV = 'test';
+    resetRateLimiters();
+    delete process.env.API_RATE_MAX;
+    delete process.env.API_RATE_WINDOW_MS;
+    delete process.env.CORS_ORIGIN;
+  });
+
   test('returns 503 on sensitive auth routes when redis is down', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.CORS_ORIGIN = 'http://localhost:3000';
     setRateLimitRedisClient(null);
 
     const login = await request(app).post('/api/auth/login').send({ email: 'x@y.com', password: 'Password123' });
@@ -45,6 +56,8 @@ describe('rate-limit fail-closed hardening', () => {
   });
   
   test('returns 503 on payment route when redis is down', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.CORS_ORIGIN = 'http://localhost:3000';
     setRateLimitRedisClient(null);
 
     const res = await request(app).post('/api/payments/create-intent').send({ amount: 1000, currency: 'EUR' });
@@ -52,6 +65,8 @@ describe('rate-limit fail-closed hardening', () => {
   });
 
   test('returns 503 on webhook routes when redis is down', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.CORS_ORIGIN = 'http://localhost:3000';
     setRateLimitRedisClient(null);
 
     const stripe = await request(app)
@@ -70,6 +85,8 @@ describe('rate-limit fail-closed hardening', () => {
   });
 
   test('logs rate_limit_backend_down as structured error', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.CORS_ORIGIN = 'http://localhost:3000';
     setRateLimitRedisClient(null);
     const spy = jest.spyOn(logger, 'error').mockImplementation(() => undefined);
 
@@ -92,5 +109,46 @@ describe('rate-limit fail-closed hardening', () => {
     const down = await request(app).get('/healthz');
     expect(down.status).toBe(503);
     expect(down.body.data.dependencies.redis).toBe(false);
+  });
+
+  test('does not fail-closed /api/products in development when redis backend is broken', async () => {
+    process.env.NODE_ENV = 'development';
+    setRateLimitRedisClient({
+      ping: async () => 'PONG',
+      eval: async () => { throw new Error('redis down'); },
+      flushAll: () => undefined,
+    });
+
+    const res = await request(app).get('/api/products');
+
+    expect(res.status).not.toBe(503);
+    expect(res.body?.error?.code).not.toBe('RATE_LIMIT_BACKEND_UNAVAILABLE');
+    expect(res.headers['x-ratelimit-mode']).toBe('dev_fallback');
+  });
+
+  test('non-production fallback still enforces limits deterministically without redis', async () => {
+    process.env.NODE_ENV = 'development';
+    process.env.API_RATE_MAX = '1';
+    process.env.API_RATE_WINDOW_MS = '60000';
+    setRateLimitRedisClient(null);
+
+    const first = await request(app).get('/api/products');
+    const second = await request(app).get('/api/products');
+
+    expect(first.status).not.toBe(503);
+    expect(first.headers['x-ratelimit-mode']).toBe('dev_fallback');
+    expect(second.status).toBe(429);
+    expect(second.body?.error?.code).toBe('API_RATE_LIMITED');
+  });
+
+  test('uses redis-backed path in non-production when redis client is configured', async () => {
+    process.env.NODE_ENV = 'development';
+    setRateLimitRedisClient(createFakeRedisClient());
+
+    const res = await request(app).get('/api/products');
+
+    expect(res.status).not.toBe(503);
+    expect(res.headers['x-ratelimit-mode']).toBeUndefined();
+    expect(res.body?.error?.code).not.toBe('RATE_LIMIT_BACKEND_UNAVAILABLE');
   });
 });

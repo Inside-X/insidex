@@ -1,10 +1,11 @@
 import { PrismaClient } from '@prisma/client';
+import { seedCatalogueV1 } from './seed.catalogue-v1.js';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  // Minimal seed placeholder. Add real inserts once models are defined.
-  console.log('Prisma seed executed: no model data inserted yet.');
+  const force = process.env.SEED_FORCE === '1';
+  await seedCatalogueV1({ prisma, force, log: (...args) => console.log(...args) });
 }
 
 main()

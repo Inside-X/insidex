@@ -97,3 +97,28 @@ jobs:
           name: e2e_browser_proof
           path: e2e_browser_proof.json
           retention-days: 14
+  catalogue_smoke:
+    name: catalogue_smoke
+    runs-on: ubuntu-latest
+    if: ${{ vars.CI_GATING_PROFILE == 'catalogue' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+      - name: Run catalogue smoke proof
+        run: npm run smoke:catalogue:v1
+      - name: Upload epic5 catalogue smoke proof artifact
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: epic5_catalogue_smoke_proof
+          path: docs/audit/artifacts/epic5_catalogue_smoke_proof.*.json
+          retention-days: 14

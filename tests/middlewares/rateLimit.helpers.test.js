@@ -52,6 +52,7 @@ describe('rateLimit helpers', () => {
   });
 
   test('middleware returns 503 when backend fails', async () => {
+    process.env.NODE_ENV = 'production';
     const limiter = createRateLimiter({
       windowMs: 1000,
       max: 1,
@@ -67,6 +68,8 @@ describe('rateLimit helpers', () => {
 
     expect(next).not.toHaveBeenCalled();
     expect(res.statusCode).toBe(503);
+
+    process.env.NODE_ENV = 'test';
   });
 
   test('resolveClientIp rejects spoofing when proxy is not trusted', () => {
