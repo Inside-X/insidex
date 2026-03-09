@@ -100,7 +100,7 @@ jobs:
   catalogue_smoke:
     name: catalogue_smoke
     runs-on: ubuntu-latest
-    if: ${{ vars.CI_GATING_PROFILE == 'catalogue' }}
+    if: ${{ contains(vars.CI_GATING_PROFILE, 'catalogue') }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -121,4 +121,67 @@ jobs:
         with:
           name: epic5_catalogue_smoke_proof
           path: docs/audit/artifacts/epic5_catalogue_smoke_proof.*.json
+          retention-days: 14
+
+  epic5_1c_verify:
+    name: epic5_1c_verify
+    runs-on: ubuntu-latest
+    if: ${{ contains(vars.CI_GATING_PROFILE, 'catalogue') }}
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: insidex_clean
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d insidex_clean"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: EPIC-5.1C verification
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/insidex_clean?schema=public
+          NODE_ENV: development
+        run: |
+          npm run prisma:generate
+          npm run prisma:migrate
+          npm run prisma:seed
+          npm run epic:5.1c:verify
+      - name: Write EPIC-5.1C proof artifact
+        if: ${{ success() }}
+        run: |
+          mkdir -p docs/audit/artifacts
+          SHORT_SHA="${GITHUB_SHA::8}"
+          PROOF_PATH="docs/audit/artifacts/epic5_1c_ci_verify_proof.${SHORT_SHA}.json"
+          cat > "${PROOF_PATH}" <<EOF
+          {
+            "repo": "${GITHUB_REPOSITORY}",
+            "branch": "${GITHUB_REF_NAME}",
+            "sha": "${GITHUB_SHA}",
+            "workflow": "${GITHUB_WORKFLOW}",
+            "job": "${GITHUB_JOB}",
+            "timestamp_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "command": "npm run epic:5.1c:verify",
+            "result": "pass"
+          }
+          EOF
+      - name: Upload EPIC-5.1C proof artifact
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: epic5_1c_ci_verify_proof
+          path: docs/audit/artifacts/epic5_1c_ci_verify_proof.*.json
           retention-days: 14
