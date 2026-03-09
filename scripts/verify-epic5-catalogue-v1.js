@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import net from 'node:net';
 import request from 'supertest';
 import { PrismaClient } from '@prisma/client';
 import app from '../src/app.js';
@@ -6,6 +7,45 @@ import { seedCatalogueV1, CATALOGUE_V1_PRODUCTS } from '../prisma/seed.catalogue
 import { resetRateLimiters, setRateLimitRedisClient } from '../src/middlewares/rateLimit.js';
 
 const MAX_FAILURES = 10;
+const SOCKET_TIMEOUT_MS = 1_500;
+
+function parseDbHostPort(databaseUrl) {
+  if (!databaseUrl) {
+    return { host: '127.0.0.1', port: 5432 };
+  }
+
+  const parsed = new URL(databaseUrl);
+  return {
+    host: parsed.hostname || '127.0.0.1',
+    port: parsed.port ? Number(parsed.port) : 5432,
+  };
+}
+
+async function ensurePostgresReachable() {
+  const { host, port } = parseDbHostPort(process.env.DATABASE_URL);
+
+  await new Promise((resolve, reject) => {
+    const socket = new net.Socket();
+
+    const fail = () => {
+      socket.destroy();
+      reject(
+        new Error(
+          `Postgres not reachable at ${host}:${port}\nSuggested fix for WSL: pg_lsclusters; sudo pg_ctlcluster 16 main start; ss -lntp | grep :5432`,
+        ),
+      );
+    };
+
+    socket.setTimeout(SOCKET_TIMEOUT_MS);
+    socket.once('connect', () => {
+      socket.end();
+      resolve();
+    });
+    socket.once('timeout', fail);
+    socket.once('error', fail);
+    socket.connect(port, host);
+  });
+}
 
 function pushFailure(failures, message) {
   if (failures.length < MAX_FAILURES) {
@@ -22,6 +62,7 @@ async function main() {
   const prisma = new PrismaClient();
 
   try {
+    await ensurePostgresReachable();
     await seedCatalogueV1({ prisma, log: () => undefined });
 
     setRateLimitRedisClient({
