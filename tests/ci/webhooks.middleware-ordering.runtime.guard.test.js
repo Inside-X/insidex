@@ -1,4 +1,5 @@
 import { jest } from '@jest/globals';
+import http from 'node:http';
 import request from 'supertest';
 
 function buildRawBodySpy() {
@@ -81,14 +82,70 @@ describe('webhooks middleware ordering runtime guard (real app wiring)', () => {
     const app = (await import('../../src/app.js')).default;
     app.locals.webhookIdempotencyRedisClient = { incr: jest.fn().mockResolvedValue(1) }; // idempotency backend only: unavailable for set(NX)
 
-    const res = await request(app)
-      .post('/api/webhooks/stripe')
-      .set('x-request-id', 'cid-runtime-stripe-1')
-      .set('stripe-signature', 'sig')
-      .set('content-type', 'application/json')
-      .send('{"any":"payload"}');
+    const server = app.listen(0, '127.0.0.1');
+    await new Promise((resolve) => server.once('listening', resolve));
 
-    expect(res.status).toBe(503);
+    let req;
+    let res;
+    try {
+      const address = server.address();
+      const port = typeof address === 'object' && address ? address.port : null;
+      if (!port) throw new Error('failed to acquire ephemeral test server port');
+
+      req = http.request({
+        method: 'POST',
+        host: '127.0.0.1',
+        port,
+        path: '/api/webhooks/stripe',
+        headers: {
+          'x-request-id': 'cid-runtime-stripe-1',
+          'stripe-signature': 'sig',
+          'content-type': 'application/json',
+          'transfer-encoding': 'chunked',
+        },
+      });
+
+      req.write('{"incomplete":');
+
+      const responsePromise = new Promise((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+          reject(new Error('timeout waiting for stripe webhook guard response before request stream end'));
+        }, 1500);
+
+        req.once('response', (response) => {
+          clearTimeout(timeoutId);
+          resolve(response);
+        });
+        req.once('error', (error) => {
+          clearTimeout(timeoutId);
+          reject(error);
+        });
+      });
+
+      res = await responsePromise;
+
+      const body = await new Promise((resolve, reject) => {
+        let data = '';
+        res.setEncoding('utf8');
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+        res.on('end', () => resolve(data));
+        res.on('error', reject);
+      });
+
+      expect(res.statusCode).toBe(503);
+      expect(JSON.parse(body)).toEqual({
+        error: {
+          code: 'SERVICE_UNAVAILABLE',
+          message: 'Critical dependency unavailable',
+        },
+      });
+    } finally {
+      if (res) res.resume();
+      if (req && !req.destroyed) req.destroy();
+      await new Promise((resolve) => server.close(resolve));
+    }
     expect(rawBodySpy).not.toHaveBeenCalled();
     expect(stripeConstructEvent).not.toHaveBeenCalled();
     expect(paypalVerify).not.toHaveBeenCalled();
