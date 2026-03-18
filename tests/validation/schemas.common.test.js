@@ -1,9 +1,17 @@
 import { test, expect } from '@jest/globals';
 
-import * as commonSchemas from '../../src/validation/schemas/common.schema.js';
+import {
+  SECONDARY_PAYLOAD_MAX_BYTES,
+  SECONDARY_PAYLOAD_MAX_KEYS,
+  boundedSecondaryPayloadSchema,
+  commonSchemas,
+} from '../../src/validation/schemas/common.schema.js';
 
-test('common schema module exports an empty shared-schema object surface', () => {
-  expect(typeof commonSchemas).toBe('object');
-  expect(Object.keys(commonSchemas)).toEqual([]);
-  expect(Reflect.ownKeys(commonSchemas)).toEqual([Symbol.toStringTag]);
+test('common schema module exports shared schema primitives', () => {
+  expect(SECONDARY_PAYLOAD_MAX_KEYS).toBe(120);
+  expect(SECONDARY_PAYLOAD_MAX_BYTES).toBe(16 * 1024);
+  expect(typeof boundedSecondaryPayloadSchema.safeParse).toBe('function');
+  expect(commonSchemas).toEqual({
+    boundedSecondaryPayload: boundedSecondaryPayloadSchema,
+  });
 });

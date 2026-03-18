@@ -8,13 +8,18 @@ import * as leadsModule from '../../src/validation/schemas/leads.schema.js';
 import * as ordersModule from '../../src/validation/schemas/orders.schema.js';
 import * as analyticsModule from '../../src/validation/schemas/analytics.schema.js';
 import * as paymentsModule from '../../src/validation/schemas/payments.schema.js';
+import * as commonModule from '../../src/validation/schemas/common.schema.js';
 
 test('schema index exports the expected schema surface', () => {
   expect(Object.keys(schemaIndex).sort()).toEqual([
+    'SECONDARY_PAYLOAD_MAX_BYTES',
+    'SECONDARY_PAYLOAD_MAX_KEYS',
     'addToCartSchema',
     'analyticsSchemas',
     'authSchemas',
+    'boundedSecondaryPayloadSchema',
     'cartSchemas',
+    'commonSchemas',
     'createLeadSchema',
     'createProductSchema',
     'leadsSchemas',
@@ -37,6 +42,10 @@ test('schema index exports the expected schema surface', () => {
   expect(typeof schemaIndex.ordersSchemas).toBe('object');
   expect(typeof schemaIndex.analyticsSchemas).toBe('object');
   expect(typeof schemaIndex.paymentsSchemas).toBe('object');
+  expect(typeof schemaIndex.commonSchemas).toBe('object');
+  expect(typeof schemaIndex.boundedSecondaryPayloadSchema).toBe('object');
+  expect(typeof schemaIndex.SECONDARY_PAYLOAD_MAX_KEYS).toBe('number');
+  expect(typeof schemaIndex.SECONDARY_PAYLOAD_MAX_BYTES).toBe('number');
 });
 
 test('schema index re-exports direct module references', () => {
@@ -56,4 +65,9 @@ test('schema index re-exports direct module references', () => {
   expect(schemaIndex.ordersSchemas).toBe(ordersModule.ordersSchemas);
   expect(schemaIndex.analyticsSchemas).toBe(analyticsModule.analyticsSchemas);
   expect(schemaIndex.paymentsSchemas).toBe(paymentsModule.paymentsSchemas);
+
+  expect(schemaIndex.commonSchemas).toBe(commonModule.commonSchemas);
+  expect(schemaIndex.boundedSecondaryPayloadSchema).toBe(commonModule.boundedSecondaryPayloadSchema);
+  expect(schemaIndex.SECONDARY_PAYLOAD_MAX_KEYS).toBe(commonModule.SECONDARY_PAYLOAD_MAX_KEYS);
+  expect(schemaIndex.SECONDARY_PAYLOAD_MAX_BYTES).toBe(commonModule.SECONDARY_PAYLOAD_MAX_BYTES);
 });

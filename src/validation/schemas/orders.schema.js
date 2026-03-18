@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { checkoutCustomerSchema, checkoutItemSchema } from './checkout.schema.js';
+import { boundedSecondaryPayloadSchema } from './common.schema.js';
 
 const uuidSchema = z.string().uuid('id must be a valid UUID');
 
@@ -16,7 +17,7 @@ export const ordersSchemas = {
     eventId: z.string().min(1).max(255),
     orderId: uuidSchema.optional(),
     stripePaymentIntentId: z.string().min(1).max(255).optional(),
-    payload: z.record(z.any()).optional(),
+    payload: boundedSecondaryPayloadSchema.optional(),
   }).strict({ message: 'unknown field in payment webhook payload' }).refine((value) => value.orderId || value.stripePaymentIntentId, {
     message: 'orderId or stripePaymentIntentId is required',
     path: ['orderId'],

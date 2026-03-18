@@ -1,9 +1,10 @@
 import { z } from 'zod';
+import { boundedSecondaryPayloadSchema } from './common.schema.js';
 
 export const analyticsSchemas = {
   track: z.object({
     eventType: z.string().trim().min(1).max(100),
-    payload: z.record(z.any()).default({}),
+    payload: boundedSecondaryPayloadSchema.default({}),
   }).strict({ message: 'unknown field in analytics payload' }),
   listQuery: z.object({
     eventType: z.string().trim().min(1).max(100).optional(),
