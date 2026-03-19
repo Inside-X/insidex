@@ -6,3 +6,4 @@ export { ordersSchemas } from './orders.schema.js';
 export { analyticsSchemas } from './analytics.schema.js';
 export { paymentsSchemas } from './payments.schema.js';
 export { commonSchemas, boundedSecondaryPayloadSchema, SECONDARY_PAYLOAD_MAX_KEYS, SECONDARY_PAYLOAD_MAX_BYTES } from './common.schema.js';
+export { adminProductsSchemas } from './admin-products.schema.js';
