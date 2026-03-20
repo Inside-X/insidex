@@ -22,8 +22,13 @@ enum OrderStatus {
 
 enum ProductStatus {
   draft
+  published
   active
   archived
+}
+
+enum ProductImageKind {
+  image
 }
 
 enum StockStatus {
@@ -56,6 +61,7 @@ model Product {
   slug            String           @unique @db.VarChar(255)
   name            String           @db.VarChar(255)
   description     String?
+  shortDescription String?         @map("short_description")
   status          ProductStatus    @default(draft)
   price           Decimal          @db.Decimal(12, 2)
   currency        String           @default("EUR") @db.VarChar(3)
@@ -86,8 +92,10 @@ model ProductImage {
   productId String   @map("product_id") @db.Uuid
   url       String
   alt       String   @db.VarChar(255)
-  width     Int
-  height    Int
+  width     Int?
+  height    Int?
+  isPrimary Boolean          @default(false) @map("is_primary")
+  kind      ProductImageKind @default(image)
   position  Int
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
