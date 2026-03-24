@@ -51,6 +51,37 @@ router.post(
   },
 );
 
+router.get(
+  '/',
+  async (_req, res, next) => {
+    try {
+      const products = await productRepository.listAdminProducts();
+
+      return res.status(200).json({
+        data: products.map((product) => toContractProduct(product, toContractMedia(product.images ?? []))),
+      });
+    } catch (error) {
+      return next(error);
+    }
+  },
+);
+
+router.get(
+  '/:id',
+  validate(adminProductsSchemas.byIdParams, 'params'),
+  async (req, res, next) => {
+    try {
+      const product = await productRepository.findAdminProductById(req.params.id);
+
+      return res.status(200).json({
+        data: toContractProduct(product, toContractMedia(product.images ?? [])),
+      });
+    } catch (error) {
+      return next(error);
+    }
+  },
+);
+
 router.patch(
   '/:id',
   validate(adminProductsSchemas.byIdParams, 'params'),

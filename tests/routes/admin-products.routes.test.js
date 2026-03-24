@@ -22,6 +22,146 @@ describe('admin products routes', () => {
     jest.restoreAllMocks();
   });
 
+  test('list success via repository', async () => {
+    jest.spyOn(productRepository, 'listAdminProducts').mockResolvedValueOnce([
+      {
+        id: 'prod_001',
+        name: 'Amani Chair',
+        slug: 'amani-chair',
+        shortDescription: 'Oak chair with woven seat.',
+        description: 'Full product description.',
+        price: '129.90',
+        currency: 'EUR',
+        stock: 8,
+        status: 'published',
+        images: [
+          {
+            id: 'media_002',
+            url: 'https://cdn.example.com/products/amani-chair/side.jpg',
+            alt: 'Amani Chair side view',
+            position: 1,
+            isPrimary: false,
+            kind: 'image',
+          },
+          {
+            id: 'media_001',
+            url: 'https://cdn.example.com/products/amani-chair/main.jpg',
+            alt: 'Amani Chair front view',
+            position: 0,
+            isPrimary: true,
+            kind: 'image',
+          },
+        ],
+      },
+    ]);
+
+    const response = await request(app)
+      .get('/api/admin/products')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(productRepository.listAdminProducts).toHaveBeenCalledWith();
+    expect(response.body).toEqual({
+      data: [
+        {
+          id: 'prod_001',
+          name: 'Amani Chair',
+          slug: 'amani-chair',
+          shortDescription: 'Oak chair with woven seat.',
+          description: 'Full product description.',
+          price: '129.90',
+          currency: 'EUR',
+          stock: 8,
+          status: 'published',
+          media: [
+            validMedia[0],
+            {
+              id: 'media_002',
+              url: 'https://cdn.example.com/products/amani-chair/side.jpg',
+              alt: 'Amani Chair side view',
+              sortOrder: 1,
+              isPrimary: false,
+              kind: 'image',
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  test('detail success via repository', async () => {
+    jest.spyOn(productRepository, 'findAdminProductById').mockResolvedValueOnce({
+      id: validId,
+      name: 'Amani Chair',
+      slug: 'amani-chair',
+      shortDescription: 'Oak chair with woven seat.',
+      description: 'Full product description.',
+      price: '129.90',
+      currency: 'EUR',
+      stock: 8,
+      status: 'draft',
+      images: [
+        {
+          id: 'media_001',
+          url: 'https://cdn.example.com/products/amani-chair/main.jpg',
+          alt: 'Amani Chair front view',
+          position: 0,
+          isPrimary: true,
+          kind: 'image',
+        },
+      ],
+    });
+
+    const response = await request(app)
+      .get(`/api/admin/products/${validId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(productRepository.findAdminProductById).toHaveBeenCalledWith(validId);
+    expect(response.body).toEqual({
+      data: {
+        id: validId,
+        name: 'Amani Chair',
+        slug: 'amani-chair',
+        shortDescription: 'Oak chair with woven seat.',
+        description: 'Full product description.',
+        price: '129.90',
+        currency: 'EUR',
+        stock: 8,
+        status: 'draft',
+        media: validMedia,
+      },
+    });
+  });
+
+  test('detail invalid UUID param rejection', async () => {
+    const response = await request(app)
+      .get('/api/admin/products/not-a-uuid')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(400);
+
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    expect(response.body.error.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: 'id', message: 'id must be a valid UUID' }),
+      ]),
+    );
+  });
+
+  test('detail repository not-found failure propagates through error stack', async () => {
+    const notFound = new Error('Database record not found');
+    notFound.statusCode = 404;
+    notFound.code = 'DB_RECORD_NOT_FOUND';
+    jest.spyOn(productRepository, 'findAdminProductById').mockRejectedValueOnce(notFound);
+
+    const response = await request(app)
+      .get(`/api/admin/products/${validId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(404);
+
+    expect(response.body.error.code).toBe('DB_RECORD_NOT_FOUND');
+  });
+
   test('create success via repository', async () => {
     const payload = {
       name: 'Amani Chair',

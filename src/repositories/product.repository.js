@@ -61,6 +61,33 @@ export const productRepository = {
       });
     } catch (error) { normalizeDbError(error, { repository: 'product', operation: 'createAdminProduct' }); }
   },
+  async listAdminProducts() {
+    try {
+      return await prisma.product.findMany({
+        orderBy: [
+          { createdAt: 'desc' },
+          { id: 'asc' },
+        ],
+        include: {
+          images: {
+            orderBy: { position: 'asc' },
+          },
+        },
+      });
+    } catch (error) { normalizeDbError(error, { repository: 'product', operation: 'listAdminProducts' }); }
+  },
+  async findAdminProductById(id) {
+    try {
+      return await prisma.product.findUniqueOrThrow({
+        where: { id },
+        include: {
+          images: {
+            orderBy: { position: 'asc' },
+          },
+        },
+      });
+    } catch (error) { normalizeDbError(error, { repository: 'product', operation: 'findAdminProductById' }); }
+  },
   async updateAdminProductById(id, payload) {
     try {
       return await prisma.product.update({
