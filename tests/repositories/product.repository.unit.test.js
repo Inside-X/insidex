@@ -126,6 +126,11 @@ describe('productRepository', () => {
           ],
         },
       },
+      include: {
+        images: {
+          orderBy: { position: 'asc' },
+        },
+      },
     });
     expect(normalizeDbError).not.toHaveBeenCalled();
   });
@@ -156,6 +161,11 @@ describe('productRepository', () => {
         currency: 'EUR',
         stock: 5,
         status: 'published',
+      },
+      include: {
+        images: {
+          orderBy: { position: 'asc' },
+        },
       },
     });
   });
@@ -230,6 +240,11 @@ describe('productRepository', () => {
               position: 1,
             },
           ],
+        },
+      },
+      include: {
+        images: {
+          orderBy: { position: 'asc' },
         },
       },
     });

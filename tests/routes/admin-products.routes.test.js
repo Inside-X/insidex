@@ -1,6 +1,8 @@
+import { jest } from '@jest/globals';
 import request from 'supertest';
 import app from '../../src/app.js';
 import { buildTestToken } from '../helpers/jwt.helper.js';
+import { productRepository } from '../../src/repositories/product.repository.js';
 
 const adminToken = buildTestToken({ role: 'admin', id: 'admin-products-1' });
 const validId = '00000000-0000-0000-0000-000000000123';
@@ -15,8 +17,12 @@ const validMedia = [
   },
 ];
 
-describe('admin products routes scaffolding', () => {
-  test('create success', async () => {
+describe('admin products routes', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('create success via repository', async () => {
     const payload = {
       name: 'Amani Chair',
       slug: 'amani-chair',
@@ -28,17 +34,47 @@ describe('admin products routes scaffolding', () => {
       media: validMedia,
     };
 
+    jest.spyOn(productRepository, 'createAdminProduct').mockResolvedValueOnce({
+      id: 'prod_123',
+      name: 'Amani Chair',
+      slug: 'amani-chair',
+      shortDescription: 'Oak chair with woven seat.',
+      description: 'Full product description.',
+      price: '129.90',
+      currency: 'EUR',
+      stock: 8,
+      status: 'draft',
+      images: [
+        {
+          id: 'media_001',
+          url: 'https://cdn.example.com/products/amani-chair/main.jpg',
+          alt: 'Amani Chair front view',
+          position: 0,
+          isPrimary: true,
+          kind: 'image',
+        },
+      ],
+    });
+
     const response = await request(app)
       .post('/api/admin/products')
       .set('Authorization', `Bearer ${adminToken}`)
       .send(payload)
       .expect(201);
 
+    expect(productRepository.createAdminProduct).toHaveBeenCalledWith(payload);
     expect(response.body).toEqual({
       data: {
-        id: 'prod_placeholder_create',
-        ...payload,
+        id: 'prod_123',
+        name: 'Amani Chair',
+        slug: 'amani-chair',
+        shortDescription: 'Oak chair with woven seat.',
+        description: 'Full product description.',
+        price: '129.90',
+        currency: 'EUR',
+        stock: 8,
         status: 'draft',
+        media: validMedia,
       },
     });
   });
@@ -65,7 +101,7 @@ describe('admin products routes scaffolding', () => {
     );
   });
 
-  test('update success', async () => {
+  test('update success via repository', async () => {
     const payload = {
       name: 'Amani Lounge Chair',
       slug: 'amani-lounge-chair',
@@ -74,8 +110,30 @@ describe('admin products routes scaffolding', () => {
       price: '149.90',
       currency: 'EUR',
       stock: 5,
-      status: 'draft',
+      status: 'published',
     };
+
+    jest.spyOn(productRepository, 'updateAdminProductById').mockResolvedValueOnce({
+      id: validId,
+      name: 'Amani Lounge Chair',
+      slug: 'amani-lounge-chair',
+      shortDescription: 'Updated short summary.',
+      description: 'Updated full description.',
+      price: '149.90',
+      currency: 'EUR',
+      stock: 5,
+      status: 'published',
+      images: [
+        {
+          id: 'media_010',
+          url: 'https://cdn.example.com/products/amani-chair/detail.jpg',
+          alt: 'Amani Chair detail view',
+          position: 3,
+          isPrimary: false,
+          kind: 'image',
+        },
+      ],
+    });
 
     const response = await request(app)
       .patch(`/api/admin/products/${validId}`)
@@ -83,11 +141,28 @@ describe('admin products routes scaffolding', () => {
       .send(payload)
       .expect(200);
 
+    expect(productRepository.updateAdminProductById).toHaveBeenCalledWith(validId, payload);
     expect(response.body).toEqual({
       data: {
         id: validId,
-        ...payload,
-        media: [],
+        name: 'Amani Lounge Chair',
+        slug: 'amani-lounge-chair',
+        shortDescription: 'Updated short summary.',
+        description: 'Updated full description.',
+        price: '149.90',
+        currency: 'EUR',
+        stock: 5,
+        status: 'published',
+        media: [
+          {
+            id: 'media_010',
+            url: 'https://cdn.example.com/products/amani-chair/detail.jpg',
+            alt: 'Amani Chair detail view',
+            sortOrder: 3,
+            isPrimary: false,
+            kind: 'image',
+          },
+        ],
       },
     });
   });
@@ -107,13 +182,16 @@ describe('admin products routes scaffolding', () => {
     );
   });
 
-  test('publish success', async () => {
+  test('publish success via repository', async () => {
+    jest.spyOn(productRepository, 'publishProductById').mockResolvedValueOnce({ id: validId, status: 'published' });
+
     const response = await request(app)
       .patch(`/api/admin/products/${validId}/publish`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({})
       .expect(200);
 
+    expect(productRepository.publishProductById).toHaveBeenCalledWith(validId);
     expect(response.body).toEqual({
       data: {
         id: validId,
@@ -132,13 +210,16 @@ describe('admin products routes scaffolding', () => {
     expect(response.body.error.code).toBe('VALIDATION_ERROR');
   });
 
-  test('unpublish success', async () => {
+  test('unpublish success via repository', async () => {
+    jest.spyOn(productRepository, 'unpublishProductById').mockResolvedValueOnce({ id: validId, status: 'draft' });
+
     const response = await request(app)
       .patch(`/api/admin/products/${validId}/unpublish`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({})
       .expect(200);
 
+    expect(productRepository.unpublishProductById).toHaveBeenCalledWith(validId);
     expect(response.body).toEqual({
       data: {
         id: validId,
@@ -147,10 +228,9 @@ describe('admin products routes scaffolding', () => {
     });
   });
 
-  test('replaceMedia success', async () => {
+  test('replaceMedia success via repository', async () => {
     const payload = {
       media: [
-        ...validMedia,
         {
           id: 'media_002',
           url: 'https://cdn.example.com/products/amani-chair/side.jpg',
@@ -159,8 +239,31 @@ describe('admin products routes scaffolding', () => {
           isPrimary: false,
           kind: 'image',
         },
+        ...validMedia,
       ],
     };
+
+    jest.spyOn(productRepository, 'replaceProductMediaById').mockResolvedValueOnce({
+      id: validId,
+      images: [
+        {
+          id: 'media_001',
+          url: 'https://cdn.example.com/products/amani-chair/main.jpg',
+          alt: 'Amani Chair front view',
+          position: 0,
+          isPrimary: true,
+          kind: 'image',
+        },
+        {
+          id: 'media_002',
+          url: 'https://cdn.example.com/products/amani-chair/side.jpg',
+          alt: 'Amani Chair side view',
+          position: 1,
+          isPrimary: false,
+          kind: 'image',
+        },
+      ],
+    });
 
     const response = await request(app)
       .put(`/api/admin/products/${validId}/media`)
@@ -168,12 +271,60 @@ describe('admin products routes scaffolding', () => {
       .send(payload)
       .expect(200);
 
+    expect(productRepository.replaceProductMediaById).toHaveBeenCalledWith(validId, payload.media);
     expect(response.body).toEqual({
       data: {
         id: validId,
-        media: payload.media,
+        media: [
+          validMedia[0],
+          {
+            id: 'media_002',
+            url: 'https://cdn.example.com/products/amani-chair/side.jpg',
+            alt: 'Amani Chair side view',
+            sortOrder: 1,
+            isPrimary: false,
+            kind: 'image',
+          },
+        ],
       },
     });
+  });
+
+  test('repository not-found failure propagates through error stack', async () => {
+    const notFound = new Error('Database record not found');
+    notFound.statusCode = 404;
+    notFound.code = 'DB_RECORD_NOT_FOUND';
+    jest.spyOn(productRepository, 'updateAdminProductById').mockRejectedValueOnce(notFound);
+
+    const response = await request(app)
+      .patch(`/api/admin/products/${validId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Updated Name' })
+      .expect(404);
+
+    expect(response.body.error.code).toBe('DB_RECORD_NOT_FOUND');
+  });
+
+  test('repository conflict failure propagates through error stack', async () => {
+    const conflict = new Error('Database unique constraint violation');
+    conflict.statusCode = 409;
+    conflict.code = 'DB_UNIQUE_CONSTRAINT';
+    jest.spyOn(productRepository, 'createAdminProduct').mockRejectedValueOnce(conflict);
+
+    const response = await request(app)
+      .post('/api/admin/products')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'Amani Chair',
+        slug: 'amani-chair',
+        description: 'Full product description.',
+        price: '129.90',
+        currency: 'EUR',
+        stock: 8,
+      })
+      .expect(409);
+
+    expect(response.body.error.code).toBe('DB_UNIQUE_CONSTRAINT');
   });
 
   test('replaceMedia rejects duplicate sortOrder', async () => {

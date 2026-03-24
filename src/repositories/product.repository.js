@@ -50,10 +50,29 @@ export const productRepository = {
       data.images = { create: mapAdminMediaCreate(payload.media) };
     }
 
-    try { return await prisma.product.create({ data }); } catch (error) { normalizeDbError(error, { repository: 'product', operation: 'createAdminProduct' }); }
+    try {
+      return await prisma.product.create({
+        data,
+        include: {
+          images: {
+            orderBy: { position: 'asc' },
+          },
+        },
+      });
+    } catch (error) { normalizeDbError(error, { repository: 'product', operation: 'createAdminProduct' }); }
   },
   async updateAdminProductById(id, payload) {
-    try { return await prisma.product.update({ where: { id }, data: mapAdminProductCoreData(payload) }); } catch (error) { normalizeDbError(error, { repository: 'product', operation: 'updateAdminProductById' }); }
+    try {
+      return await prisma.product.update({
+        where: { id },
+        data: mapAdminProductCoreData(payload),
+        include: {
+          images: {
+            orderBy: { position: 'asc' },
+          },
+        },
+      });
+    } catch (error) { normalizeDbError(error, { repository: 'product', operation: 'updateAdminProductById' }); }
   },
   async publishProductById(id) {
     try { return await prisma.product.update({ where: { id }, data: { status: 'published' } }); } catch (error) { normalizeDbError(error, { repository: 'product', operation: 'publishProductById' }); }
@@ -69,6 +88,11 @@ export const productRepository = {
           images: {
             deleteMany: {},
             create: mapAdminMediaCreate(media),
+          },
+        },
+        include: {
+          images: {
+            orderBy: { position: 'asc' },
           },
         },
       });
