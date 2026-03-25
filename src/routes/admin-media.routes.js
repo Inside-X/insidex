@@ -22,12 +22,21 @@ const uploadInitSchema = z.object({
   sha256: z.string().trim().min(1, 'sha256 must not be empty').optional(),
 }).strict({ message: 'unknown field in admin media upload-init payload' });
 
+const uploadFinalizeSchema = z.object({
+  uploadId: z.string({ required_error: 'uploadId is required' }).trim().min(1, 'uploadId is required'),
+  idempotencyKey: z.string({ required_error: 'idempotencyKey is required' }).trim().min(1, 'idempotencyKey is required'),
+}).strict({ message: 'unknown field in admin media upload-finalize payload' });
+
+function resolveMediaStorageProviderFactory(req) {
+  return req.app?.locals?.mediaStorageProviderFactory || createMediaStorageProvider;
+}
+
 router.post(
   '/uploads/init',
   validate(uploadInitSchema),
   async (req, res, next) => {
     try {
-      const provider = createMediaStorageProvider();
+      const provider = resolveMediaStorageProviderFactory(req)();
       const upload = await provider.createUploadTarget({
         filename: req.body.filename,
         mimeType: req.body.mimeType,
@@ -38,6 +47,37 @@ router.post(
       return res.status(200).json({
         data: {
           upload,
+        },
+      });
+    } catch (error) {
+      return next(error);
+    }
+  },
+);
+
+router.post(
+  '/uploads/finalize',
+  validate(uploadFinalizeSchema),
+  async (req, res, next) => {
+    try {
+      const provider = resolveMediaStorageProviderFactory(req)();
+      const asset = await provider.finalizeUpload({
+        uploadId: req.body.uploadId,
+        idempotencyKey: req.body.idempotencyKey,
+      });
+
+      return res.status(200).json({
+        data: {
+          asset: {
+            assetId: asset.assetId,
+            url: asset.url,
+            mimeType: asset.mimeType,
+            sizeBytes: asset.sizeBytes,
+            width: asset.width,
+            height: asset.height,
+            checksumSha256: asset.checksumSha256,
+            createdAt: asset.createdAt,
+          },
         },
       });
     } catch (error) {

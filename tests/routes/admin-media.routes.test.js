@@ -26,6 +26,7 @@ describe('admin media routes', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+    delete app.locals.mediaStorageProviderFactory;
     restoreEnv();
   });
 
@@ -146,6 +147,121 @@ describe('admin media routes', () => {
         filename: 'amani-chair-main.jpg',
         mimeType: 'image/jpeg',
         sizeBytes: 734003,
+      })
+      .expect(403);
+  });
+
+  test('upload-finalize success with valid payload', async () => {
+    app.locals.mediaStorageProviderFactory = () => ({
+      createUploadTarget: jest.fn(),
+      finalizeUpload: jest.fn().mockResolvedValue({
+        assetId: 'ast_01H',
+        url: 'https://cdn.example.com/products/amani-chair/main.jpg',
+        mimeType: 'image/jpeg',
+        sizeBytes: 734003,
+        width: 1600,
+        height: 1200,
+        checksumSha256: 'abc123',
+        createdAt: '2026-03-25T12:00:10.000Z',
+      }),
+    });
+
+    const response = await request(app)
+      .post('/api/admin/media/uploads/finalize')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        uploadId: 'ul_01H',
+        idempotencyKey: 'adm-media-finalize-0001',
+      })
+      .expect(200);
+
+    expect(response.body).toEqual({
+      data: {
+        asset: {
+          assetId: 'ast_01H',
+          url: 'https://cdn.example.com/products/amani-chair/main.jpg',
+          mimeType: 'image/jpeg',
+          sizeBytes: 734003,
+          width: 1600,
+          height: 1200,
+          checksumSha256: 'abc123',
+          createdAt: '2026-03-25T12:00:10.000Z',
+        },
+      },
+    });
+  });
+
+  test('upload-finalize missing or invalid idempotencyKey rejection', async () => {
+    const response = await request(app)
+      .post('/api/admin/media/uploads/finalize')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        uploadId: 'ul_01H',
+        idempotencyKey: '   ',
+      })
+      .expect(400);
+
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    expect(response.body.error.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: 'idempotencyKey' }),
+      ]),
+    );
+  });
+
+  test('upload-finalize rejects unknown fields', async () => {
+    const response = await request(app)
+      .post('/api/admin/media/uploads/finalize')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        uploadId: 'ul_01H',
+        idempotencyKey: 'adm-media-finalize-0001',
+        unknown: true,
+      })
+      .expect(400);
+
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  test('upload-finalize disabled provider path propagates through error stack', async () => {
+    const disabledError = new Error('Media uploads are disabled');
+    disabledError.statusCode = 503;
+    disabledError.code = 'MEDIA_UPLOADS_DISABLED';
+
+    app.locals.mediaStorageProviderFactory = () => ({
+      createUploadTarget: jest.fn(),
+      finalizeUpload: jest.fn().mockRejectedValue(disabledError),
+    });
+
+    const response = await request(app)
+      .post('/api/admin/media/uploads/finalize')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        uploadId: 'ul_01H',
+        idempotencyKey: 'adm-media-finalize-0001',
+      })
+      .expect(503);
+
+    expect(response.body.error.code).toBe('MEDIA_UPLOADS_DISABLED');
+  });
+
+  test('upload-finalize requires authentication', async () => {
+    await request(app)
+      .post('/api/admin/media/uploads/finalize')
+      .send({
+        uploadId: 'ul_01H',
+        idempotencyKey: 'adm-media-finalize-0001',
+      })
+      .expect(401);
+  });
+
+  test('upload-finalize enforces admin permission', async () => {
+    await request(app)
+      .post('/api/admin/media/uploads/finalize')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        uploadId: 'ul_01H',
+        idempotencyKey: 'adm-media-finalize-0001',
       })
       .expect(403);
   });
