@@ -38,6 +38,16 @@ function resolvePaymentsProvider(env = process.env) {
   return provider;
 }
 
+function resolveMediaUploadProvider(env = process.env) {
+  const provider = String(env.MEDIA_UPLOAD_PROVIDER || '').trim().toLowerCase();
+  if (!provider) return null;
+  if (!['stub'].includes(provider)) {
+    return null;
+  }
+
+  return provider;
+}
+
 function validatePaymentsConfig(env, errors) {
   const paymentsEnabled = parseBoolean(env.PAYMENTS_ENABLED);
   if (!paymentsEnabled) return;
@@ -69,12 +79,33 @@ function validatePaymentsConfig(env, errors) {
   }
 }
 
+function validateMediaUploadsConfig(env, errors) {
+  const mediaUploadsEnabled = parseBoolean(env.MEDIA_UPLOADS_ENABLED);
+  if (!mediaUploadsEnabled) return;
+
+  const provider = resolveMediaUploadProvider(env);
+  if (!provider) {
+    errors.push('MEDIA_UPLOAD_PROVIDER must be one of: stub when MEDIA_UPLOADS_ENABLED=true');
+    return;
+  }
+
+  if (provider === 'stub' && !env.MEDIA_UPLOAD_BASE_URL) {
+    errors.push('MEDIA_UPLOAD_BASE_URL is required when MEDIA_UPLOADS_ENABLED=true and MEDIA_UPLOAD_PROVIDER=stub');
+    return;
+  }
+
+  if (provider === 'stub' && !hasValidCorsOrigin(env.MEDIA_UPLOAD_BASE_URL)) {
+    errors.push('MEDIA_UPLOAD_BASE_URL must be a valid absolute http(s) URL when MEDIA_UPLOADS_ENABLED=true and MEDIA_UPLOAD_PROVIDER=stub');
+  }
+}
+
 export function validateBootConfig(env = process.env) {
   const errors = [];
 
   errors.push(...getJwtConfigValidationErrors(env));
 
   validatePaymentsConfig(env, errors);
+  validateMediaUploadsConfig(env, errors);
 
   if (!env.REDIS_URL) {
     errors.push('REDIS_URL is required');

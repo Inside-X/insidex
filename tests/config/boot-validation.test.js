@@ -188,5 +188,154 @@ describe('boot configuration validation', () => {
     expect(exitSpy).not.toHaveBeenCalled();
     exitSpy.mockRestore();
   });
-  
+
+  test('validateBootConfig keeps media upload disabled mode safe by default', () => {
+    const result = validateBootConfig({
+      NODE_ENV: 'production',
+      JWT_ACCESS_SECRET: 'test-jwt-access-secret-1234567890abcdef',
+      JWT_ACCESS_ISSUER: 'insidex-auth',
+      JWT_ACCESS_AUDIENCE: 'insidex-api',
+      JWT_ACCESS_EXPIRY: '15m',
+      JWT_REFRESH_SECRET: 'test-jwt-refresh-secret-1234567890abcdef',
+      JWT_REFRESH_ISSUER: 'insidex-auth-refresh',
+      JWT_REFRESH_AUDIENCE: 'insidex-api-refresh',
+      JWT_REFRESH_EXPIRY: '30m',
+      JWT_SECRET: 'test-jwt-unified-secret-1234567890abcdef',
+      REDIS_URL: 'redis://127.0.0.1:6379',
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/app',
+      CORS_ORIGIN: 'https://app.example.com',
+      MEDIA_UPLOADS_ENABLED: 'false',
+    });
+
+    expect(result.valid).toBe(true);
+    expect(result.errors).not.toEqual(expect.arrayContaining([
+      expect.stringContaining('MEDIA_UPLOAD_PROVIDER'),
+      expect.stringContaining('MEDIA_UPLOAD_BASE_URL'),
+    ]));
+  });
+
+  test('validateBootConfig rejects invalid media upload provider mode when enabled', () => {
+    const result = validateBootConfig({
+      NODE_ENV: 'production',
+      JWT_ACCESS_SECRET: 'test-jwt-access-secret-1234567890abcdef',
+      JWT_ACCESS_ISSUER: 'insidex-auth',
+      JWT_ACCESS_AUDIENCE: 'insidex-api',
+      JWT_ACCESS_EXPIRY: '15m',
+      JWT_REFRESH_SECRET: 'test-jwt-refresh-secret-1234567890abcdef',
+      JWT_REFRESH_ISSUER: 'insidex-auth-refresh',
+      JWT_REFRESH_AUDIENCE: 'insidex-api-refresh',
+      JWT_REFRESH_EXPIRY: '30m',
+      JWT_SECRET: 'test-jwt-unified-secret-1234567890abcdef',
+      REDIS_URL: 'redis://127.0.0.1:6379',
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/app',
+      CORS_ORIGIN: 'https://app.example.com',
+      MEDIA_UPLOADS_ENABLED: 'true',
+      MEDIA_UPLOAD_PROVIDER: 's3',
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual(expect.arrayContaining([
+      'MEDIA_UPLOAD_PROVIDER must be one of: stub when MEDIA_UPLOADS_ENABLED=true',
+    ]));
+  });
+
+  test('validateBootConfig requires provider config when media uploads are enabled', () => {
+    const result = validateBootConfig({
+      NODE_ENV: 'production',
+      JWT_ACCESS_SECRET: 'test-jwt-access-secret-1234567890abcdef',
+      JWT_ACCESS_ISSUER: 'insidex-auth',
+      JWT_ACCESS_AUDIENCE: 'insidex-api',
+      JWT_ACCESS_EXPIRY: '15m',
+      JWT_REFRESH_SECRET: 'test-jwt-refresh-secret-1234567890abcdef',
+      JWT_REFRESH_ISSUER: 'insidex-auth-refresh',
+      JWT_REFRESH_AUDIENCE: 'insidex-api-refresh',
+      JWT_REFRESH_EXPIRY: '30m',
+      JWT_SECRET: 'test-jwt-unified-secret-1234567890abcdef',
+      REDIS_URL: 'redis://127.0.0.1:6379',
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/app',
+      CORS_ORIGIN: 'https://app.example.com',
+      MEDIA_UPLOADS_ENABLED: 'true',
+      MEDIA_UPLOAD_PROVIDER: 'stub',
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual(expect.arrayContaining([
+      'MEDIA_UPLOAD_BASE_URL is required when MEDIA_UPLOADS_ENABLED=true and MEDIA_UPLOAD_PROVIDER=stub',
+    ]));
+  });
+
+  test('validateBootConfig accepts stub media upload config when enabled', () => {
+    const result = validateBootConfig({
+      NODE_ENV: 'production',
+      JWT_ACCESS_SECRET: 'test-jwt-access-secret-1234567890abcdef',
+      JWT_ACCESS_ISSUER: 'insidex-auth',
+      JWT_ACCESS_AUDIENCE: 'insidex-api',
+      JWT_ACCESS_EXPIRY: '15m',
+      JWT_REFRESH_SECRET: 'test-jwt-refresh-secret-1234567890abcdef',
+      JWT_REFRESH_ISSUER: 'insidex-auth-refresh',
+      JWT_REFRESH_AUDIENCE: 'insidex-api-refresh',
+      JWT_REFRESH_EXPIRY: '30m',
+      JWT_SECRET: 'test-jwt-unified-secret-1234567890abcdef',
+      REDIS_URL: 'redis://127.0.0.1:6379',
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/app',
+      CORS_ORIGIN: 'https://app.example.com',
+      MEDIA_UPLOADS_ENABLED: 'true',
+      MEDIA_UPLOAD_PROVIDER: 'stub',
+      MEDIA_UPLOAD_BASE_URL: 'https://uploads.example.com',
+    });
+
+    expect(result.valid).toBe(true);
+  });
+
+  test('validateBootConfig rejects relative MEDIA_UPLOAD_BASE_URL when media uploads are enabled', () => {
+    const result = validateBootConfig({
+      NODE_ENV: 'production',
+      JWT_ACCESS_SECRET: 'test-jwt-access-secret-1234567890abcdef',
+      JWT_ACCESS_ISSUER: 'insidex-auth',
+      JWT_ACCESS_AUDIENCE: 'insidex-api',
+      JWT_ACCESS_EXPIRY: '15m',
+      JWT_REFRESH_SECRET: 'test-jwt-refresh-secret-1234567890abcdef',
+      JWT_REFRESH_ISSUER: 'insidex-auth-refresh',
+      JWT_REFRESH_AUDIENCE: 'insidex-api-refresh',
+      JWT_REFRESH_EXPIRY: '30m',
+      JWT_SECRET: 'test-jwt-unified-secret-1234567890abcdef',
+      REDIS_URL: 'redis://127.0.0.1:6379',
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/app',
+      CORS_ORIGIN: 'https://app.example.com',
+      MEDIA_UPLOADS_ENABLED: 'true',
+      MEDIA_UPLOAD_PROVIDER: 'stub',
+      MEDIA_UPLOAD_BASE_URL: '/relative/path',
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual(expect.arrayContaining([
+      'MEDIA_UPLOAD_BASE_URL must be a valid absolute http(s) URL when MEDIA_UPLOADS_ENABLED=true and MEDIA_UPLOAD_PROVIDER=stub',
+    ]));
+  });
+
+  test('validateBootConfig rejects non-http(s) MEDIA_UPLOAD_BASE_URL when media uploads are enabled', () => {
+    const result = validateBootConfig({
+      NODE_ENV: 'production',
+      JWT_ACCESS_SECRET: 'test-jwt-access-secret-1234567890abcdef',
+      JWT_ACCESS_ISSUER: 'insidex-auth',
+      JWT_ACCESS_AUDIENCE: 'insidex-api',
+      JWT_ACCESS_EXPIRY: '15m',
+      JWT_REFRESH_SECRET: 'test-jwt-refresh-secret-1234567890abcdef',
+      JWT_REFRESH_ISSUER: 'insidex-auth-refresh',
+      JWT_REFRESH_AUDIENCE: 'insidex-api-refresh',
+      JWT_REFRESH_EXPIRY: '30m',
+      JWT_SECRET: 'test-jwt-unified-secret-1234567890abcdef',
+      REDIS_URL: 'redis://127.0.0.1:6379',
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/app',
+      CORS_ORIGIN: 'https://app.example.com',
+      MEDIA_UPLOADS_ENABLED: 'true',
+      MEDIA_UPLOAD_PROVIDER: 'stub',
+      MEDIA_UPLOAD_BASE_URL: 'ftp://uploads.example.com',
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual(expect.arrayContaining([
+      'MEDIA_UPLOAD_BASE_URL must be a valid absolute http(s) URL when MEDIA_UPLOADS_ENABLED=true and MEDIA_UPLOAD_PROVIDER=stub',
+    ]));
+  });
 });
