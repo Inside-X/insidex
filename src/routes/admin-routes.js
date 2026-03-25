@@ -3,12 +3,14 @@ import { authenticate } from '../middlewares/authenticate.js';
 import { requirePermission } from '../middlewares/requirePermission.js';
 import prisma from '../lib/prisma.js';
 import adminProductsRouter from './admin-products.routes.js';
+import adminMediaRouter from './admin-media.routes.js';
 
 const adminRouter = express.Router();
 
 // Tous les endpoints de ce router exigent un user authentifié avec rôle admin.
 adminRouter.use(authenticate, requirePermission('admin:health:read'));
 adminRouter.use('/products', adminProductsRouter);
+adminRouter.use('/media', adminMediaRouter);
 
 // GET /api/admin/health
 adminRouter.get('/health', (req, res) => {
