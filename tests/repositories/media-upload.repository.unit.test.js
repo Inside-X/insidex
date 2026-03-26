@@ -15,6 +15,7 @@ async function loadMediaUploadRepository({ normalizeImpl } = {}) {
     },
     mediaUploadedAsset: {
       create: jest.fn(),
+      findMany: jest.fn(),
     },
   };
   prismaMock.$transaction = jest.fn(async (callback) => callback({
@@ -190,6 +191,40 @@ describe('mediaUploadRepository', () => {
       repository: 'mediaUpload',
       operation: 'findUploadSessionById',
     });
+  });
+
+  test('findFinalizedAssetsByUrls queries media assets by URL list', async () => {
+    const { mediaUploadRepository, prismaMock } = await loadMediaUploadRepository();
+    prismaMock.mediaUploadedAsset.findMany.mockResolvedValueOnce([{ url: 'https://cdn.example.com/assets/a.jpg' }]);
+
+    const result = await mediaUploadRepository.findFinalizedAssetsByUrls([
+      'https://cdn.example.com/assets/a.jpg',
+      'https://cdn.example.com/assets/b.jpg',
+    ]);
+
+    expect(prismaMock.mediaUploadedAsset.findMany).toHaveBeenCalledWith({
+      where: {
+        url: {
+          in: [
+            'https://cdn.example.com/assets/a.jpg',
+            'https://cdn.example.com/assets/b.jpg',
+          ],
+        },
+      },
+      select: {
+        url: true,
+      },
+    });
+    expect(result).toEqual([{ url: 'https://cdn.example.com/assets/a.jpg' }]);
+  });
+
+  test('findFinalizedAssetsByUrls returns empty list for empty input', async () => {
+    const { mediaUploadRepository, prismaMock } = await loadMediaUploadRepository();
+
+    const result = await mediaUploadRepository.findFinalizedAssetsByUrls([]);
+
+    expect(result).toEqual([]);
+    expect(prismaMock.mediaUploadedAsset.findMany).not.toHaveBeenCalled();
   });
 
   test('finalizeUploadByIdempotency returns replayed asset after P2002 conflict', async () => {

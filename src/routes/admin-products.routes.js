@@ -2,8 +2,14 @@ import express from 'express';
 import { validate } from '../validation/validate.middleware.js';
 import { adminProductsSchemas } from '../validation/schemas/admin-products.schema.js';
 import { productRepository } from '../repositories/product.repository.js';
+import { mediaUploadRepository } from '../repositories/media-upload.repository.js';
+import { ValidationError } from '../errors/validation-error.js';
 
 const router = express.Router();
+
+function resolveMediaUploadRepository(req) {
+  return req.app?.locals?.mediaUploadRepository || mediaUploadRepository;
+}
 
 function toContractMedia(media = []) {
   return [...media]
@@ -145,6 +151,21 @@ router.put(
   validate(adminProductsSchemas.replaceMedia),
   async (req, res, next) => {
     try {
+      const urls = req.body.media.map((item) => item.url);
+      const finalizedAssets = await resolveMediaUploadRepository(req).findFinalizedAssetsByUrls(urls);
+      const finalizedUrlSet = new Set(finalizedAssets.map((asset) => asset.url));
+      const invalidUrlDetails = req.body.media
+        .map((item, index) => ({ item, index }))
+        .filter(({ item }) => !finalizedUrlSet.has(item.url))
+        .map(({ index }) => ({
+          field: `media.${index}.url`,
+          message: 'media url must reference a finalized uploaded asset',
+        }));
+
+      if (invalidUrlDetails.length > 0) {
+        throw new ValidationError(invalidUrlDetails);
+      }
+
       const updated = await productRepository.replaceProductMediaById(req.params.id, req.body.media);
 
       return res.status(200).json({

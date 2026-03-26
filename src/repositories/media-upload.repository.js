@@ -47,6 +47,25 @@ export const mediaUploadRepository = {
     } catch (error) { normalizeDbError(error, { repository: 'mediaUpload', operation: 'findUploadSessionById' }); }
   },
 
+  async findFinalizedAssetsByUrls(urls = []) {
+    if (!Array.isArray(urls) || urls.length === 0) return [];
+
+    try {
+      return await prisma.mediaUploadedAsset.findMany({
+        where: {
+          url: {
+            in: urls,
+          },
+        },
+        select: {
+          url: true,
+        },
+      });
+    } catch (error) {
+      normalizeDbError(error, { repository: 'mediaUpload', operation: 'findFinalizedAssetsByUrls' });
+    }
+  },
+
   async finalizeUploadByIdempotency({ uploadId, idempotencyKey, finalizeWithProvider }) {
     try {
       const session = await prisma.mediaUploadSession.findUnique({

@@ -3,6 +3,7 @@ import request from 'supertest';
 import app from '../../src/app.js';
 import { buildTestToken } from '../helpers/jwt.helper.js';
 import { productRepository } from '../../src/repositories/product.repository.js';
+import { mediaUploadRepository } from '../../src/repositories/media-upload.repository.js';
 
 const adminToken = buildTestToken({ role: 'admin', id: 'admin-products-1' });
 const validId = '00000000-0000-0000-0000-000000000123';
@@ -383,6 +384,10 @@ describe('admin products routes', () => {
       ],
     };
 
+    jest.spyOn(mediaUploadRepository, 'findFinalizedAssetsByUrls').mockResolvedValueOnce([
+      { url: 'https://cdn.example.com/products/amani-chair/main.jpg' },
+      { url: 'https://cdn.example.com/products/amani-chair/side.jpg' },
+    ]);
     jest.spyOn(productRepository, 'replaceProductMediaById').mockResolvedValueOnce({
       id: validId,
       images: [
@@ -411,6 +416,10 @@ describe('admin products routes', () => {
       .send(payload)
       .expect(200);
 
+    expect(mediaUploadRepository.findFinalizedAssetsByUrls).toHaveBeenCalledWith([
+      'https://cdn.example.com/products/amani-chair/side.jpg',
+      'https://cdn.example.com/products/amani-chair/main.jpg',
+    ]);
     expect(productRepository.replaceProductMediaById).toHaveBeenCalledWith(validId, payload.media);
     expect(response.body).toEqual({
       data: {
@@ -428,6 +437,42 @@ describe('admin products routes', () => {
         ],
       },
     });
+  });
+
+  test('replaceMedia rejects unknown or non-finalized media URLs', async () => {
+    jest.spyOn(mediaUploadRepository, 'findFinalizedAssetsByUrls').mockResolvedValueOnce([
+      { url: 'https://cdn.example.com/products/amani-chair/main.jpg' },
+    ]);
+    const replaceSpy = jest.spyOn(productRepository, 'replaceProductMediaById');
+
+    const response = await request(app)
+      .put(`/api/admin/products/${validId}/media`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        media: [
+          validMedia[0],
+          {
+            id: 'media_002',
+            url: 'https://cdn.example.com/products/amani-chair/unknown.jpg',
+            alt: 'Unknown image',
+            sortOrder: 1,
+            isPrimary: false,
+            kind: 'image',
+          },
+        ],
+      })
+      .expect(400);
+
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    expect(response.body.error.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: 'media.1.url',
+          message: 'media url must reference a finalized uploaded asset',
+        }),
+      ]),
+    );
+    expect(replaceSpy).not.toHaveBeenCalled();
   });
 
   test('repository not-found failure propagates through error stack', async () => {
