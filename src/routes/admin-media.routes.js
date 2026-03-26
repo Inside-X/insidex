@@ -6,6 +6,7 @@ import {
   MAX_MEDIA_UPLOAD_SIZE_BYTES,
   createMediaStorageProvider,
 } from '../lib/media-storage-provider.js';
+import { mediaUploadRepository } from '../repositories/media-upload.repository.js';
 
 const router = express.Router();
 
@@ -31,6 +32,10 @@ function resolveMediaStorageProviderFactory(req) {
   return req.app?.locals?.mediaStorageProviderFactory || createMediaStorageProvider;
 }
 
+function resolveMediaUploadRepository(req) {
+  return req.app?.locals?.mediaUploadRepository || mediaUploadRepository;
+}
+
 router.post(
   '/uploads/init',
   validate(uploadInitSchema),
@@ -42,6 +47,15 @@ router.post(
         mimeType: req.body.mimeType,
         sizeBytes: req.body.sizeBytes,
         ...(req.body.sha256 !== undefined ? { sha256: req.body.sha256 } : {}),
+      });
+      await resolveMediaUploadRepository(req).createUploadSession({
+        uploadId: upload.uploadId,
+        filename: req.body.filename,
+        mimeType: req.body.mimeType,
+        sizeBytes: req.body.sizeBytes,
+        ...(req.body.sha256 !== undefined ? { sha256: req.body.sha256 } : {}),
+        uploadUrl: upload.uploadUrl,
+        expiresAt: upload.expiresAt,
       });
 
       return res.status(200).json({
@@ -61,9 +75,18 @@ router.post(
   async (req, res, next) => {
     try {
       const provider = resolveMediaStorageProviderFactory(req)();
-      const asset = await provider.finalizeUpload({
+      const asset = await resolveMediaUploadRepository(req).finalizeUploadByIdempotency({
         uploadId: req.body.uploadId,
         idempotencyKey: req.body.idempotencyKey,
+        finalizeWithProvider: async (session) => provider.finalizeUpload({
+          uploadId: req.body.uploadId,
+          idempotencyKey: req.body.idempotencyKey,
+          mimeType: session.mimeType,
+          sizeBytes: session.sizeBytes,
+          checksumSha256: session.sha256 ?? '',
+          width: 0,
+          height: 0,
+        }),
       });
 
       return res.status(200).json({

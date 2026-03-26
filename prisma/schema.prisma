@@ -243,6 +243,58 @@ model OrderItem {
   @@map("order_items")
 }
 
+model MediaUploadSession {
+  id              String                          @id @db.VarChar(64)
+  filename        String                          @db.VarChar(255)
+  mimeType        String                          @map("mime_type") @db.VarChar(64)
+  sizeBytes       Int                             @map("size_bytes")
+  sha256          String?                         @db.VarChar(128)
+  uploadUrl       String                          @map("upload_url")
+  expiresAt       DateTime                        @map("expires_at") @db.Timestamptz(6)
+  finalizedAt     DateTime?                       @map("finalized_at") @db.Timestamptz(6)
+  createdAt       DateTime                        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  assets          MediaUploadedAsset[]
+  finalizeRecords MediaUploadFinalizeIdempotency[]
+
+  @@index([expiresAt], map: "idx_media_upload_sessions_expires_at")
+  @@map("media_upload_sessions")
+}
+
+model MediaUploadedAsset {
+  id                String                          @id @default(uuid()) @db.Uuid
+  uploadId          String                          @map("upload_id") @db.VarChar(64)
+  providerAssetId   String                          @map("provider_asset_id") @db.VarChar(128)
+  url               String
+  mimeType          String                          @map("mime_type") @db.VarChar(64)
+  sizeBytes         Int                             @map("size_bytes")
+  width             Int
+  height            Int
+  checksumSha256    String                          @map("checksum_sha256") @db.VarChar(128)
+  assetCreatedAt    DateTime                        @map("asset_created_at") @db.Timestamptz(6)
+  createdAt         DateTime                        @default(now()) @map("created_at") @db.Timestamptz(6)
+  uploadSession     MediaUploadSession              @relation(fields: [uploadId], references: [id], onDelete: Restrict)
+  finalizeIdempotencyRecords MediaUploadFinalizeIdempotency[]
+
+  @@index([uploadId], map: "idx_media_uploaded_assets_upload_id")
+  @@unique([uploadId, providerAssetId], map: "uq_media_uploaded_assets_upload_provider_asset")
+  @@map("media_uploaded_assets")
+}
+
+model MediaUploadFinalizeIdempotency {
+  id             String             @id @default(uuid()) @db.Uuid
+  uploadId       String             @map("upload_id") @db.VarChar(64)
+  idempotencyKey String             @map("idempotency_key") @db.VarChar(128)
+  assetId        String             @map("asset_id") @db.Uuid
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  uploadSession  MediaUploadSession @relation(fields: [uploadId], references: [id], onDelete: Restrict)
+  asset          MediaUploadedAsset @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  @@unique([uploadId, idempotencyKey], map: "uq_media_upload_finalize_upload_idempotency")
+  @@index([assetId], map: "idx_media_upload_finalize_asset_id")
+  @@map("media_upload_finalize_idempotency")
+}
+
 model Lead {
   id        String   @id @default(uuid()) @db.Uuid
   name      String   @db.VarChar(255)

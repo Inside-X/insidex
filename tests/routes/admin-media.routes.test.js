@@ -27,13 +27,28 @@ describe('admin media routes', () => {
   afterEach(() => {
     jest.restoreAllMocks();
     delete app.locals.mediaStorageProviderFactory;
+    delete app.locals.mediaUploadRepository;
     restoreEnv();
   });
 
-  test('upload-init success with valid payload', async () => {
-    process.env.MEDIA_UPLOADS_ENABLED = 'true';
-    process.env.MEDIA_UPLOAD_PROVIDER = 'stub';
-    process.env.MEDIA_UPLOAD_BASE_URL = 'https://uploads.example.com';
+  test('upload-init success with valid payload persists upload session metadata', async () => {
+    const createUploadTarget = jest.fn().mockResolvedValue({
+      uploadId: 'ul_01H',
+      uploadUrl: 'https://uploads.example.com/upload/ul_01H',
+      expiresAt: '2026-03-25T12:00:00.000Z',
+      headers: { 'content-type': 'image/jpeg' },
+      constraints: { mimeType: 'image/jpeg', maxSizeBytes: 10_485_760 },
+    });
+    const createUploadSession = jest.fn().mockResolvedValue({ id: 'ul_01H' });
+
+    app.locals.mediaStorageProviderFactory = () => ({
+      createUploadTarget,
+      finalizeUpload: jest.fn(),
+    });
+    app.locals.mediaUploadRepository = {
+      createUploadSession,
+      finalizeUploadByIdempotency: jest.fn(),
+    };
 
     const payload = {
       filename: 'amani-chair-main.jpg',
@@ -49,11 +64,21 @@ describe('admin media routes', () => {
       .expect(200);
 
     expect(response.body.data.upload).toEqual({
-      uploadId: expect.stringMatching(/^ul_[a-z0-9]+$/),
-      uploadUrl: expect.stringMatching(/^https:\/\/uploads\.example\.com\/upload\/ul_[a-z0-9]+$/),
-      expiresAt: expect.any(String),
+      uploadId: 'ul_01H',
+      uploadUrl: 'https://uploads.example.com/upload/ul_01H',
+      expiresAt: '2026-03-25T12:00:00.000Z',
       headers: { 'content-type': 'image/jpeg' },
       constraints: { mimeType: 'image/jpeg', maxSizeBytes: 10_485_760 },
+    });
+    expect(createUploadTarget).toHaveBeenCalledWith(payload);
+    expect(createUploadSession).toHaveBeenCalledWith({
+      uploadId: 'ul_01H',
+      filename: 'amani-chair-main.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 734003,
+      sha256: 'abc123',
+      uploadUrl: 'https://uploads.example.com/upload/ul_01H',
+      expiresAt: '2026-03-25T12:00:00.000Z',
     });
   });
 
@@ -151,20 +176,27 @@ describe('admin media routes', () => {
       .expect(403);
   });
 
-  test('upload-finalize success with valid payload', async () => {
+  test('upload-finalize success with valid payload (persistence-aware)', async () => {
+    const asset = {
+      assetId: 'ast_01H',
+      url: 'https://cdn.example.com/products/amani-chair/main.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 734003,
+      width: 1600,
+      height: 1200,
+      checksumSha256: 'abc123',
+      createdAt: '2026-03-25T12:00:10.000Z',
+    };
+    const finalizeUploadByIdempotency = jest.fn().mockResolvedValue(asset);
+
     app.locals.mediaStorageProviderFactory = () => ({
       createUploadTarget: jest.fn(),
-      finalizeUpload: jest.fn().mockResolvedValue({
-        assetId: 'ast_01H',
-        url: 'https://cdn.example.com/products/amani-chair/main.jpg',
-        mimeType: 'image/jpeg',
-        sizeBytes: 734003,
-        width: 1600,
-        height: 1200,
-        checksumSha256: 'abc123',
-        createdAt: '2026-03-25T12:00:10.000Z',
-      }),
+      finalizeUpload: jest.fn(),
     });
+    app.locals.mediaUploadRepository = {
+      createUploadSession: jest.fn(),
+      finalizeUploadByIdempotency,
+    };
 
     const response = await request(app)
       .post('/api/admin/media/uploads/finalize')
@@ -177,17 +209,59 @@ describe('admin media routes', () => {
 
     expect(response.body).toEqual({
       data: {
-        asset: {
-          assetId: 'ast_01H',
-          url: 'https://cdn.example.com/products/amani-chair/main.jpg',
-          mimeType: 'image/jpeg',
-          sizeBytes: 734003,
-          width: 1600,
-          height: 1200,
-          checksumSha256: 'abc123',
-          createdAt: '2026-03-25T12:00:10.000Z',
-        },
+        asset,
       },
+    });
+    expect(finalizeUploadByIdempotency).toHaveBeenCalledWith({
+      uploadId: 'ul_01H',
+      idempotencyKey: 'adm-media-finalize-0001',
+      finalizeWithProvider: expect.any(Function),
+    });
+  });
+
+  test('upload-finalize executes finalizeWithProvider callback with session-derived payload', async () => {
+    const finalizeUpload = jest.fn().mockResolvedValue({
+      assetId: 'ast_01H',
+      url: 'https://cdn.example.com/products/amani-chair/main.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 734003,
+      width: 1600,
+      height: 1200,
+      checksumSha256: 'abc123',
+      createdAt: '2026-03-25T12:00:10.000Z',
+    });
+
+    app.locals.mediaStorageProviderFactory = () => ({
+      createUploadTarget: jest.fn(),
+      finalizeUpload,
+    });
+    app.locals.mediaUploadRepository = {
+      createUploadSession: jest.fn(),
+      finalizeUploadByIdempotency: jest.fn().mockImplementation(async ({ finalizeWithProvider }) => finalizeWithProvider({
+        id: 'ul_01H',
+        mimeType: 'image/jpeg',
+        sizeBytes: 734003,
+        sha256: 'abc123',
+      })),
+    };
+
+    await request(app)
+      .post('/api/admin/media/uploads/finalize')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        uploadId: 'ul_01H',
+        idempotencyKey: 'adm-media-finalize-0001',
+      })
+      .expect(200);
+
+    expect(finalizeUpload).toHaveBeenCalledWith({
+      uploadId: 'ul_01H',
+      idempotencyKey: 'adm-media-finalize-0001',
+      mimeType: 'image/jpeg',
+      sizeBytes: 734003,
+      checksumSha256: 'abc123',
+      width: 0,
+      height: 0,
     });
   });
 
@@ -232,6 +306,10 @@ describe('admin media routes', () => {
       createUploadTarget: jest.fn(),
       finalizeUpload: jest.fn().mockRejectedValue(disabledError),
     });
+    app.locals.mediaUploadRepository = {
+      createUploadSession: jest.fn(),
+      finalizeUploadByIdempotency: jest.fn().mockRejectedValue(disabledError),
+    };
 
     const response = await request(app)
       .post('/api/admin/media/uploads/finalize')
@@ -243,6 +321,72 @@ describe('admin media routes', () => {
       .expect(503);
 
     expect(response.body.error.code).toBe('MEDIA_UPLOADS_DISABLED');
+  });
+
+  test('upload-finalize repeated idempotencyKey returns same logical asset', async () => {
+    const sameAsset = {
+      assetId: 'ast_replay',
+      url: 'https://cdn.example.com/products/amani-chair/replay.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 734003,
+      width: 1600,
+      height: 1200,
+      checksumSha256: 'replay123',
+      createdAt: '2026-03-25T12:00:10.000Z',
+    };
+
+    app.locals.mediaUploadRepository = {
+      createUploadSession: jest.fn(),
+      finalizeUploadByIdempotency: jest.fn()
+        .mockResolvedValueOnce(sameAsset)
+        .mockResolvedValueOnce(sameAsset),
+    };
+    app.locals.mediaStorageProviderFactory = () => ({
+      createUploadTarget: jest.fn(),
+      finalizeUpload: jest.fn(),
+    });
+
+    const payload = { uploadId: 'ul_01H', idempotencyKey: 'adm-media-finalize-0001' };
+
+    const first = await request(app)
+      .post('/api/admin/media/uploads/finalize')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send(payload)
+      .expect(200);
+
+    const second = await request(app)
+      .post('/api/admin/media/uploads/finalize')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send(payload)
+      .expect(200);
+
+    expect(first.body).toEqual(second.body);
+  });
+
+  test('upload-finalize unknown uploadId propagates through existing error stack', async () => {
+    const notFoundError = new Error('Database record not found');
+    notFoundError.statusCode = 404;
+    notFoundError.code = 'DB_RECORD_NOT_FOUND';
+
+    app.locals.mediaUploadRepository = {
+      createUploadSession: jest.fn(),
+      finalizeUploadByIdempotency: jest.fn().mockRejectedValue(notFoundError),
+    };
+    app.locals.mediaStorageProviderFactory = () => ({
+      createUploadTarget: jest.fn(),
+      finalizeUpload: jest.fn(),
+    });
+
+    const response = await request(app)
+      .post('/api/admin/media/uploads/finalize')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        uploadId: 'does-not-exist',
+        idempotencyKey: 'adm-media-finalize-0001',
+      })
+      .expect(404);
+
+    expect(response.body.error.code).toBe('DB_RECORD_NOT_FOUND');
   });
 
   test('upload-finalize requires authentication', async () => {
