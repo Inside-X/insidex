@@ -139,6 +139,26 @@ describe('mediaUploadRepository', () => {
     });
   });
 
+  test('finalizeUploadByIdempotency throws not-found error for expired upload session', async () => {
+    const { mediaUploadRepository, prismaMock } = await loadMediaUploadRepository();
+    prismaMock.mediaUploadSession.findUnique.mockResolvedValueOnce({
+      id: 'ul_expired',
+      mimeType: 'image/jpeg',
+      sizeBytes: 734003,
+      sha256: 'abc123',
+      expiresAt: new Date(Date.now() - 60_000),
+    });
+
+    await expect(mediaUploadRepository.finalizeUploadByIdempotency({
+      uploadId: 'ul_expired',
+      idempotencyKey: 'key-expired',
+      finalizeWithProvider: jest.fn(),
+    })).rejects.toMatchObject({
+      statusCode: 404,
+      code: 'DB_RECORD_NOT_FOUND',
+    });
+  });
+
   test('createUploadSession propagates normalized DB failure', async () => {
     const dbError = new Error('create failed');
     const { mediaUploadRepository, prismaMock, normalizeDbError } = await loadMediaUploadRepository();
@@ -242,6 +262,45 @@ describe('mediaUploadRepository', () => {
     });
 
     expect(normalizeDbError).toHaveBeenCalledWith(replayLookupError, {
+      repository: 'mediaUpload',
+      operation: 'finalizeUploadByIdempotency',
+    });
+  });
+
+  test('finalizeUploadByIdempotency normalizes original P2002 when replay lookup has no asset', async () => {
+    const uniqueConflict = Object.assign(new Error('duplicate'), { code: 'P2002' });
+    const { mediaUploadRepository, prismaMock, normalizeDbError } = await loadMediaUploadRepository({
+      normalizeImpl: () => undefined,
+    });
+
+    prismaMock.mediaUploadSession.findUnique.mockResolvedValueOnce({
+      id: 'ul_01H',
+      mimeType: 'image/jpeg',
+      sizeBytes: 734003,
+      sha256: 'abc123',
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    prismaMock.mediaUploadFinalizeIdempotency.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ asset: null });
+    prismaMock.mediaUploadedAsset.create.mockRejectedValueOnce(uniqueConflict);
+
+    await mediaUploadRepository.finalizeUploadByIdempotency({
+      uploadId: 'ul_01H',
+      idempotencyKey: 'key-4',
+      finalizeWithProvider: jest.fn().mockResolvedValue({
+        assetId: 'ast_04H',
+        url: 'https://cdn.example.com/assets/d.jpg',
+        mimeType: 'image/jpeg',
+        sizeBytes: 734003,
+        width: 1600,
+        height: 1200,
+        checksumSha256: 'abc123',
+        createdAt: '2026-03-25T12:00:10.000Z',
+      }),
+    });
+
+    expect(normalizeDbError).toHaveBeenCalledWith(uniqueConflict, {
       repository: 'mediaUpload',
       operation: 'finalizeUploadByIdempotency',
     });

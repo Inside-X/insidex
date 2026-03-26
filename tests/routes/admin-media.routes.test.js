@@ -2,6 +2,7 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import app from '../../src/app.js';
 import { buildTestToken } from '../helpers/jwt.helper.js';
+import { mediaUploadRepository } from '../../src/repositories/media-upload.repository.js';
 
 const adminToken = buildTestToken({ role: 'admin', id: 'admin-media-1' });
 const userToken = buildTestToken({ role: 'customer', id: 'admin-media-user-1' });
@@ -80,6 +81,79 @@ describe('admin media routes', () => {
       uploadUrl: 'https://uploads.example.com/upload/ul_01H',
       expiresAt: '2026-03-25T12:00:00.000Z',
     });
+  });
+
+  test('upload-init success without sha256 omits checksum persistence fields', async () => {
+    const createUploadTarget = jest.fn().mockResolvedValue({
+      uploadId: 'ul_no_sha',
+      uploadUrl: 'https://uploads.example.com/upload/ul_no_sha',
+      expiresAt: '2026-03-25T12:00:00.000Z',
+      headers: { 'content-type': 'image/jpeg' },
+      constraints: { mimeType: 'image/jpeg', maxSizeBytes: 10_485_760 },
+    });
+    const createUploadSession = jest.fn().mockResolvedValue({ id: 'ul_no_sha' });
+
+    app.locals.mediaStorageProviderFactory = () => ({
+      createUploadTarget,
+      finalizeUpload: jest.fn(),
+    });
+    app.locals.mediaUploadRepository = {
+      createUploadSession,
+      finalizeUploadByIdempotency: jest.fn(),
+    };
+
+    await request(app)
+      .post('/api/admin/media/uploads/init')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        filename: 'amani-chair-main.jpg',
+        mimeType: 'image/jpeg',
+        sizeBytes: 734003,
+      })
+      .expect(200);
+
+    expect(createUploadTarget).toHaveBeenCalledWith({
+      filename: 'amani-chair-main.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 734003,
+    });
+    expect(createUploadSession).toHaveBeenCalledWith({
+      uploadId: 'ul_no_sha',
+      filename: 'amani-chair-main.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 734003,
+      uploadUrl: 'https://uploads.example.com/upload/ul_no_sha',
+      expiresAt: '2026-03-25T12:00:00.000Z',
+    });
+  });
+
+  test('upload-init uses default repository when app local override is not provided', async () => {
+    const createUploadTarget = jest.fn().mockResolvedValue({
+      uploadId: 'ul_default_repo',
+      uploadUrl: 'https://uploads.example.com/upload/ul_default_repo',
+      expiresAt: '2026-03-25T12:00:00.000Z',
+      headers: { 'content-type': 'image/jpeg' },
+      constraints: { mimeType: 'image/jpeg', maxSizeBytes: 10_485_760 },
+    });
+    const createUploadSessionSpy = jest.spyOn(mediaUploadRepository, 'createUploadSession').mockResolvedValueOnce({ id: 'ul_default_repo' });
+
+    app.locals.mediaStorageProviderFactory = () => ({
+      createUploadTarget,
+      finalizeUpload: jest.fn(),
+    });
+    delete app.locals.mediaUploadRepository;
+
+    await request(app)
+      .post('/api/admin/media/uploads/init')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        filename: 'amani-chair-main.jpg',
+        mimeType: 'image/jpeg',
+        sizeBytes: 734003,
+      })
+      .expect(200);
+
+    expect(createUploadSessionSpy).toHaveBeenCalledTimes(1);
   });
 
   test('upload-init invalid mime rejection', async () => {
@@ -260,6 +334,51 @@ describe('admin media routes', () => {
       mimeType: 'image/jpeg',
       sizeBytes: 734003,
       checksumSha256: 'abc123',
+      width: 0,
+      height: 0,
+    });
+  });
+
+  test('upload-finalize executes finalizeWithProvider callback with empty checksum when session sha256 is missing', async () => {
+    const finalizeUpload = jest.fn().mockResolvedValue({
+      assetId: 'ast_02H',
+      url: 'https://cdn.example.com/products/amani-chair/main.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 734003,
+      width: 1600,
+      height: 1200,
+      checksumSha256: '',
+      createdAt: '2026-03-25T12:00:10.000Z',
+    });
+
+    app.locals.mediaStorageProviderFactory = () => ({
+      createUploadTarget: jest.fn(),
+      finalizeUpload,
+    });
+    app.locals.mediaUploadRepository = {
+      createUploadSession: jest.fn(),
+      finalizeUploadByIdempotency: jest.fn().mockImplementation(async ({ finalizeWithProvider }) => finalizeWithProvider({
+        id: 'ul_02H',
+        mimeType: 'image/jpeg',
+        sizeBytes: 734003,
+      })),
+    };
+
+    await request(app)
+      .post('/api/admin/media/uploads/finalize')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        uploadId: 'ul_02H',
+        idempotencyKey: 'adm-media-finalize-0002',
+      })
+      .expect(200);
+
+    expect(finalizeUpload).toHaveBeenCalledWith({
+      uploadId: 'ul_02H',
+      idempotencyKey: 'adm-media-finalize-0002',
+      mimeType: 'image/jpeg',
+      sizeBytes: 734003,
+      checksumSha256: '',
       width: 0,
       height: 0,
     });

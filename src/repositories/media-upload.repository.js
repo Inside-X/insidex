@@ -1,8 +1,8 @@
 import prisma from '../lib/prisma.js';
 import { normalizeDbError } from '../lib/db-error.js';
 
-function buildNotFoundError(message = 'Database record not found') {
-  const notFound = new Error(message);
+function buildNotFoundError() {
+  const notFound = new Error('Database record not found');
   notFound.statusCode = 404;
   notFound.code = 'DB_RECORD_NOT_FOUND';
   return notFound;
@@ -53,8 +53,8 @@ export const mediaUploadRepository = {
         where: { id: uploadId },
       });
 
-      if (!session) throw buildNotFoundError('Database record not found');
-      if (session.expiresAt <= new Date()) throw buildNotFoundError('Database record not found');
+      if (!session) throw buildNotFoundError();
+      if (session.expiresAt <= new Date()) throw buildNotFoundError();
 
       const existing = await prisma.mediaUploadFinalizeIdempotency.findUnique({
         where: {
