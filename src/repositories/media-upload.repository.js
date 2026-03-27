@@ -22,6 +22,26 @@ function mapAssetCreateData(uploadId, asset) {
   };
 }
 
+async function findReferenceCountsByUrl(urls = []) {
+  if (!Array.isArray(urls) || urls.length === 0) {
+    return new Map();
+  }
+
+  const grouped = await prisma.productImage.groupBy({
+    by: ['url'],
+    where: {
+      url: {
+        in: urls,
+      },
+    },
+    _count: {
+      _all: true,
+    },
+  });
+
+  return new Map(grouped.map((entry) => [entry.url, entry._count._all]));
+}
+
 export const mediaUploadRepository = {
   async createUploadSession(payload) {
     try {
@@ -68,7 +88,7 @@ export const mediaUploadRepository = {
 
   async listFinalizedAssets() {
     try {
-      return await prisma.mediaUploadedAsset.findMany({
+      const assets = await prisma.mediaUploadedAsset.findMany({
         orderBy: [
           { createdAt: 'desc' },
           { id: 'asc' },
@@ -82,6 +102,18 @@ export const mediaUploadRepository = {
           checksumSha256: true,
           createdAt: true,
         },
+      });
+
+      const referenceCountsByUrl = await findReferenceCountsByUrl(assets.map((asset) => asset.url));
+
+      return assets.map((asset) => {
+        const referenceCount = referenceCountsByUrl.get(asset.url) || 0;
+
+        return {
+          ...asset,
+          isReferenced: referenceCount > 0,
+          referenceCount,
+        };
       });
     } catch (error) {
       normalizeDbError(error, { repository: 'mediaUpload', operation: 'listFinalizedAssets' });
@@ -98,7 +130,7 @@ export const mediaUploadRepository = {
       });
       const attachedUrls = referencedUrls.map((item) => item.url);
 
-      return await prisma.mediaUploadedAsset.findMany({
+      const assets = await prisma.mediaUploadedAsset.findMany({
         where: {
           ...(attachedUrls.length > 0
             ? {
@@ -122,6 +154,12 @@ export const mediaUploadRepository = {
           createdAt: true,
         },
       });
+
+      return assets.map((asset) => ({
+        ...asset,
+        isReferenced: false,
+        referenceCount: 0,
+      }));
     } catch (error) {
       normalizeDbError(error, { repository: 'mediaUpload', operation: 'listOrphanedFinalizedAssets' });
     }

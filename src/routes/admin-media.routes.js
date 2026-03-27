@@ -45,6 +45,8 @@ function toContractAsset(asset) {
     sizeBytes: asset.sizeBytes,
     checksumSha256: asset.checksumSha256,
     createdAt: asset.createdAt,
+    isReferenced: asset.isReferenced,
+    referenceCount: asset.referenceCount,
   };
 }
 

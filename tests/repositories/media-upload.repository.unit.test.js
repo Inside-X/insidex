@@ -19,6 +19,7 @@ async function loadMediaUploadRepository({ normalizeImpl } = {}) {
     },
     productImage: {
       findMany: jest.fn(),
+      groupBy: jest.fn(),
     },
   };
   prismaMock.$transaction = jest.fn(async (callback) => callback({
@@ -243,6 +244,14 @@ describe('mediaUploadRepository', () => {
         createdAt: new Date('2026-03-25T12:00:10.000Z'),
       },
     ]);
+    prismaMock.productImage.groupBy.mockResolvedValueOnce([
+      {
+        url: 'https://cdn.example.com/assets/a.jpg',
+        _count: {
+          _all: 1,
+        },
+      },
+    ]);
 
     const result = await mediaUploadRepository.listFinalizedAssets();
 
@@ -261,7 +270,34 @@ describe('mediaUploadRepository', () => {
         createdAt: true,
       },
     });
+    expect(prismaMock.productImage.groupBy).toHaveBeenCalledWith({
+      by: ['url'],
+      where: {
+        url: {
+          in: ['https://cdn.example.com/assets/a.jpg'],
+        },
+      },
+      _count: {
+        _all: true,
+      },
+    });
+    expect(result).toEqual([
+      expect.objectContaining({
+        isReferenced: true,
+        referenceCount: 1,
+      }),
+    ]);
     expect(result).toHaveLength(1);
+  });
+
+  test('listFinalizedAssets returns empty list deterministically when no assets exist', async () => {
+    const { mediaUploadRepository, prismaMock } = await loadMediaUploadRepository();
+    prismaMock.mediaUploadedAsset.findMany.mockResolvedValueOnce([]);
+
+    const result = await mediaUploadRepository.listFinalizedAssets();
+
+    expect(result).toEqual([]);
+    expect(prismaMock.productImage.groupBy).not.toHaveBeenCalled();
   });
 
   test('listOrphanedFinalizedAssets excludes attached asset urls', async () => {
@@ -309,7 +345,12 @@ describe('mediaUploadRepository', () => {
         createdAt: true,
       },
     });
-    expect(result).toHaveLength(1);
+    expect(result).toEqual([
+      expect.objectContaining({
+        isReferenced: false,
+        referenceCount: 0,
+      }),
+    ]);
   });
 
   test('listOrphanedFinalizedAssets returns all assets when there are no attached urls', async () => {

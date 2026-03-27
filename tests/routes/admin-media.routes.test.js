@@ -542,6 +542,8 @@ describe('admin media routes', () => {
           sizeBytes: 734003,
           checksumSha256: 'abc123',
           createdAt: '2026-03-25T12:00:10.000Z',
+          isReferenced: true,
+          referenceCount: 2,
         },
       ]),
       listOrphanedFinalizedAssets: jest.fn(),
@@ -563,6 +565,8 @@ describe('admin media routes', () => {
             sizeBytes: 734003,
             checksumSha256: 'abc123',
             createdAt: '2026-03-25T12:00:10.000Z',
+            isReferenced: true,
+            referenceCount: 2,
           },
         ],
       },
@@ -603,6 +607,8 @@ describe('admin media routes', () => {
           sizeBytes: 512000,
           checksumSha256: 'orphan123',
           createdAt: '2026-03-26T12:00:10.000Z',
+          isReferenced: false,
+          referenceCount: 0,
         },
       ]),
     };
@@ -623,6 +629,8 @@ describe('admin media routes', () => {
             sizeBytes: 512000,
             checksumSha256: 'orphan123',
             createdAt: '2026-03-26T12:00:10.000Z',
+            isReferenced: false,
+            referenceCount: 0,
           },
         ],
       },
@@ -638,6 +646,19 @@ describe('admin media routes', () => {
   test('uploads/assets enforces admin permission', async () => {
     await request(app)
       .get('/api/admin/media/uploads/assets')
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(403);
+  });
+
+  test('uploads/assets/orphans requires authentication', async () => {
+    await request(app)
+      .get('/api/admin/media/uploads/assets/orphans')
+      .expect(401);
+  });
+
+  test('uploads/assets/orphans enforces admin permission', async () => {
+    await request(app)
+      .get('/api/admin/media/uploads/assets/orphans')
       .set('Authorization', `Bearer ${userToken}`)
       .expect(403);
   });
