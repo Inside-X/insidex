@@ -165,6 +165,19 @@ export const mediaUploadRepository = {
     }
   },
 
+  async listCleanupDryRunCandidates() {
+    try {
+      const orphanedAssets = await this.listOrphanedFinalizedAssets();
+
+      return orphanedAssets.map((asset) => ({
+        ...asset,
+        candidateReason: 'ORPHANED_UNREFERENCED_ASSET',
+      }));
+    } catch (error) {
+      normalizeDbError(error, { repository: 'mediaUpload', operation: 'listCleanupDryRunCandidates' });
+    }
+  },
+
   async finalizeUploadByIdempotency({ uploadId, idempotencyKey, finalizeWithProvider }) {
     try {
       const session = await prisma.mediaUploadSession.findUnique({

@@ -662,4 +662,85 @@ describe('admin media routes', () => {
       .set('Authorization', `Bearer ${userToken}`)
       .expect(403);
   });
+
+  test('uploads/assets/candidates lists dry-run cleanup candidates for orphaned assets', async () => {
+    app.locals.mediaUploadRepository = {
+      createUploadSession: jest.fn(),
+      finalizeUploadByIdempotency: jest.fn(),
+      listFinalizedAssets: jest.fn(),
+      listOrphanedFinalizedAssets: jest.fn(),
+      listCleanupDryRunCandidates: jest.fn().mockResolvedValue([
+        {
+          id: 'asset_db_3',
+          uploadId: 'ul_03H',
+          url: 'https://cdn.example.com/products/amani-chair/candidate.jpg',
+          mimeType: 'image/jpeg',
+          sizeBytes: 401234,
+          checksumSha256: 'candidate123',
+          createdAt: '2026-03-27T10:00:10.000Z',
+          isReferenced: false,
+          referenceCount: 0,
+          candidateReason: 'ORPHANED_UNREFERENCED_ASSET',
+        },
+      ]),
+    };
+
+    const response = await request(app)
+      .get('/api/admin/media/uploads/assets/candidates')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(response.body).toEqual({
+      data: {
+        assets: [
+          {
+            assetId: 'asset_db_3',
+            uploadId: 'ul_03H',
+            url: 'https://cdn.example.com/products/amani-chair/candidate.jpg',
+            mimeType: 'image/jpeg',
+            sizeBytes: 401234,
+            checksumSha256: 'candidate123',
+            createdAt: '2026-03-27T10:00:10.000Z',
+            isReferenced: false,
+            referenceCount: 0,
+            candidateReason: 'ORPHANED_UNREFERENCED_ASSET',
+          },
+        ],
+      },
+    });
+  });
+
+  test('uploads/assets/candidates returns deterministic empty list', async () => {
+    app.locals.mediaUploadRepository = {
+      createUploadSession: jest.fn(),
+      finalizeUploadByIdempotency: jest.fn(),
+      listFinalizedAssets: jest.fn(),
+      listOrphanedFinalizedAssets: jest.fn(),
+      listCleanupDryRunCandidates: jest.fn().mockResolvedValue([]),
+    };
+
+    const response = await request(app)
+      .get('/api/admin/media/uploads/assets/candidates')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(response.body).toEqual({
+      data: {
+        assets: [],
+      },
+    });
+  });
+
+  test('uploads/assets/candidates requires authentication', async () => {
+    await request(app)
+      .get('/api/admin/media/uploads/assets/candidates')
+      .expect(401);
+  });
+
+  test('uploads/assets/candidates enforces admin permission', async () => {
+    await request(app)
+      .get('/api/admin/media/uploads/assets/candidates')
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(403);
+  });
 });

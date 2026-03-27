@@ -47,6 +47,7 @@ function toContractAsset(asset) {
     createdAt: asset.createdAt,
     isReferenced: asset.isReferenced,
     referenceCount: asset.referenceCount,
+    ...(asset.candidateReason !== undefined ? { candidateReason: asset.candidateReason } : {}),
   };
 }
 
@@ -145,6 +146,23 @@ router.get(
   async (req, res, next) => {
     try {
       const assets = await resolveMediaUploadRepository(req).listOrphanedFinalizedAssets();
+
+      return res.status(200).json({
+        data: {
+          assets: assets.map(toContractAsset),
+        },
+      });
+    } catch (error) {
+      return next(error);
+    }
+  },
+);
+
+router.get(
+  '/uploads/assets/candidates',
+  async (req, res, next) => {
+    try {
+      const assets = await resolveMediaUploadRepository(req).listCleanupDryRunCandidates();
 
       return res.status(200).json({
         data: {

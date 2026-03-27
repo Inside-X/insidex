@@ -379,6 +379,43 @@ describe('mediaUploadRepository', () => {
     expect(result).toEqual([]);
   });
 
+  test('listCleanupDryRunCandidates returns orphaned assets annotated with deterministic candidate reason', async () => {
+    const { mediaUploadRepository, prismaMock } = await loadMediaUploadRepository();
+    prismaMock.productImage.findMany.mockResolvedValueOnce([]);
+    prismaMock.mediaUploadedAsset.findMany.mockResolvedValueOnce([
+      {
+        id: 'asset_db_5',
+        uploadId: 'ul_05H',
+        url: 'https://cdn.example.com/assets/candidate.jpg',
+        mimeType: 'image/jpeg',
+        sizeBytes: 333000,
+        checksumSha256: 'candidate',
+        createdAt: new Date('2026-03-27T12:00:10.000Z'),
+      },
+    ]);
+
+    const result = await mediaUploadRepository.listCleanupDryRunCandidates();
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        id: 'asset_db_5',
+        isReferenced: false,
+        referenceCount: 0,
+        candidateReason: 'ORPHANED_UNREFERENCED_ASSET',
+      }),
+    ]);
+  });
+
+  test('listCleanupDryRunCandidates returns deterministic empty list', async () => {
+    const { mediaUploadRepository, prismaMock } = await loadMediaUploadRepository();
+    prismaMock.productImage.findMany.mockResolvedValueOnce([]);
+    prismaMock.mediaUploadedAsset.findMany.mockResolvedValueOnce([]);
+
+    const result = await mediaUploadRepository.listCleanupDryRunCandidates();
+
+    expect(result).toEqual([]);
+  });
+
   test('finalizeUploadByIdempotency returns replayed asset after P2002 conflict', async () => {
     const uniqueConflict = Object.assign(new Error('duplicate'), { code: 'P2002' });
     const { mediaUploadRepository, prismaMock } = await loadMediaUploadRepository();
