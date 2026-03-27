@@ -17,6 +17,9 @@ async function loadMediaUploadRepository({ normalizeImpl } = {}) {
       create: jest.fn(),
       findMany: jest.fn(),
     },
+    productImage: {
+      findMany: jest.fn(),
+    },
   };
   prismaMock.$transaction = jest.fn(async (callback) => callback({
     mediaUploadedAsset: prismaMock.mediaUploadedAsset,
@@ -225,6 +228,114 @@ describe('mediaUploadRepository', () => {
 
     expect(result).toEqual([]);
     expect(prismaMock.mediaUploadedAsset.findMany).not.toHaveBeenCalled();
+  });
+
+  test('listFinalizedAssets returns deterministic finalized asset list', async () => {
+    const { mediaUploadRepository, prismaMock } = await loadMediaUploadRepository();
+    prismaMock.mediaUploadedAsset.findMany.mockResolvedValueOnce([
+      {
+        id: 'asset_db_1',
+        uploadId: 'ul_01H',
+        url: 'https://cdn.example.com/assets/a.jpg',
+        mimeType: 'image/jpeg',
+        sizeBytes: 734003,
+        checksumSha256: 'abc123',
+        createdAt: new Date('2026-03-25T12:00:10.000Z'),
+      },
+    ]);
+
+    const result = await mediaUploadRepository.listFinalizedAssets();
+
+    expect(prismaMock.mediaUploadedAsset.findMany).toHaveBeenCalledWith({
+      orderBy: [
+        { createdAt: 'desc' },
+        { id: 'asc' },
+      ],
+      select: {
+        id: true,
+        uploadId: true,
+        url: true,
+        mimeType: true,
+        sizeBytes: true,
+        checksumSha256: true,
+        createdAt: true,
+      },
+    });
+    expect(result).toHaveLength(1);
+  });
+
+  test('listOrphanedFinalizedAssets excludes attached asset urls', async () => {
+    const { mediaUploadRepository, prismaMock } = await loadMediaUploadRepository();
+    prismaMock.productImage.findMany.mockResolvedValueOnce([
+      { url: 'https://cdn.example.com/assets/a.jpg' },
+    ]);
+    prismaMock.mediaUploadedAsset.findMany.mockResolvedValueOnce([
+      {
+        id: 'asset_db_2',
+        uploadId: 'ul_02H',
+        url: 'https://cdn.example.com/assets/orphan.jpg',
+        mimeType: 'image/jpeg',
+        sizeBytes: 512000,
+        checksumSha256: 'orphan123',
+        createdAt: new Date('2026-03-26T12:00:10.000Z'),
+      },
+    ]);
+
+    const result = await mediaUploadRepository.listOrphanedFinalizedAssets();
+
+    expect(prismaMock.productImage.findMany).toHaveBeenCalledWith({
+      distinct: ['url'],
+      select: {
+        url: true,
+      },
+    });
+    expect(prismaMock.mediaUploadedAsset.findMany).toHaveBeenCalledWith({
+      where: {
+        url: {
+          notIn: ['https://cdn.example.com/assets/a.jpg'],
+        },
+      },
+      orderBy: [
+        { createdAt: 'desc' },
+        { id: 'asc' },
+      ],
+      select: {
+        id: true,
+        uploadId: true,
+        url: true,
+        mimeType: true,
+        sizeBytes: true,
+        checksumSha256: true,
+        createdAt: true,
+      },
+    });
+    expect(result).toHaveLength(1);
+  });
+
+  test('listOrphanedFinalizedAssets returns all assets when there are no attached urls', async () => {
+    const { mediaUploadRepository, prismaMock } = await loadMediaUploadRepository();
+    prismaMock.productImage.findMany.mockResolvedValueOnce([]);
+    prismaMock.mediaUploadedAsset.findMany.mockResolvedValueOnce([]);
+
+    const result = await mediaUploadRepository.listOrphanedFinalizedAssets();
+
+    expect(prismaMock.mediaUploadedAsset.findMany).toHaveBeenCalledWith({
+      where: {},
+      orderBy: [
+        { createdAt: 'desc' },
+        { id: 'asc' },
+      ],
+      select: {
+        id: true,
+        uploadId: true,
+        url: true,
+        mimeType: true,
+        sizeBytes: true,
+        checksumSha256: true,
+        createdAt: true,
+      },
+    });
+    expect(result).toEqual([]);
   });
 
   test('finalizeUploadByIdempotency returns replayed asset after P2002 conflict', async () => {

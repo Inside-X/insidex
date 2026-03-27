@@ -528,4 +528,117 @@ describe('admin media routes', () => {
       })
       .expect(403);
   });
+
+  test('uploads/assets list finalized assets success', async () => {
+    app.locals.mediaUploadRepository = {
+      createUploadSession: jest.fn(),
+      finalizeUploadByIdempotency: jest.fn(),
+      listFinalizedAssets: jest.fn().mockResolvedValue([
+        {
+          id: 'asset_db_1',
+          uploadId: 'ul_01H',
+          url: 'https://cdn.example.com/products/amani-chair/main.jpg',
+          mimeType: 'image/jpeg',
+          sizeBytes: 734003,
+          checksumSha256: 'abc123',
+          createdAt: '2026-03-25T12:00:10.000Z',
+        },
+      ]),
+      listOrphanedFinalizedAssets: jest.fn(),
+    };
+
+    const response = await request(app)
+      .get('/api/admin/media/uploads/assets')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(response.body).toEqual({
+      data: {
+        assets: [
+          {
+            assetId: 'asset_db_1',
+            uploadId: 'ul_01H',
+            url: 'https://cdn.example.com/products/amani-chair/main.jpg',
+            mimeType: 'image/jpeg',
+            sizeBytes: 734003,
+            checksumSha256: 'abc123',
+            createdAt: '2026-03-25T12:00:10.000Z',
+          },
+        ],
+      },
+    });
+  });
+
+  test('uploads/assets list finalized assets returns deterministic empty list', async () => {
+    app.locals.mediaUploadRepository = {
+      createUploadSession: jest.fn(),
+      finalizeUploadByIdempotency: jest.fn(),
+      listFinalizedAssets: jest.fn().mockResolvedValue([]),
+      listOrphanedFinalizedAssets: jest.fn(),
+    };
+
+    const response = await request(app)
+      .get('/api/admin/media/uploads/assets')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(response.body).toEqual({
+      data: {
+        assets: [],
+      },
+    });
+  });
+
+  test('uploads/assets/orphans lists orphaned finalized assets success', async () => {
+    app.locals.mediaUploadRepository = {
+      createUploadSession: jest.fn(),
+      finalizeUploadByIdempotency: jest.fn(),
+      listFinalizedAssets: jest.fn(),
+      listOrphanedFinalizedAssets: jest.fn().mockResolvedValue([
+        {
+          id: 'asset_db_2',
+          uploadId: 'ul_02H',
+          url: 'https://cdn.example.com/products/amani-chair/orphan.jpg',
+          mimeType: 'image/jpeg',
+          sizeBytes: 512000,
+          checksumSha256: 'orphan123',
+          createdAt: '2026-03-26T12:00:10.000Z',
+        },
+      ]),
+    };
+
+    const response = await request(app)
+      .get('/api/admin/media/uploads/assets/orphans')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(response.body).toEqual({
+      data: {
+        assets: [
+          {
+            assetId: 'asset_db_2',
+            uploadId: 'ul_02H',
+            url: 'https://cdn.example.com/products/amani-chair/orphan.jpg',
+            mimeType: 'image/jpeg',
+            sizeBytes: 512000,
+            checksumSha256: 'orphan123',
+            createdAt: '2026-03-26T12:00:10.000Z',
+          },
+        ],
+      },
+    });
+  });
+
+  test('uploads/assets requires authentication', async () => {
+    await request(app)
+      .get('/api/admin/media/uploads/assets')
+      .expect(401);
+  });
+
+  test('uploads/assets enforces admin permission', async () => {
+    await request(app)
+      .get('/api/admin/media/uploads/assets')
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(403);
+  });
 });

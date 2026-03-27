@@ -66,6 +66,67 @@ export const mediaUploadRepository = {
     }
   },
 
+  async listFinalizedAssets() {
+    try {
+      return await prisma.mediaUploadedAsset.findMany({
+        orderBy: [
+          { createdAt: 'desc' },
+          { id: 'asc' },
+        ],
+        select: {
+          id: true,
+          uploadId: true,
+          url: true,
+          mimeType: true,
+          sizeBytes: true,
+          checksumSha256: true,
+          createdAt: true,
+        },
+      });
+    } catch (error) {
+      normalizeDbError(error, { repository: 'mediaUpload', operation: 'listFinalizedAssets' });
+    }
+  },
+
+  async listOrphanedFinalizedAssets() {
+    try {
+      const referencedUrls = await prisma.productImage.findMany({
+        distinct: ['url'],
+        select: {
+          url: true,
+        },
+      });
+      const attachedUrls = referencedUrls.map((item) => item.url);
+
+      return await prisma.mediaUploadedAsset.findMany({
+        where: {
+          ...(attachedUrls.length > 0
+            ? {
+              url: {
+                notIn: attachedUrls,
+              },
+            }
+            : {}),
+        },
+        orderBy: [
+          { createdAt: 'desc' },
+          { id: 'asc' },
+        ],
+        select: {
+          id: true,
+          uploadId: true,
+          url: true,
+          mimeType: true,
+          sizeBytes: true,
+          checksumSha256: true,
+          createdAt: true,
+        },
+      });
+    } catch (error) {
+      normalizeDbError(error, { repository: 'mediaUpload', operation: 'listOrphanedFinalizedAssets' });
+    }
+  },
+
   async finalizeUploadByIdempotency({ uploadId, idempotencyKey, finalizeWithProvider }) {
     try {
       const session = await prisma.mediaUploadSession.findUnique({

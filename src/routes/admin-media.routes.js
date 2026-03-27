@@ -36,6 +36,18 @@ function resolveMediaUploadRepository(req) {
   return req.app?.locals?.mediaUploadRepository || mediaUploadRepository;
 }
 
+function toContractAsset(asset) {
+  return {
+    assetId: asset.id,
+    uploadId: asset.uploadId,
+    url: asset.url,
+    mimeType: asset.mimeType,
+    sizeBytes: asset.sizeBytes,
+    checksumSha256: asset.checksumSha256,
+    createdAt: asset.createdAt,
+  };
+}
+
 router.post(
   '/uploads/init',
   validate(uploadInitSchema),
@@ -101,6 +113,40 @@ router.post(
             checksumSha256: asset.checksumSha256,
             createdAt: asset.createdAt,
           },
+        },
+      });
+    } catch (error) {
+      return next(error);
+    }
+  },
+);
+
+router.get(
+  '/uploads/assets',
+  async (req, res, next) => {
+    try {
+      const assets = await resolveMediaUploadRepository(req).listFinalizedAssets();
+
+      return res.status(200).json({
+        data: {
+          assets: assets.map(toContractAsset),
+        },
+      });
+    } catch (error) {
+      return next(error);
+    }
+  },
+);
+
+router.get(
+  '/uploads/assets/orphans',
+  async (req, res, next) => {
+    try {
+      const assets = await resolveMediaUploadRepository(req).listOrphanedFinalizedAssets();
+
+      return res.status(200).json({
+        data: {
+          assets: assets.map(toContractAsset),
         },
       });
     } catch (error) {
