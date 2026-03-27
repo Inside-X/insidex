@@ -475,6 +475,42 @@ describe('admin products routes', () => {
     expect(replaceSpy).not.toHaveBeenCalled();
   });
 
+  test('replaceMedia rejects duplicate finalized media URLs within one payload', async () => {
+    jest.spyOn(mediaUploadRepository, 'findFinalizedAssetsByUrls').mockResolvedValueOnce([
+      { url: 'https://cdn.example.com/products/amani-chair/main.jpg' },
+    ]);
+    const replaceSpy = jest.spyOn(productRepository, 'replaceProductMediaById');
+
+    const response = await request(app)
+      .put(`/api/admin/products/${validId}/media`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        media: [
+          validMedia[0],
+          {
+            id: 'media_002',
+            url: 'https://cdn.example.com/products/amani-chair/main.jpg',
+            alt: 'Amani Chair alternate front view',
+            sortOrder: 1,
+            isPrimary: false,
+            kind: 'image',
+          },
+        ],
+      })
+      .expect(400);
+
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    expect(response.body.error.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: 'media.1.url',
+          message: 'duplicate media url is not allowed within a single media payload',
+        }),
+      ]),
+    );
+    expect(replaceSpy).not.toHaveBeenCalled();
+  });
+
   test('repository not-found failure propagates through error stack', async () => {
     const notFound = new Error('Database record not found');
     notFound.statusCode = 404;

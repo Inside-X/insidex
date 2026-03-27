@@ -151,6 +151,24 @@ router.put(
   validate(adminProductsSchemas.replaceMedia),
   async (req, res, next) => {
     try {
+      const duplicateUrlDetails = [];
+      const firstSeenUrlIndexes = new Map();
+      req.body.media.forEach((item, index) => {
+        if (!firstSeenUrlIndexes.has(item.url)) {
+          firstSeenUrlIndexes.set(item.url, index);
+          return;
+        }
+
+        duplicateUrlDetails.push({
+          field: `media.${index}.url`,
+          message: 'duplicate media url is not allowed within a single media payload',
+        });
+      });
+
+      if (duplicateUrlDetails.length > 0) {
+        throw new ValidationError(duplicateUrlDetails);
+      }
+
       const urls = req.body.media.map((item) => item.url);
       const finalizedAssets = await resolveMediaUploadRepository(req).findFinalizedAssetsByUrls(urls);
       const finalizedUrlSet = new Set(finalizedAssets.map((asset) => asset.url));
