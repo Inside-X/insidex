@@ -54,7 +54,7 @@ Any future cleanup execution model must enforce all principles below:
 
 ### 5.1 Required roles
 
-Any future destructive-capable phase must require, at minimum:
+Any future non-dry-run cleanup execution phase must require, at minimum:
 - **Authorized admin operator** (requesting operator),
 - **Approving admin** (primary approver),
 - **Second approver** (mandatory in production environments).
