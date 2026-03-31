@@ -1,0 +1,72 @@
+export const DESTRUCTIVE_READINESS_BLOCKING_REASONS = Object.freeze({
+  DESTRUCTIVE_AUTHORIZATION_MISSING: 'DESTRUCTIVE_AUTHORIZATION_MISSING',
+  DESTRUCTIVE_AUTHORIZATION_NOT_FRESH: 'DESTRUCTIVE_AUTHORIZATION_NOT_FRESH',
+  DESTRUCTIVE_MODE_NOT_EXPLICITLY_APPROVED: 'DESTRUCTIVE_MODE_NOT_EXPLICITLY_APPROVED',
+  SNAPSHOT_BASIS_MISSING: 'SNAPSHOT_BASIS_MISSING',
+  COMPLETENESS_BASIS_MISSING_OR_INSUFFICIENT: 'COMPLETENESS_BASIS_MISSING_OR_INSUFFICIENT',
+  AUDITABILITY_BASIS_MISSING_OR_UNAVAILABLE: 'AUDITABILITY_BASIS_MISSING_OR_UNAVAILABLE',
+  TARGET_ENVIRONMENT_NOT_APPROVED: 'TARGET_ENVIRONMENT_NOT_APPROVED',
+  TARGET_SCOPE_NOT_APPROVED: 'TARGET_SCOPE_NOT_APPROVED',
+  DESTRUCTIVE_ELIGIBILITY_NOT_SATISFIED: 'DESTRUCTIVE_ELIGIBILITY_NOT_SATISFIED',
+  UNRESOLVED_AMBIGUITY_REMAINS: 'UNRESOLVED_AMBIGUITY_REMAINS',
+  PROTECTED_EXCLUSION_APPLIES: 'PROTECTED_EXCLUSION_APPLIES',
+  FAIL_ABORT_CONDITIONS_UNDEFINED: 'FAIL_ABORT_CONDITIONS_UNDEFINED',
+  CANDIDATE_SET_DRIFT_DETECTED: 'CANDIDATE_SET_DRIFT_DETECTED',
+  ASSET_STATE_DRIFT_DETECTED: 'ASSET_STATE_DRIFT_DETECTED',
+  REFERENCE_STATUS_DRIFT_DETECTED: 'REFERENCE_STATUS_DRIFT_DETECTED',
+  PROTECTED_STATUS_DRIFT_DETECTED: 'PROTECTED_STATUS_DRIFT_DETECTED',
+  SCOPE_DRIFT_DETECTED: 'SCOPE_DRIFT_DETECTED',
+  ENVIRONMENT_DRIFT_DETECTED: 'ENVIRONMENT_DRIFT_DETECTED',
+  POLICY_VERSION_DRIFT_DETECTED: 'POLICY_VERSION_DRIFT_DETECTED',
+  DESTRUCTIVE_ELIGIBILITY_UNCERTAIN: 'DESTRUCTIVE_ELIGIBILITY_UNCERTAIN',
+  CONDITIONS_SATISFIED_UNCERTAIN: 'CONDITIONS_SATISFIED_UNCERTAIN',
+  REVERSIBLE_STATUS_CONFLICT: 'REVERSIBLE_STATUS_CONFLICT',
+});
+
+const RULES = Object.freeze([
+  Object.freeze({ key: 'hasDestructiveAuthorization', expected: true, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.DESTRUCTIVE_AUTHORIZATION_MISSING }),
+  Object.freeze({ key: 'isAuthorizationFresh', expected: true, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.DESTRUCTIVE_AUTHORIZATION_NOT_FRESH }),
+  Object.freeze({ key: 'isDestructiveModeExplicitlyApproved', expected: true, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.DESTRUCTIVE_MODE_NOT_EXPLICITLY_APPROVED }),
+  Object.freeze({ key: 'hasApprovedSnapshotBasis', expected: true, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.SNAPSHOT_BASIS_MISSING }),
+  Object.freeze({ key: 'hasSufficientCompletenessBasis', expected: true, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.COMPLETENESS_BASIS_MISSING_OR_INSUFFICIENT }),
+  Object.freeze({ key: 'hasAvailableAuditabilityBasis', expected: true, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.AUDITABILITY_BASIS_MISSING_OR_UNAVAILABLE }),
+  Object.freeze({ key: 'isTargetEnvironmentApproved', expected: true, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.TARGET_ENVIRONMENT_NOT_APPROVED }),
+  Object.freeze({ key: 'isTargetScopeApproved', expected: true, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.TARGET_SCOPE_NOT_APPROVED }),
+  Object.freeze({ key: 'isDestructiveEligibilityCurrentlySatisfied', expected: true, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.DESTRUCTIVE_ELIGIBILITY_NOT_SATISFIED }),
+  Object.freeze({ key: 'hasUnresolvedAmbiguity', expected: false, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.UNRESOLVED_AMBIGUITY_REMAINS }),
+  Object.freeze({ key: 'hasProtectedExclusion', expected: false, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.PROTECTED_EXCLUSION_APPLIES }),
+  Object.freeze({ key: 'areFailAbortConditionsDefined', expected: true, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.FAIL_ABORT_CONDITIONS_UNDEFINED }),
+  Object.freeze({ key: 'hasCandidateSetDrift', expected: false, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.CANDIDATE_SET_DRIFT_DETECTED }),
+  Object.freeze({ key: 'hasAssetStateDrift', expected: false, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.ASSET_STATE_DRIFT_DETECTED }),
+  Object.freeze({ key: 'hasReferenceStatusDrift', expected: false, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.REFERENCE_STATUS_DRIFT_DETECTED }),
+  Object.freeze({ key: 'hasProtectedStatusDrift', expected: false, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.PROTECTED_STATUS_DRIFT_DETECTED }),
+  Object.freeze({ key: 'hasScopeDrift', expected: false, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.SCOPE_DRIFT_DETECTED }),
+  Object.freeze({ key: 'hasEnvironmentDrift', expected: false, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.ENVIRONMENT_DRIFT_DETECTED }),
+  Object.freeze({ key: 'hasPolicyVersionDrift', expected: false, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.POLICY_VERSION_DRIFT_DETECTED }),
+  Object.freeze({ key: 'isDestructiveEligibilityUncertain', expected: false, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.DESTRUCTIVE_ELIGIBILITY_UNCERTAIN }),
+  Object.freeze({ key: 'areConditionsSatisfiedUncertain', expected: false, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.CONDITIONS_SATISFIED_UNCERTAIN }),
+  Object.freeze({ key: 'hasReversibleStatusConflict', expected: false, reason: DESTRUCTIVE_READINESS_BLOCKING_REASONS.REVERSIBLE_STATUS_CONFLICT }),
+]);
+
+function isObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+export function evaluateDestructiveReadiness(basis) {
+  const state = isObject(basis) ? basis : {};
+  const blockerSet = new Set();
+
+  for (const rule of RULES) {
+    if (state[rule.key] !== rule.expected) {
+      blockerSet.add(rule.reason);
+    }
+  }
+
+  const blockingReasonCodes = Array.from(blockerSet);
+  return {
+    isEligible: blockingReasonCodes.length === 0,
+    blockingReasonCodes,
+  };
+}
+
+export default evaluateDestructiveReadiness;
