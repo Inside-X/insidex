@@ -8,6 +8,7 @@ const adminToken = buildTestToken({ role: 'admin', id: 'admin-readiness-1' });
 
 function validPayload() {
   return {
+    targetAssetUrls: ['https://cdn/a.jpg'],
     hasDestructiveAuthorization: true,
     isAuthorizationFresh: true,
     isDestructiveModeExplicitlyApproved: true,
@@ -33,16 +34,32 @@ function validPayload() {
   };
 }
 
+function mockReadOnlyRepository({
+  finalizedAssets = [{ url: 'https://cdn/a.jpg', isReferenced: false, referenceCount: 0 }],
+  candidateAssets = [{ url: 'https://cdn/a.jpg' }],
+} = {}) {
+  return {
+    createUploadSession: jest.fn(),
+    finalizeUploadByIdempotency: jest.fn(),
+    listOrphanedFinalizedAssets: jest.fn(),
+    listFinalizedAssets: jest.fn().mockResolvedValue(finalizedAssets),
+    listCleanupDryRunCandidates: jest.fn().mockResolvedValue(candidateAssets),
+  };
+}
+
 describe('admin media destructive readiness inspection route', () => {
   afterEach(() => {
     jest.restoreAllMocks();
     delete app.locals.destructiveReadinessAssessor;
+    delete app.locals.destructiveReadinessBasisBuilder;
     delete app.locals.mediaUploadRepository;
     delete app.locals.mediaStorageProviderFactory;
   });
 
   test('valid read-only request returns assessor result', async () => {
     const payload = validPayload();
+    const repository = mockReadOnlyRepository();
+    app.locals.mediaUploadRepository = repository;
 
     const response = await request(app)
       .post('/api/admin/media/uploads/destructive-readiness/inspect')
@@ -50,10 +67,20 @@ describe('admin media destructive readiness inspection route', () => {
       .send(payload)
       .expect(200);
 
-    expect(response.body.data.assessment).toEqual(assessDestructiveReadiness(payload));
+    expect(response.body.data.assessment).toEqual({
+      isValid: true,
+      validationErrorCodes: [],
+      basis: expect.any(Object),
+      isEligible: true,
+      blockingReasonCodes: [],
+    });
+    expect(repository.listFinalizedAssets).toHaveBeenCalledTimes(1);
+    expect(repository.listCleanupDryRunCandidates).toHaveBeenCalledTimes(1);
   });
 
   test('malformed request input fails closed', async () => {
+    app.locals.mediaUploadRepository = mockReadOnlyRepository();
+
     const response = await request(app)
       .post('/api/admin/media/uploads/destructive-readiness/inspect')
       .set('Authorization', `Bearer ${adminToken}`)
@@ -63,17 +90,12 @@ describe('admin media destructive readiness inspection route', () => {
     expect(response.body.error.code).toBe('VALIDATION_ERROR');
   });
 
-  test('blocking conditions return ineligible result and route performs no repository/provider actions', async () => {
+  test('blocking conditions return ineligible result with read-only repository access only', async () => {
     const payload = validPayload();
-    payload.hasPolicyVersionDrift = true;
-
-    const repository = {
-      createUploadSession: jest.fn(),
-      finalizeUploadByIdempotency: jest.fn(),
-      listFinalizedAssets: jest.fn(),
-      listOrphanedFinalizedAssets: jest.fn(),
-      listCleanupDryRunCandidates: jest.fn(),
-    };
+    const repository = mockReadOnlyRepository({
+      finalizedAssets: [{ url: 'https://cdn/a.jpg', isReferenced: true, referenceCount: 1 }],
+      candidateAssets: [{ url: 'https://cdn/a.jpg' }],
+    });
     const providerFactory = jest.fn();
 
     app.locals.mediaUploadRepository = repository;
@@ -86,17 +108,18 @@ describe('admin media destructive readiness inspection route', () => {
       .expect(200);
 
     expect(response.body.data.assessment.isEligible).toBe(false);
+    expect(repository.listFinalizedAssets).toHaveBeenCalledTimes(1);
+    expect(repository.listCleanupDryRunCandidates).toHaveBeenCalledTimes(1);
     expect(repository.createUploadSession).not.toHaveBeenCalled();
     expect(repository.finalizeUploadByIdempotency).not.toHaveBeenCalled();
-    expect(repository.listFinalizedAssets).not.toHaveBeenCalled();
     expect(repository.listOrphanedFinalizedAssets).not.toHaveBeenCalled();
-    expect(repository.listCleanupDryRunCandidates).not.toHaveBeenCalled();
     expect(providerFactory).not.toHaveBeenCalled();
   });
 
   test('route uses only assessor output shape and is deterministic', async () => {
     const payload = validPayload();
-    payload.hasDestructiveAuthorization = 'true';
+    payload.hasPolicyVersionDrift = true;
+    app.locals.mediaUploadRepository = mockReadOnlyRepository();
 
     const first = await request(app)
       .post('/api/admin/media/uploads/destructive-readiness/inspect')
@@ -116,6 +139,7 @@ describe('admin media destructive readiness inspection route', () => {
   test('route does not mutate request payload object', async () => {
     const payload = validPayload();
     const snapshot = JSON.parse(JSON.stringify(payload));
+    app.locals.mediaUploadRepository = mockReadOnlyRepository();
 
     await request(app)
       .post('/api/admin/media/uploads/destructive-readiness/inspect')
@@ -128,7 +152,9 @@ describe('admin media destructive readiness inspection route', () => {
 
   test('route wiring calls assessor without inventing/suppressing errors or blockers', async () => {
     const payload = validPayload();
-    payload.hasDestructiveAuthorization = 'false';
+    payload.hasPolicyVersionDrift = true;
+    const repository = mockReadOnlyRepository();
+    app.locals.mediaUploadRepository = repository;
 
     const assessorSpy = jest.fn((input) => assessDestructiveReadiness(input));
     app.locals.destructiveReadinessAssessor = assessorSpy;
@@ -140,7 +166,12 @@ describe('admin media destructive readiness inspection route', () => {
       .expect(200);
 
     expect(assessorSpy).toHaveBeenCalledTimes(1);
-    expect(assessorSpy).toHaveBeenCalledWith(payload);
-    expect(response.body.data.assessment).toEqual(assessDestructiveReadiness(payload));
+    expect(assessorSpy).toHaveBeenCalledWith(expect.objectContaining({
+      hasDestructiveAuthorization: true,
+      hasPolicyVersionDrift: true,
+      isTargetScopeApproved: true,
+    }));
+    const assessorInput = assessorSpy.mock.calls[0][0];
+    expect(response.body.data.assessment).toEqual(assessDestructiveReadiness(assessorInput));
   });
 });

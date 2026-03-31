@@ -8,6 +8,7 @@ import {
 } from '../lib/media-storage-provider.js';
 import { mediaUploadRepository } from '../repositories/media-upload.repository.js';
 import assessDestructiveReadiness from '../domain/destructive-readiness-assessor.js';
+import buildDestructiveReadinessBasisFromState from '../domain/destructive-readiness-basis-builder.js';
 
 const router = express.Router();
 
@@ -41,6 +42,10 @@ function resolveMediaUploadRepository(req) {
 
 function resolveDestructiveReadinessAssessor(req) {
   return req.app?.locals?.destructiveReadinessAssessor || assessDestructiveReadiness;
+}
+
+function resolveDestructiveReadinessBasisBuilder(req) {
+  return req.app?.locals?.destructiveReadinessBasisBuilder || buildDestructiveReadinessBasisFromState;
 }
 
 function toContractAsset(asset) {
@@ -187,7 +192,11 @@ router.post(
   validate(destructiveReadinessInspectSchema),
   async (req, res, next) => {
     try {
-      const assessment = resolveDestructiveReadinessAssessor(req)(req.body);
+      const { rawBasis } = await resolveDestructiveReadinessBasisBuilder(req)(
+        req.body,
+        { mediaUploadRepository: resolveMediaUploadRepository(req) },
+      );
+      const assessment = resolveDestructiveReadinessAssessor(req)(rawBasis);
 
       return res.status(200).json({
         data: {
