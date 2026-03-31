@@ -7,6 +7,7 @@ import {
   createMediaStorageProvider,
 } from '../lib/media-storage-provider.js';
 import { mediaUploadRepository } from '../repositories/media-upload.repository.js';
+import assessDestructiveReadiness from '../domain/destructive-readiness-assessor.js';
 
 const router = express.Router();
 
@@ -28,12 +29,18 @@ const uploadFinalizeSchema = z.object({
   idempotencyKey: z.string({ required_error: 'idempotencyKey is required' }).trim().min(1, 'idempotencyKey is required'),
 }).strict({ message: 'unknown field in admin media upload-finalize payload' });
 
+const destructiveReadinessInspectSchema = z.object({}).passthrough();
+
 function resolveMediaStorageProviderFactory(req) {
   return req.app?.locals?.mediaStorageProviderFactory || createMediaStorageProvider;
 }
 
 function resolveMediaUploadRepository(req) {
   return req.app?.locals?.mediaUploadRepository || mediaUploadRepository;
+}
+
+function resolveDestructiveReadinessAssessor(req) {
+  return req.app?.locals?.destructiveReadinessAssessor || assessDestructiveReadiness;
 }
 
 function toContractAsset(asset) {
@@ -167,6 +174,24 @@ router.get(
       return res.status(200).json({
         data: {
           assets: assets.map(toContractAsset),
+        },
+      });
+    } catch (error) {
+      return next(error);
+    }
+  },
+);
+
+router.post(
+  '/uploads/destructive-readiness/inspect',
+  validate(destructiveReadinessInspectSchema),
+  async (req, res, next) => {
+    try {
+      const assessment = resolveDestructiveReadinessAssessor(req)(req.body);
+
+      return res.status(200).json({
+        data: {
+          assessment,
         },
       });
     } catch (error) {
