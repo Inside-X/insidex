@@ -30,7 +30,17 @@ const uploadFinalizeSchema = z.object({
   idempotencyKey: z.string({ required_error: 'idempotencyKey is required' }).trim().min(1, 'idempotencyKey is required'),
 }).strict({ message: 'unknown field in admin media upload-finalize payload' });
 
-const destructiveReadinessInspectSchema = z.object({}).passthrough();
+const destructiveReadinessInspectSchema = z.object({
+  targetAssetUrls: z.array(
+    z.string().trim().min(1, 'targetAssetUrls entries must not be empty'),
+    { required_error: 'targetAssetUrls is required' },
+  )
+    .min(1, 'targetAssetUrls must include at least one URL')
+    .refine(
+      (values) => new Set(values).size === values.length,
+      'targetAssetUrls must not include duplicates',
+    ),
+}).strict({ message: 'unknown field in admin media destructive-readiness inspect payload' });
 
 function resolveMediaStorageProviderFactory(req) {
   return req.app?.locals?.mediaStorageProviderFactory || createMediaStorageProvider;

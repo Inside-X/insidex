@@ -9,28 +9,6 @@ const adminToken = buildTestToken({ role: 'admin', id: 'admin-readiness-1' });
 function validPayload() {
   return {
     targetAssetUrls: ['https://cdn/a.jpg'],
-    hasDestructiveAuthorization: true,
-    isAuthorizationFresh: true,
-    isDestructiveModeExplicitlyApproved: true,
-    hasApprovedSnapshotBasis: true,
-    hasSufficientCompletenessBasis: true,
-    hasAvailableAuditabilityBasis: true,
-    isTargetEnvironmentApproved: true,
-    isTargetScopeApproved: true,
-    isDestructiveEligibilityCurrentlySatisfied: true,
-    hasUnresolvedAmbiguity: false,
-    hasProtectedExclusion: false,
-    areFailAbortConditionsDefined: true,
-    hasCandidateSetDrift: false,
-    hasAssetStateDrift: false,
-    hasReferenceStatusDrift: false,
-    hasProtectedStatusDrift: false,
-    hasScopeDrift: false,
-    hasEnvironmentDrift: false,
-    hasPolicyVersionDrift: false,
-    isDestructiveEligibilityUncertain: false,
-    areConditionsSatisfiedUncertain: false,
-    hasReversibleStatusConflict: false,
   };
 }
 
@@ -56,7 +34,7 @@ describe('admin media destructive readiness inspection route', () => {
     delete app.locals.mediaStorageProviderFactory;
   });
 
-  test('valid read-only request returns assessor result', async () => {
+  test('valid minimal targeting request returns assessor result without requiring readiness booleans', async () => {
     const payload = validPayload();
     const repository = mockReadOnlyRepository();
     app.locals.mediaUploadRepository = repository;
@@ -71,8 +49,8 @@ describe('admin media destructive readiness inspection route', () => {
       isValid: true,
       validationErrorCodes: [],
       basis: expect.any(Object),
-      isEligible: true,
-      blockingReasonCodes: [],
+      isEligible: false,
+      blockingReasonCodes: expect.any(Array),
     });
     expect(repository.listFinalizedAssets).toHaveBeenCalledTimes(1);
     expect(repository.listCleanupDryRunCandidates).toHaveBeenCalledTimes(1);
@@ -85,6 +63,36 @@ describe('admin media destructive readiness inspection route', () => {
       .post('/api/admin/media/uploads/destructive-readiness/inspect')
       .set('Authorization', `Bearer ${adminToken}`)
       .send([])
+      .expect(400);
+
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  test('missing required fields fail closed', async () => {
+    const payload = validPayload();
+    delete payload.targetAssetUrls;
+    app.locals.mediaUploadRepository = mockReadOnlyRepository();
+
+    const response = await request(app)
+      .post('/api/admin/media/uploads/destructive-readiness/inspect')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send(payload)
+      .expect(400);
+
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  test('unsupported extra fields fail closed', async () => {
+    const payload = {
+      ...validPayload(),
+      unsupportedScope: 'all-media',
+    };
+    app.locals.mediaUploadRepository = mockReadOnlyRepository();
+
+    const response = await request(app)
+      .post('/api/admin/media/uploads/destructive-readiness/inspect')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send(payload)
       .expect(400);
 
     expect(response.body.error.code).toBe('VALIDATION_ERROR');
@@ -118,7 +126,6 @@ describe('admin media destructive readiness inspection route', () => {
 
   test('route uses only assessor output shape and is deterministic', async () => {
     const payload = validPayload();
-    payload.hasPolicyVersionDrift = true;
     app.locals.mediaUploadRepository = mockReadOnlyRepository();
 
     const first = await request(app)
@@ -152,7 +159,6 @@ describe('admin media destructive readiness inspection route', () => {
 
   test('route wiring calls assessor without inventing/suppressing errors or blockers', async () => {
     const payload = validPayload();
-    payload.hasPolicyVersionDrift = true;
     const repository = mockReadOnlyRepository();
     app.locals.mediaUploadRepository = repository;
 
@@ -167,7 +173,7 @@ describe('admin media destructive readiness inspection route', () => {
 
     expect(assessorSpy).toHaveBeenCalledTimes(1);
     expect(assessorSpy).toHaveBeenCalledWith(expect.objectContaining({
-      hasDestructiveAuthorization: true,
+      hasDestructiveAuthorization: false,
       hasPolicyVersionDrift: true,
       isTargetScopeApproved: true,
     }));
