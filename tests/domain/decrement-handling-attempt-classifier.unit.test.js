@@ -98,6 +98,20 @@ describe('classifyDecrementHandlingAttempt', () => {
     });
   });
 
+  test('new intended finalization when no prior authoritative outcome exists and intent key is present', async () => {
+    await expect(classifyDecrementHandlingAttempt(
+      {
+        productId: 'prod_1',
+        intendedFinalizationKey: 'intent_1',
+      },
+      {},
+    )).resolves.toEqual({
+      classification: 'new_intended_finalization',
+      authoritativeOutcome: null,
+      blockingReasonCodes: [],
+    });
+  });
+
   test('unclassifiable when prior authoritative outcome is unknown', async () => {
     await expect(classifyDecrementHandlingAttempt(
       {
@@ -114,6 +128,108 @@ describe('classifyDecrementHandlingAttempt', () => {
       authoritativeOutcome: null,
       blockingReasonCodes: [
         'authoritative_outcome_unknown',
+        'decrement_handling_classification_uncertain',
+      ],
+    });
+  });
+
+  test('invalid authoritative target shape fails closed as unknown authority', async () => {
+    await expect(classifyDecrementHandlingAttempt(
+      {
+        productId: 'prod_1',
+        intendedFinalizationKey: 'intent_1',
+      },
+      {
+        hasAuthoritativeOutcome: true,
+        intendedFinalizationKey: 'intent_1',
+        authoritativeOutcome: {
+          outcomeKind: 'decrement_confirmed',
+          target: { kind: 'unexpected_kind', productId: 'prod_1' },
+        },
+      },
+    )).resolves.toEqual({
+      classification: 'unclassifiable',
+      authoritativeOutcome: null,
+      blockingReasonCodes: [
+        'authoritative_outcome_unknown',
+        'decrement_handling_classification_uncertain',
+      ],
+    });
+  });
+
+  test('authoritative target continuity unresolved fails closed', async () => {
+    await expect(classifyDecrementHandlingAttempt(
+      {
+        intendedFinalizationKey: 'intent_1',
+      },
+      {
+        intendedFinalizationKey: 'intent_1',
+        authoritativeOutcome: {
+          outcomeKind: 'decrement_confirmed',
+          target: { kind: 'product', productId: 'prod_1', variantId: null, sku: null },
+        },
+      },
+      {
+        resolveStockBearingTarget: jest.fn(async () => ({
+          isResolved: false,
+          target: null,
+          blockingReasonCodes: ['stock_target_unresolved'],
+        })),
+      },
+    )).resolves.toEqual({
+      classification: 'unclassifiable',
+      authoritativeOutcome: null,
+      blockingReasonCodes: [
+        'stock_target_continuity_unresolved',
+        'stock_target_unresolved',
+        'decrement_handling_classification_uncertain',
+      ],
+    });
+  });
+
+  test('authoritative target mismatch fails closed with unreconcilable divergence', async () => {
+    await expect(classifyDecrementHandlingAttempt(
+      {
+        productId: 'prod_2',
+        intendedFinalizationKey: 'intent_1',
+      },
+      {
+        intendedFinalizationKey: 'intent_1',
+        authoritativeOutcome: {
+          outcomeKind: 'decrement_confirmed',
+          target: { kind: 'product', productId: 'prod_1', variantId: null, sku: null },
+        },
+      },
+    )).resolves.toEqual({
+      classification: 'unclassifiable',
+      authoritativeOutcome: null,
+      blockingReasonCodes: [
+        'prior_outcome_unreconcilable',
+        'repeated_handling_truth_divergence',
+        'decrement_handling_classification_uncertain',
+      ],
+    });
+  });
+
+  test('intent mismatch with pre-existing uncertainty fails closed (no unsafe new-intent classification)', async () => {
+    await expect(classifyDecrementHandlingAttempt(
+      {
+        productId: 'prod_2',
+        intendedFinalizationKey: 'intent_new',
+      },
+      {
+        intendedFinalizationKey: 'intent_old',
+        authoritativeOutcome: {
+          outcomeKind: 'decrement_confirmed',
+          target: { kind: 'product', productId: 'prod_1', variantId: null, sku: null },
+        },
+      },
+    )).resolves.toEqual({
+      classification: 'unclassifiable',
+      authoritativeOutcome: null,
+      blockingReasonCodes: [
+        'prior_outcome_unreconcilable',
+        'repeated_handling_truth_divergence',
         'decrement_handling_classification_uncertain',
       ],
     });
