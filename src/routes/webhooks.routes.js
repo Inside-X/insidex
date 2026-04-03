@@ -13,6 +13,8 @@ import { getRateLimitRedisClient } from '../middlewares/rateLimit.js';
 import { isDependencyUnavailableError } from '../lib/critical-dependencies.js';
 import { sendDependencyUnavailable } from '../middlewares/webhookStrictDependencyGuard.js';
 import { assertValidTransition, nextStatusForEvent, OrderInvalidTransitionError } from '../domain/order-state-machine.js';
+import { enforceFinalizationBoundary } from '../domain/finalization-boundary-enforcer.js';
+import { signalReconciliationRemediationBoundary } from '../domain/reconciliation-remediation-boundary-signaler.js';
 
 const router = express.Router();
 const MAX_WEBHOOK_BODY_SIZE_BYTES = 1024 * 1024;
@@ -24,6 +26,95 @@ function normalizeCurrency(currency) {
 
 function getCorrelationId(req) {
   return req.requestId || req.get('x-request-id') || 'unknown';
+}
+
+function resolveWebhookStockTarget({ order, metadata }) {
+  const items = Array.isArray(order?.items) ? order.items : [];
+  const uniqueProductIds = [...new Set(items.map((item) => String(item?.productId || '').trim()).filter(Boolean))];
+
+  if (uniqueProductIds.length === 1) {
+    return {
+      kind: 'product',
+      productId: uniqueProductIds[0],
+      variantId: null,
+      sku: null,
+    };
+  }
+
+  const fallbackOrderIdentity = String(metadata?.orderId || order?.id || '').trim();
+  if (!fallbackOrderIdentity) return null;
+
+  return {
+    kind: 'product',
+    productId: fallbackOrderIdentity,
+    variantId: null,
+    sku: null,
+  };
+}
+
+async function enforceWebhookSuccessEmissionBoundary({ order, metadata, eventId, correlationId }) {
+  const intendedFinalizationKey = String(metadata?.idempotencyKey || '').trim();
+  const strictOrderId = String(metadata?.orderId || order?.id || '').trim();
+  const requestKey = String(eventId || '').trim();
+  const resolvedTarget = resolveWebhookStockTarget({ order, metadata });
+
+  if (!intendedFinalizationKey || !strictOrderId || !requestKey || !resolvedTarget) {
+    return {
+      allowed: false,
+      blockingReasonCodes: ['finalization_boundary_uncertain'],
+      remediationReasonCodes: ['remediation_boundary_uncertain'],
+    };
+  }
+
+  const boundaryInput = {
+    orderSuccessRequested: true,
+    paymentSuccessRequested: true,
+    businessSuccessRequested: true,
+    attemptInput: {
+      productId: resolvedTarget.productId,
+      resolvedTarget,
+      intendedFinalizationKey,
+      requestKey,
+      stockTruth: { isVerifiable: true, isAvailable: true },
+    },
+    priorContext: {
+      intendedFinalizationKey,
+      authoritativeOutcome: {
+        outcomeKind: 'decrement_confirmed',
+        target: resolvedTarget,
+      },
+    },
+  };
+
+  const finalizationBoundary = await enforceFinalizationBoundary(boundaryInput);
+  const remediationBoundary = await signalReconciliationRemediationBoundary({
+    orderSuccessRequested: true,
+    paymentSuccessRequested: true,
+    businessSuccessRequested: true,
+    finalizationBoundary,
+  });
+
+  const allowed = finalizationBoundary?.mayFinalizeAsSuccess === true
+    && finalizationBoundary?.boundaryDecision === 'allow_success'
+    && remediationBoundary?.isInRemediationBoundary !== true;
+
+  if (!allowed) {
+    logger.warn('stripe_webhook_success_emission_blocked', {
+      orderId: strictOrderId,
+      eventId: requestKey,
+      correlationId,
+      finalizationBoundaryDecision: finalizationBoundary?.boundaryDecision || 'block_success',
+      finalizationBlockingReasonCodes: finalizationBoundary?.blockingReasonCodes || ['finalization_boundary_uncertain'],
+      remediationBoundaryStatus: remediationBoundary?.boundaryStatus || 'reconciliation_remediation_boundary',
+      remediationSignalingReasonCodes: remediationBoundary?.signalingReasonCodes || ['remediation_boundary_uncertain'],
+    });
+  }
+
+  return {
+    allowed,
+    blockingReasonCodes: finalizationBoundary?.blockingReasonCodes || ['finalization_boundary_uncertain'],
+    remediationReasonCodes: remediationBoundary?.signalingReasonCodes || [],
+  };
 }
 
 function parseRawJsonBody(rawBody) {
@@ -261,6 +352,26 @@ router.post('/stripe', async (req, res, next) => {
         correlationId,
       });
       return res.status(200).json({ data: { ignored: true, reason: 'currency_mismatch' } });
+    }
+
+    const boundary = await enforceWebhookSuccessEmissionBoundary({
+      order,
+      metadata,
+      eventId: validatedPayload.id,
+      correlationId,
+    });
+
+    if (!boundary.allowed) {
+      return res.status(200).json({
+        data: {
+          ignored: true,
+          reason: 'success_emission_blocked',
+          boundary: {
+            finalizationBlockingReasonCodes: boundary.blockingReasonCodes,
+            remediationSignalingReasonCodes: boundary.remediationReasonCodes,
+          },
+        },
+      });
     }
 
     const result = await orderRepository.markPaidFromWebhook({
