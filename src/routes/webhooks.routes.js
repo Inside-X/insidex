@@ -362,6 +362,43 @@ router.post('/stripe', async (req, res, next) => {
     });
 
     if (!boundary.allowed) {
+      const communicationUnit = await orderRepository.recordUnderReviewCommunicationUnitFromWebhook({
+        orderId: order.id,
+        currentStatus: order.status,
+        intendedFinalizationKey: metadata?.idempotencyKey,
+        stripePaymentIntentId: paymentIntentId,
+        correlationId,
+      });
+
+      if (communicationUnit?.recorded === true) {
+        logger.info('stripe_webhook_under_review_communication_unit_recorded', {
+          orderId: order.id,
+          eventId: validatedPayload.id,
+          communicationUnitId: communicationUnit.communicationUnitId,
+          semanticClass: 'under_review',
+          seam: 'stripe_success_emission_blocked',
+          correlationId,
+        });
+      } else if (communicationUnit?.deduped === true) {
+        logger.info('stripe_webhook_under_review_communication_unit_deduped', {
+          orderId: order.id,
+          eventId: validatedPayload.id,
+          communicationUnitId: communicationUnit.communicationUnitId,
+          semanticClass: 'under_review',
+          seam: 'stripe_success_emission_blocked',
+          correlationId,
+        });
+      } else {
+        logger.warn('stripe_webhook_under_review_communication_unit_not_recorded', {
+          orderId: order.id,
+          eventId: validatedPayload.id,
+          reason: communicationUnit?.reason || 'insufficient_context',
+          semanticClass: 'under_review',
+          seam: 'stripe_success_emission_blocked',
+          correlationId,
+        });
+      }
+
       return res.status(200).json({
         data: {
           ignored: true,

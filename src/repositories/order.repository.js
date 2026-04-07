@@ -77,6 +77,23 @@ function resolveOrderEventSource(provider) {
   return 'system';
 }
 
+function buildUnderReviewCommunicationUnitId({
+  seam = '',
+  semanticClass = '',
+  orderId = '',
+  intendedFinalizationKey = '',
+  resourceId = '',
+}) {
+  return [
+    'comm',
+    seam,
+    semanticClass,
+    orderId,
+    intendedFinalizationKey,
+    resourceId,
+  ].join(':');
+}
+
 async function updateOrderPaidAndRecordEvent({ tx, order, where, stripePaymentIntentId = null, provider, sourceEventId = null, correlationId = null }) {
   const fromStatus = order.status;
   const updateResult = await tx.order.updateMany({
@@ -431,6 +448,75 @@ export const orderRepository = {
     } catch (error) {
       normalizeDbError(error, { repository: 'order', operation: 'processPaymentWebhookEvent' });
     }
+  },
+
+  async recordUnderReviewCommunicationUnitFromWebhook({
+    orderId,
+    currentStatus,
+    intendedFinalizationKey,
+    stripePaymentIntentId,
+    correlationId = null,
+  }) {
+    const normalizedOrderId = typeof orderId === 'string' ? orderId.trim() : '';
+    const normalizedStatus = typeof currentStatus === 'string' ? currentStatus.trim().toLowerCase() : '';
+    const normalizedIntent = typeof intendedFinalizationKey === 'string' ? intendedFinalizationKey.trim() : '';
+    const normalizedIntentId = typeof stripePaymentIntentId === 'string' ? stripePaymentIntentId.trim() : '';
+
+    if (!normalizedOrderId || !normalizedStatus || !normalizedIntent || !normalizedIntentId) {
+      return {
+        recorded: false,
+        deduped: false,
+        reason: 'insufficient_context',
+        communicationUnitId: null,
+      };
+    }
+
+    const seam = 'stripe_success_emission_blocked';
+    const semanticClass = 'under_review';
+    const communicationUnitId = buildUnderReviewCommunicationUnitId({
+      seam,
+      semanticClass,
+      orderId: normalizedOrderId,
+      intendedFinalizationKey: normalizedIntent,
+      resourceId: normalizedIntentId,
+    });
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.orderEvent.create({
+          data: {
+            orderId: normalizedOrderId,
+            type: 'customer_under_review_communication',
+            fromStatus: normalizedStatus,
+            toStatus: normalizedStatus,
+            source: 'stripe',
+            sourceEventId: communicationUnitId,
+            idempotencyKey: normalizedIntent,
+            correlationId,
+          },
+        });
+      });
+    } catch (error) {
+      if (isUniqueConstraintOnTarget(error, 'source_event_id') || error?.code === 'P2002') {
+        return {
+          recorded: false,
+          deduped: true,
+          reason: 'duplicate_communication_unit',
+          communicationUnitId,
+        };
+      }
+      normalizeDbError(error, {
+        repository: 'order',
+        operation: 'recordUnderReviewCommunicationUnitFromWebhook',
+      });
+    }
+
+    return {
+      recorded: true,
+      deduped: false,
+      reason: 'recorded',
+      communicationUnitId,
+    };
   },
 };
 

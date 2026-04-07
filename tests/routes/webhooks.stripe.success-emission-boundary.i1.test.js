@@ -39,6 +39,7 @@ describe('I1 stripe success emission boundary wiring', () => {
     signalBoundary,
     stripeEvent = baseEvent,
     markPaidResult = { replayed: false, orderMarkedPaid: true },
+    communicationUnitResult = { recorded: false, deduped: false, reason: 'insufficient_context', communicationUnitId: null },
   }) {
     const claim = jest.fn().mockResolvedValue({ accepted: true });
     const constructEvent = jest.fn(() => stripeEvent);
@@ -46,6 +47,7 @@ describe('I1 stripe success emission boundary wiring', () => {
       findById: jest.fn().mockResolvedValue(order),
       markPaidFromWebhook: jest.fn().mockResolvedValue(markPaidResult),
       processPaymentWebhookEvent: jest.fn(),
+      recordUnderReviewCommunicationUnitFromWebhook: jest.fn().mockResolvedValue(communicationUnitResult),
     };
 
     const routes = await loadRoute('../../src/routes/webhooks.routes.js', {
@@ -138,6 +140,14 @@ describe('I1 stripe success emission boundary wiring', () => {
     await stripe(req, res, jest.fn());
 
     expect(orderRepository.markPaidFromWebhook).not.toHaveBeenCalled();
+    expect(orderRepository.recordUnderReviewCommunicationUnitFromWebhook).toHaveBeenCalledTimes(1);
+    expect(orderRepository.recordUnderReviewCommunicationUnitFromWebhook).toHaveBeenCalledWith({
+      orderId: 'ord_1',
+      currentStatus: 'pending',
+      intendedFinalizationKey: 'idem_1',
+      stripePaymentIntentId: 'pi_i1_1',
+      correlationId: 'unknown',
+    });
     expect(res.json).toHaveBeenCalledWith({
       data: {
         ignored: true,
@@ -212,6 +222,7 @@ describe('I1 stripe success emission boundary wiring', () => {
 
     await stripe(req, res, jest.fn());
     expect(orderRepository.markPaidFromWebhook).not.toHaveBeenCalled();
+    expect(orderRepository.recordUnderReviewCommunicationUnitFromWebhook).toHaveBeenCalledTimes(1);
   });
 
   test('strict same-intent keys are passed to boundary enforcer (no fuzzy shortcut)', async () => {
@@ -297,6 +308,7 @@ describe('I1 stripe success emission boundary wiring', () => {
     );
 
     expect(repoNoIntent.markPaidFromWebhook).not.toHaveBeenCalled();
+    expect(repoNoIntent.recordUnderReviewCommunicationUnitFromWebhook).toHaveBeenCalledTimes(1);
     expect(resNoIntent.json).toHaveBeenCalledWith({
       data: {
         ignored: true,
@@ -320,7 +332,7 @@ describe('I1 stripe success emission boundary wiring', () => {
       '../../src/lib/paypal.js': () => ({ default: { webhooks: { verifyWebhookSignature: jest.fn() } } }),
       '../../src/validation/schemas/index.js': () => ({ paymentsSchemas: { stripeWebhook: { parse: jest.fn((x) => x) }, paypalWebhook: { parse: jest.fn((x) => x) } } }),
       '../../src/utils/api-error.js': () => ({ sendApiError }),
-      '../../src/repositories/order.repository.js': () => ({ orderRepository: { findById: jest.fn(), markPaidFromWebhook: jest.fn(), processPaymentWebhookEvent: jest.fn() } }),
+      '../../src/repositories/order.repository.js': () => ({ orderRepository: { findById: jest.fn(), markPaidFromWebhook: jest.fn(), processPaymentWebhookEvent: jest.fn(), recordUnderReviewCommunicationUnitFromWebhook: jest.fn() } }),
       '../../src/utils/logger.js': () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }),
       '../../src/domain/order-state-machine.js': () => ({ OrderInvalidTransitionError: class OrderInvalidTransitionError extends Error {}, nextStatusForEvent: jest.fn(() => 'paid'), assertValidTransition: jest.fn() }),
       '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
@@ -336,5 +348,89 @@ describe('I1 stripe success emission boundary wiring', () => {
     await stripe(req, res, jest.fn());
 
     expect(sendApiError).toHaveBeenCalledWith(req, res, 503, 'SERVICE_UNAVAILABLE', 'Webhook idempotency backend unavailable');
+  });
+
+  test('repeated handling keeps deterministic under_review communication unit identity at seam', async () => {
+    const claim = jest.fn()
+      .mockResolvedValueOnce({ accepted: true })
+      .mockResolvedValueOnce({ accepted: true });
+    const constructEvent = jest.fn(() => baseEvent);
+    const orderRepository = {
+      findById: jest.fn().mockResolvedValue({
+        id: 'ord_1',
+        status: 'pending',
+        totalAmount: '10.00',
+        currency: 'EUR',
+        idempotencyKey: 'idem_1',
+        items: [{ productId: 'prod_1', quantity: 1 }],
+      }),
+      markPaidFromWebhook: jest.fn(),
+      processPaymentWebhookEvent: jest.fn(),
+      recordUnderReviewCommunicationUnitFromWebhook: jest.fn()
+        .mockResolvedValueOnce({
+          recorded: true,
+          deduped: false,
+          reason: 'recorded',
+          communicationUnitId: 'comm:stripe_success_emission_blocked:under_review:ord_1:idem_1:pi_i1_1',
+        })
+        .mockResolvedValueOnce({
+          recorded: false,
+          deduped: true,
+          reason: 'duplicate_communication_unit',
+          communicationUnitId: 'comm:stripe_success_emission_blocked:under_review:ord_1:idem_1:pi_i1_1',
+        }),
+    };
+
+    const routes = await loadRoute('../../src/routes/webhooks.routes.js', {
+      zod: () => ({ ZodError: class ZodError extends Error {} }),
+      '../../src/lib/stripe.js': () => ({ default: { webhooks: { constructEvent } } }),
+      '../../src/lib/paypal.js': () => ({ default: { webhooks: { verifyWebhookSignature: jest.fn() } } }),
+      '../../src/validation/schemas/index.js': () => ({
+        paymentsSchemas: {
+          stripeWebhook: { parse: jest.fn((x) => x) },
+          paypalWebhook: { parse: jest.fn((x) => x) },
+        },
+      }),
+      '../../src/utils/api-error.js': () => ({ sendApiError: jest.fn((_req, res, status, code, message) => res.status(status).json({ code, message })) }),
+      '../../src/repositories/order.repository.js': () => ({ orderRepository }),
+      '../../src/utils/logger.js': () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }),
+      '../../src/domain/order-state-machine.js': () => ({
+        OrderInvalidTransitionError: class OrderInvalidTransitionError extends Error {},
+        nextStatusForEvent: jest.fn(() => 'paid'),
+        assertValidTransition: jest.fn(),
+      }),
+      '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
+      '../../src/domain/finalization-boundary-enforcer.js': () => ({
+        enforceFinalizationBoundary: jest.fn(async () => ({
+          mayFinalizeAsSuccess: false,
+          boundaryDecision: 'block_success',
+          blockingReasonCodes: ['finalization_boundary_uncertain'],
+        })),
+      }),
+      '../../src/domain/reconciliation-remediation-boundary-signaler.js': () => ({
+        signalReconciliationRemediationBoundary: jest.fn(async () => ({
+          isInRemediationBoundary: true,
+          boundaryStatus: 'reconciliation_remediation_boundary',
+          signalingReasonCodes: ['remediation_boundary_uncertain'],
+        })),
+      }),
+    });
+
+    process.env.PAYMENT_WEBHOOK_SECRET = 'sec';
+    const stripe = routes.find((r) => r.path === '/stripe').handlers.at(-1);
+    const buildReq = () => ({ get: (header) => (header === 'stripe-signature' ? 'sig' : null), body: Buffer.from('{}'), app: { locals: { webhookIdempotencyStore: { claim } } } });
+    const makeRes = () => {
+      const res = { status: jest.fn(() => res), json: jest.fn() };
+      return res;
+    };
+
+    await stripe(buildReq(), makeRes(), jest.fn());
+    await stripe(buildReq(), makeRes(), jest.fn());
+
+    expect(orderRepository.recordUnderReviewCommunicationUnitFromWebhook).toHaveBeenCalledTimes(2);
+    expect(orderRepository.recordUnderReviewCommunicationUnitFromWebhook.mock.calls[0][0]).toEqual(
+      orderRepository.recordUnderReviewCommunicationUnitFromWebhook.mock.calls[1][0],
+    );
+    expect(orderRepository.markPaidFromWebhook).not.toHaveBeenCalled();
   });
 });

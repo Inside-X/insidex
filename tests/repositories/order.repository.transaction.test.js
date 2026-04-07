@@ -956,5 +956,76 @@ describe('orderRepository additional branch coverage', () => {
       payload: {},
     })).resolves.toEqual({ replayed: true, orderMarkedPaid: false });
   });
+
+  test('recordUnderReviewCommunicationUnitFromWebhook is idempotent for same intended unit', async () => {
+    const state = buildPrismaState({
+      orders: [{
+        id: 'order-under-review',
+        userId: 'u',
+        idempotencyKey: 'idem-under-review',
+        stripePaymentIntentId: 'pi-under-review',
+        status: 'pending',
+        totalAmount: 10,
+      }],
+    });
+    Object.assign(prisma, createPrismaMock(state));
+
+    const first = await orderRepository.recordUnderReviewCommunicationUnitFromWebhook({
+      orderId: 'order-under-review',
+      currentStatus: 'pending',
+      intendedFinalizationKey: 'idem-under-review',
+      stripePaymentIntentId: 'pi-under-review',
+      correlationId: 'cid-under-review-1',
+    });
+    const second = await orderRepository.recordUnderReviewCommunicationUnitFromWebhook({
+      orderId: 'order-under-review',
+      currentStatus: 'pending',
+      intendedFinalizationKey: 'idem-under-review',
+      stripePaymentIntentId: 'pi-under-review',
+      correlationId: 'cid-under-review-2',
+    });
+
+    expect(first).toMatchObject({
+      recorded: true,
+      deduped: false,
+      reason: 'recorded',
+      communicationUnitId: 'comm:stripe_success_emission_blocked:under_review:order-under-review:idem-under-review:pi-under-review',
+    });
+    expect(second).toMatchObject({
+      recorded: false,
+      deduped: true,
+      reason: 'duplicate_communication_unit',
+      communicationUnitId: 'comm:stripe_success_emission_blocked:under_review:order-under-review:idem-under-review:pi-under-review',
+    });
+    expect(state.orderEvents).toHaveLength(1);
+    expect(state.orderEvents[0]).toMatchObject({
+      orderId: 'order-under-review',
+      type: 'customer_under_review_communication',
+      source: 'stripe',
+      sourceEventId: 'comm:stripe_success_emission_blocked:under_review:order-under-review:idem-under-review:pi-under-review',
+      fromStatus: 'pending',
+      toStatus: 'pending',
+      idempotencyKey: 'idem-under-review',
+    });
+  });
+
+  test('recordUnderReviewCommunicationUnitFromWebhook fails closed on insufficient context', async () => {
+    const state = buildPrismaState();
+    Object.assign(prisma, createPrismaMock(state));
+
+    await expect(orderRepository.recordUnderReviewCommunicationUnitFromWebhook({
+      orderId: 'order-under-review',
+      currentStatus: 'pending',
+      intendedFinalizationKey: '',
+      stripePaymentIntentId: 'pi-under-review',
+    })).resolves.toEqual({
+      recorded: false,
+      deduped: false,
+      reason: 'insufficient_context',
+      communicationUnitId: null,
+    });
+
+    expect(state.orderEvents).toHaveLength(0);
+  });
   
 });
