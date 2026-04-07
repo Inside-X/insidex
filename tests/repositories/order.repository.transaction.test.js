@@ -1027,5 +1027,82 @@ describe('orderRepository additional branch coverage', () => {
 
     expect(state.orderEvents).toHaveLength(0);
   });
+
+  test('processPaymentWebhookEvent fail-closed branches and under-review normalization fallbacks are covered', async () => {
+    Object.assign(prisma, {
+      $transaction: jest.fn(async (callback) => callback({
+        paymentWebhookEvent: {
+          create: jest.fn(async () => ({})),
+        },
+        order: {
+          findUnique: jest.fn(async () => null),
+          findFirst: jest.fn(async () => null),
+          updateMany: jest.fn(async () => ({ count: 0 })),
+        },
+      })),
+    });
+
+    await expect(orderRepository.processPaymentWebhookEvent({
+      provider: 'stripe',
+      eventId: 'evt-no-order-hit',
+      orderId: 'missing-order-id',
+      payload: {},
+    })).resolves.toEqual({ replayed: false, orderMarkedPaid: false });
+
+    const paidState = buildPrismaState({
+      orders: [{
+        id: 'order-paid-no-metadata',
+        userId: 'u',
+        idempotencyKey: 'idem-paid-no-metadata',
+        stripePaymentIntentId: 'pi-paid-no-metadata',
+        status: 'paid',
+        totalAmount: 10,
+      }],
+    });
+    Object.assign(prisma, createPrismaMock(paidState));
+
+    await expect(orderRepository.processPaymentWebhookEvent({
+      provider: 'stripe',
+      eventId: 'evt-paid-no-metadata',
+      orderId: 'order-paid-no-metadata',
+      payload: {},
+    })).resolves.toEqual({ replayed: false, orderMarkedPaid: false });
+
+    Object.assign(prisma, {
+      $transaction: jest.fn(async (callback) => callback({
+        orderEvent: {
+          create: jest.fn(async () => {
+            const err = new Error('Unique conflict');
+            err.code = 'P2002';
+            throw err;
+          }),
+        },
+      })),
+    });
+
+    await expect(orderRepository.recordUnderReviewCommunicationUnitFromWebhook({
+      orderId: 123,
+      currentStatus: null,
+      intendedFinalizationKey: undefined,
+      stripePaymentIntentId: {},
+    })).resolves.toEqual({
+      recorded: false,
+      deduped: false,
+      reason: 'insufficient_context',
+      communicationUnitId: null,
+    });
+
+    await expect(orderRepository.recordUnderReviewCommunicationUnitFromWebhook({
+      orderId: 'order-under-review',
+      currentStatus: 'pending',
+      intendedFinalizationKey: 'idem-under-review',
+      stripePaymentIntentId: 'pi-under-review',
+    })).resolves.toMatchObject({
+      recorded: false,
+      deduped: true,
+      reason: 'duplicate_communication_unit',
+      communicationUnitId: 'comm:stripe_success_emission_blocked:under_review:order-under-review:idem-under-review:pi-under-review',
+    });
+  });
   
 });
