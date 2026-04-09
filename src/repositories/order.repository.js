@@ -15,6 +15,92 @@ function uniqueProductItems(items) {
     .sort((a, b) => a.productId.localeCompare(b.productId));
 }
 
+function badRequest(message) {
+  const error = new Error(message);
+  error.statusCode = 400;
+  return error;
+}
+
+function normalizeDestination(destination) {
+  if (!destination || typeof destination !== 'object') {
+    throw badRequest('delivery_local requires destination truth');
+  }
+
+  const line1 = String(destination.line1 || '').trim();
+  const city = String(destination.city || '').trim();
+  const postalCode = String(destination.postalCode || '').trim();
+  const country = String(destination.country || '').trim();
+  const line2 = destination.line2 == null ? undefined : String(destination.line2).trim();
+
+  if (!line1 || !city || !postalCode || !country) {
+    throw badRequest('delivery_local requires non-ambiguous destination truth');
+  }
+
+  return {
+    line1,
+    ...(line2 ? { line2 } : {}),
+    city,
+    postalCode,
+    country,
+  };
+}
+
+function buildFulfillmentSnapshot({ fulfillment, email, address }) {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+
+  if (!fulfillment) {
+    return {
+      mode: 'pickup_local',
+      customer: {
+        contactEmail: normalizedEmail || null,
+      },
+      pickup: {},
+    };
+  }
+
+  const mode = fulfillment?.mode;
+  if (mode !== 'pickup_local' && mode !== 'delivery_local') {
+    throw badRequest('Unsupported fulfillment mode');
+  }
+
+  if (!normalizedEmail) {
+    throw badRequest('Customer email is required for fulfillment snapshot');
+  }
+
+  const baseSnapshot = {
+    mode,
+    customer: {
+      contactEmail: normalizedEmail,
+    },
+  };
+
+  if (mode === 'pickup_local') {
+    const note = fulfillment?.pickup?.note;
+    return {
+      ...baseSnapshot,
+      pickup: {
+        ...(note ? { note: String(note).trim() } : {}),
+      },
+    };
+  }
+
+  if (fulfillment?.pickup) {
+    throw badRequest('pickup payload is incompatible with delivery_local');
+  }
+
+  const destinationSource = fulfillment?.delivery?.destination || address;
+  const destination = normalizeDestination(destinationSource);
+  const note = fulfillment?.delivery?.note;
+
+  return {
+    ...baseSnapshot,
+    delivery: {
+      destination,
+      ...(note ? { note: String(note).trim() } : {}),
+    },
+  };
+}
+
 function assertExpectedAmountMatches({ expectedTotalAmount, expectedTotalAmountMinor, totalAmountMinor, currency = 'EUR' }) {
   if (expectedTotalAmountMinor !== undefined && expectedTotalAmountMinor !== null) {
     if (!Number.isInteger(expectedTotalAmountMinor) || expectedTotalAmountMinor < 0) {
@@ -150,8 +236,18 @@ export const orderRepository = {
     try { return await prisma.order.findMany({ skip, take, where, orderBy, include: { items: true } }); } catch (error) { normalizeDbError(error, { repository: 'order', operation: 'list' }); }
   },
 
-  async createIdempotentWithItemsAndUpdateStock({ userId, items, idempotencyKey, stripePaymentIntentId = null, status = 'pending' }) {
+  async createIdempotentWithItemsAndUpdateStock({
+    userId,
+    items,
+    idempotencyKey,
+    stripePaymentIntentId = null,
+    status = 'pending',
+    fulfillment = null,
+    email = null,
+    address = null,
+  }) {
     const normalizedItems = uniqueProductItems(items);
+    const fulfillmentSnapshot = buildFulfillmentSnapshot({ fulfillment, email, address });
     assertValidTransition(null, status, { operation: 'createIdempotentWithItemsAndUpdateStock' });
 
     try {
@@ -159,7 +255,7 @@ export const orderRepository = {
         const productIds = normalizedItems.map((item) => item.productId);
         const products = await tx.product.findMany({
           where: { id: { in: productIds } },
-          select: { id: true, price: true },
+          select: { id: true, price: true, localDeliveryEnabled: true },
         });
 
         if (products.length !== productIds.length) {
@@ -171,6 +267,13 @@ export const orderRepository = {
         }
 
         const productMap = new Map(products.map((product) => [product.id, product]));
+
+        if (fulfillmentSnapshot.mode === 'delivery_local') {
+          const blockingProduct = products.find((product) => product.localDeliveryEnabled !== true);
+          if (blockingProduct) {
+            throw badRequest(`delivery_local is not eligible for product: ${blockingProduct.id}`);
+          }
+        }
 
         const totalAmountMinor = sumMinorUnits(normalizedItems.map((item) => {
           const product = productMap.get(item.productId);
@@ -187,6 +290,8 @@ export const orderRepository = {
               idempotencyKey,
               stripePaymentIntentId,
               totalAmount: fromMinorUnits(totalAmountMinor),
+              fulfillmentMode: fulfillmentSnapshot.mode,
+              fulfillmentSnapshot,
             },
           });
         } catch (error) {

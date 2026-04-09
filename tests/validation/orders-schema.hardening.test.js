@@ -4,11 +4,16 @@ const validOrderPayload = {
   idempotencyKey: 'idem-orders-schema-12345',
   stripePaymentIntentId: 'pi_123456789',
   email: 'guest@insidex.test',
-  address: {
-    line1: '12 rue du Port',
-    city: 'Mamoudzou',
-    postalCode: '97600',
-    country: 'FR',
+  fulfillment: {
+    mode: 'delivery_local',
+    delivery: {
+      destination: {
+        line1: '12 rue du Port',
+        city: 'Mamoudzou',
+        postalCode: '97600',
+        country: 'FR',
+      },
+    },
   },
   items: [{ id: '00000000-0000-0000-0000-000000000999', quantity: 1 }],
 };
@@ -52,6 +57,78 @@ describe('orders schema hardening', () => {
 
     expect(idempotencyKey).toBeDefined();
     expect(result.success).toBe(false);
+  });
+
+  test('create schema allows pickup_local without delivery destination data', () => {
+    const result = ordersSchemas.create.safeParse({
+      idempotencyKey: 'idem-orders-schema-pickup',
+      email: 'pickup@insidex.test',
+      fulfillment: { mode: 'pickup_local' },
+      items: [{ id: '00000000-0000-0000-0000-000000000999', quantity: 1 }],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  test('create schema rejects delivery_local without destination truth', () => {
+    const result = ordersSchemas.create.safeParse({
+      idempotencyKey: 'idem-orders-schema-delivery-missing-destination',
+      email: 'delivery@insidex.test',
+      fulfillment: { mode: 'delivery_local' },
+      items: [{ id: '00000000-0000-0000-0000-000000000999', quantity: 1 }],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  test('create schema rejects pickup payload mixed into delivery_local mode', () => {
+    const result = ordersSchemas.create.safeParse({
+      ...validOrderPayload,
+      fulfillment: {
+        mode: 'delivery_local',
+        pickup: { note: 'wrong mode payload' },
+      },
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  test('create schema rejects delivery payload mixed into pickup_local mode', () => {
+    const result = ordersSchemas.create.safeParse({
+      idempotencyKey: 'idem-orders-schema-pickup-mixed-delivery',
+      email: 'pickup@insidex.test',
+      fulfillment: {
+        mode: 'pickup_local',
+        delivery: {
+          destination: {
+            line1: '12 rue du Port',
+            city: 'Mamoudzou',
+            postalCode: '97600',
+            country: 'FR',
+          },
+        },
+      },
+      items: [{ id: '00000000-0000-0000-0000-000000000999', quantity: 1 }],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  test('create schema accepts delivery_local when destination is provided through compatibility address', () => {
+    const result = ordersSchemas.create.safeParse({
+      idempotencyKey: 'idem-orders-schema-delivery-address-compat',
+      email: 'delivery@insidex.test',
+      address: {
+        line1: '12 rue du Port',
+        city: 'Mamoudzou',
+        postalCode: '97600',
+        country: 'FR',
+      },
+      fulfillment: { mode: 'delivery_local' },
+      items: [{ id: '00000000-0000-0000-0000-000000000999', quantity: 1 }],
+    });
+
+    expect(result.success).toBe(true);
   });
 
   test('payment webhook schema accepts orderId-based payload', () => {

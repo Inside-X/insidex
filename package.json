@@ -21,7 +21,7 @@
     "scan:floats": "node scripts/scan-float-usage.js",
     "test:coverage:ci": "node scripts/ci/run-coverage-ci.js",
     "test:chaos": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand --detectOpenHandles --testPathPattern=\"tests[\\/]+chaos[\\/]+.*\\.test\\.js\"",
-    "test:e2e:browser": "node node_modules/prisma/build/index.js generate && npx playwright test --project=chromium",
+    "test:e2e:browser": "node node_modules/prisma/build/index.js generate && npx playwright install chromium && npx playwright test --project=chromium",
     "test:e2e:browser:ui": "npx playwright test --project=chromium --ui",
     "smoke:catalogue:v1": "node scripts/smoke/catalogue-v1-smoke.js",
     "epic:5.1c:verify": "cross-env NODE_ENV=development node scripts/verify-epic5-catalogue-v1.js",

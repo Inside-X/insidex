@@ -5,8 +5,8 @@ import { orderRepository } from '../../src/repositories/order.repository.js';
 function buildPrismaState(overrides = {}) {
   return {
     products: [
-      { id: '00000000-0000-0000-0000-000000000001', price: 10, stock: 5, active: true },
-      { id: '00000000-0000-0000-0000-000000000002', price: 12, stock: 2, active: true },
+      { id: '00000000-0000-0000-0000-000000000001', price: 10, stock: 5, active: true, localDeliveryEnabled: true },
+      { id: '00000000-0000-0000-0000-000000000002', price: 12, stock: 2, active: true, localDeliveryEnabled: true },
     ],
     orders: [],
     orderItems: [],
@@ -26,7 +26,7 @@ function createPrismaMock(state, options = {}) {
     product: {
       findMany: jest.fn(async ({ where }) => working.products
         .filter((product) => where.id.in.includes(product.id) && (where.active === undefined || product.active === where.active))
-        .map(({ id, price }) => ({ id, price }))),
+        .map(({ id, price, localDeliveryEnabled }) => ({ id, price, localDeliveryEnabled }))),
       updateMany: jest.fn(async ({ where, data }) => {
         if (options.failOnProductUpdate) {
           throw new Error('Prisma update failure');
@@ -1103,6 +1103,134 @@ describe('orderRepository additional branch coverage', () => {
       reason: 'duplicate_communication_unit',
       communicationUnitId: 'comm:stripe_success_emission_blocked:under_review:order-under-review:idem-under-review:pi-under-review',
     });
+  });
+
+  test('B4.7A pickup_local snapshot succeeds without delivery destination truth', async () => {
+    const localState = buildPrismaState();
+    const mock = createPrismaMock(localState);
+    Object.assign(prisma, mock);
+
+    const result = await orderRepository.createIdempotentWithItemsAndUpdateStock({
+      userId: '00000000-0000-0000-0000-000000000010',
+      idempotencyKey: 'idem-b47a-pickup-12345',
+      items: [{ productId: localState.products[0].id, quantity: 1 }],
+      email: 'pickup@insidex.test',
+      fulfillment: { mode: 'pickup_local' },
+    });
+
+    expect(result.replayed).toBe(false);
+    expect(localState.orders[0].fulfillmentMode).toBe('pickup_local');
+    expect(localState.orders[0].fulfillmentSnapshot).toMatchObject({
+      mode: 'pickup_local',
+      customer: { contactEmail: 'pickup@insidex.test' },
+      pickup: {},
+    });
+  });
+
+  test('B4.7A delivery_local succeeds only with sufficient destination truth and eligible items', async () => {
+    const localState = buildPrismaState();
+    const mock = createPrismaMock(localState);
+    Object.assign(prisma, mock);
+
+    const result = await orderRepository.createIdempotentWithItemsAndUpdateStock({
+      userId: '00000000-0000-0000-0000-000000000010',
+      idempotencyKey: 'idem-b47a-delivery-12345',
+      items: [{ productId: localState.products[0].id, quantity: 1 }],
+      email: 'delivery@insidex.test',
+      fulfillment: {
+        mode: 'delivery_local',
+        delivery: {
+          destination: {
+            line1: '12 rue du Port',
+            city: 'Mamoudzou',
+            postalCode: '97600',
+            country: 'FR',
+          },
+        },
+      },
+    });
+
+    expect(result.replayed).toBe(false);
+    expect(localState.orders[0].fulfillmentMode).toBe('delivery_local');
+    expect(localState.orders[0].fulfillmentSnapshot).toMatchObject({
+      mode: 'delivery_local',
+      delivery: {
+        destination: {
+          line1: '12 rue du Port',
+          city: 'Mamoudzou',
+          postalCode: '97600',
+          country: 'FR',
+        },
+      },
+    });
+  });
+
+  test('B4.7A delivery_local fails closed on vague destination and mixed/ineligible cart', async () => {
+    const localState = buildPrismaState();
+    localState.products[1].localDeliveryEnabled = false;
+    const mock = createPrismaMock(localState);
+    Object.assign(prisma, mock);
+
+    await expect(orderRepository.createIdempotentWithItemsAndUpdateStock({
+      userId: '00000000-0000-0000-0000-000000000010',
+      idempotencyKey: 'idem-b47a-delivery-vague-12345',
+      items: [{ productId: localState.products[0].id, quantity: 1 }],
+      email: 'delivery@insidex.test',
+      fulfillment: {
+        mode: 'delivery_local',
+        delivery: {
+          destination: {
+            line1: '',
+            city: 'Mamoudzou',
+            postalCode: '97600',
+            country: 'FR',
+          },
+        },
+      },
+    })).rejects.toThrow('delivery_local requires non-ambiguous destination truth');
+
+    await expect(orderRepository.createIdempotentWithItemsAndUpdateStock({
+      userId: '00000000-0000-0000-0000-000000000010',
+      idempotencyKey: 'idem-b47a-delivery-mixed-12345',
+      items: [
+        { productId: localState.products[0].id, quantity: 1 },
+        { productId: localState.products[1].id, quantity: 1 },
+      ],
+      email: 'delivery@insidex.test',
+      fulfillment: {
+        mode: 'delivery_local',
+        delivery: {
+          destination: {
+            line1: '12 rue du Port',
+            city: 'Mamoudzou',
+            postalCode: '97600',
+            country: 'FR',
+          },
+        },
+      },
+    })).rejects.toThrow(`delivery_local is not eligible for product: ${localState.products[1].id}`);
+
+    expect(localState.orders).toHaveLength(0);
+  });
+
+  test('B4.7A rejects unsupported fulfillment mode and missing explicit contact truth', async () => {
+    const localState = buildPrismaState();
+    Object.assign(prisma, createPrismaMock(localState));
+
+    await expect(orderRepository.createIdempotentWithItemsAndUpdateStock({
+      userId: '00000000-0000-0000-0000-000000000010',
+      idempotencyKey: 'idem-b47a-bad-mode-12345',
+      items: [{ productId: localState.products[0].id, quantity: 1 }],
+      email: 'mode@insidex.test',
+      fulfillment: { mode: 'carrier_shipping' },
+    })).rejects.toThrow('Unsupported fulfillment mode');
+
+    await expect(orderRepository.createIdempotentWithItemsAndUpdateStock({
+      userId: '00000000-0000-0000-0000-000000000010',
+      idempotencyKey: 'idem-b47a-missing-email-12345',
+      items: [{ productId: localState.products[0].id, quantity: 1 }],
+      fulfillment: { mode: 'pickup_local' },
+    })).rejects.toThrow('Customer email is required for fulfillment snapshot');
   });
   
 });

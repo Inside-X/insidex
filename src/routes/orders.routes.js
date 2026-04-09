@@ -26,9 +26,15 @@ router.post(
 
       const result = await orderRepository.createIdempotentWithItemsAndUpdateStock({
         userId: req.auth.sub,
-        items: req.body.items,
+        items: req.body.items.map((item) => ({
+          productId: item.id,
+          quantity: item.quantity,
+        })),
         idempotencyKey: req.body.idempotencyKey,
         stripePaymentIntentId: req.body.stripePaymentIntentId || null,
+        fulfillment: req.body.fulfillment,
+        email: req.body.email,
+        address: req.body.address,
       });
 
       const response = {

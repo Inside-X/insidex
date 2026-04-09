@@ -69,6 +69,7 @@ model Product {
   stockStatus     StockStatus      @default(in_stock) @map("stock_status")
   stockQuantity   Int?             @map("stock_quantity")
   backorderable   Boolean          @default(false)
+  localDeliveryEnabled Boolean     @default(false) @map("local_delivery_enabled")
   active          Boolean          @default(true)
   deletedAt       DateTime?        @map("deleted_at") @db.Timestamptz(6)
   createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -176,6 +177,8 @@ model Order {
   idempotencyKey        String      @map("idempotency_key") @db.VarChar(128)
   stripePaymentIntentId String?     @unique @map("stripe_payment_intent_id") @db.VarChar(255)
   status                OrderStatus @default(pending)
+  fulfillmentMode       String      @default("pickup_local") @map("fulfillment_mode") @db.VarChar(40)
+  fulfillmentSnapshot   Json        @default("{}") @map("fulfillment_snapshot") @db.JsonB
   totalAmount           Decimal     @map("total_amount") @db.Decimal(12, 2)
   createdAt             DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
