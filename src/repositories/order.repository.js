@@ -45,17 +45,21 @@ function normalizeDestination(destination) {
   };
 }
 
+function destinationsAreEquivalent(left, right) {
+  const leftLine2 = left.line2 || '';
+  const rightLine2 = right.line2 || '';
+  return left.line1 === right.line1
+    && left.city === right.city
+    && left.postalCode === right.postalCode
+    && left.country === right.country
+    && leftLine2 === rightLine2;
+}
+
 function buildFulfillmentSnapshot({ fulfillment, email, address }) {
   const normalizedEmail = String(email || '').trim().toLowerCase();
 
-  if (!fulfillment) {
-    return {
-      mode: 'pickup_local',
-      customer: {
-        contactEmail: normalizedEmail || null,
-      },
-      pickup: {},
-    };
+  if (!fulfillment || typeof fulfillment !== 'object') {
+    throw badRequest('fulfillment selection is required');
   }
 
   const mode = fulfillment?.mode;
@@ -88,8 +92,18 @@ function buildFulfillmentSnapshot({ fulfillment, email, address }) {
     throw badRequest('pickup payload is incompatible with delivery_local');
   }
 
-  const destinationSource = fulfillment?.delivery?.destination || address;
-  const destination = normalizeDestination(destinationSource);
+  const deliveryDestination = fulfillment?.delivery?.destination;
+  if (!deliveryDestination && !address) {
+    throw badRequest('delivery_local requires destination truth');
+  }
+  const destination = normalizeDestination(deliveryDestination || address);
+  if (deliveryDestination && address) {
+    const normalizedAddress = normalizeDestination(address);
+    if (!destinationsAreEquivalent(destination, normalizedAddress)) {
+      throw badRequest('delivery_local destination/address mismatch is ambiguous');
+    }
+  }
+
   const note = fulfillment?.delivery?.note;
 
   return {
@@ -242,7 +256,7 @@ export const orderRepository = {
     idempotencyKey,
     stripePaymentIntentId = null,
     status = 'pending',
-    fulfillment = null,
+    fulfillment,
     email = null,
     address = null,
   }) {

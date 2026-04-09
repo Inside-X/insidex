@@ -126,7 +126,7 @@ describe('destructive financial flow audit', () => {
       return { replayed: false, order: { id: 'order-race-1', status: 'pending', items: [] } };
     });
 
-    const payload = { ...baseCheckout, idempotencyKey: 'idem-concurrent-cart-12345' };
+    const payload = { ...baseCheckout, fulfillment: { mode: 'pickup_local' }, idempotencyKey: 'idem-concurrent-cart-12345' };
     delete payload.currency;
 
     const [a, b] = await Promise.all([
@@ -152,7 +152,11 @@ describe('destructive financial flow audit', () => {
 
     const response = await request(app)
       .post('/api/orders')
-      .send((() => { const payload = { ...baseCheckout, idempotencyKey: 'idem-guest-order-12345' }; delete payload.currency; return payload; })());
+      .send((() => {
+        const payload = { ...baseCheckout, fulfillment: { mode: 'pickup_local' }, idempotencyKey: 'idem-guest-order-12345' };
+        delete payload.currency;
+        return payload;
+      })());
 
     expect(response.status).toBe(201);
     expect(response.body.meta.isGuestCheckout).toBe(true);

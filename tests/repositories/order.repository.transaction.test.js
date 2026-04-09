@@ -493,12 +493,16 @@ describe('orderRepository additional branch coverage', () => {
       userId: 'u',
       idempotencyKey: 'idem-missing-product-123456',
       items: [{ productId: state.products[0].id, quantity: 1 }, { productId: 'missing', quantity: 1 }],
+      email: 'repo-test@insidex.test',
+      fulfillment: { mode: 'pickup_local' },
     })).rejects.toThrow('Product not found');
 
     const okPayload = {
       userId: 'u',
       idempotencyKey: 'idem-replay-123456',
       items: [{ productId: state.products[0].id, quantity: 1 }],
+      email: 'repo-test@insidex.test',
+      fulfillment: { mode: 'pickup_local' },
     };
     await expect(orderRepository.createIdempotentWithItemsAndUpdateStock(okPayload)).resolves.toMatchObject({ replayed: false });
     await expect(orderRepository.createIdempotentWithItemsAndUpdateStock(okPayload)).resolves.toMatchObject({ replayed: true });
@@ -613,6 +617,8 @@ describe('orderRepository additional branch coverage', () => {
       userId: 'u',
       idempotencyKey: 'idem-create-fail-123456',
       items: [{ productId: state.products[0].id, quantity: 1 }],
+      email: 'repo-test@insidex.test',
+      fulfillment: { mode: 'pickup_local' },
     })).rejects.toMatchObject({ code: 'DB_OPERATION_FAILED', statusCode: 500 });
 
     Object.assign(prisma, createPrismaMock(state, { failOnWebhookCreate: true }));
@@ -1231,6 +1237,89 @@ describe('orderRepository additional branch coverage', () => {
       items: [{ productId: localState.products[0].id, quantity: 1 }],
       fulfillment: { mode: 'pickup_local' },
     })).rejects.toThrow('Customer email is required for fulfillment snapshot');
+  });
+
+  test('B4.7A rejects missing fulfillment selection and destination/address mismatch ambiguity', async () => {
+    const localState = buildPrismaState();
+    Object.assign(prisma, createPrismaMock(localState));
+
+    await expect(orderRepository.createIdempotentWithItemsAndUpdateStock({
+      userId: '00000000-0000-0000-0000-000000000010',
+      idempotencyKey: 'idem-b47a-missing-fulfillment-12345',
+      items: [{ productId: localState.products[0].id, quantity: 1 }],
+      email: 'pickup@insidex.test',
+    })).rejects.toThrow('fulfillment selection is required');
+
+    await expect(orderRepository.createIdempotentWithItemsAndUpdateStock({
+      userId: '00000000-0000-0000-0000-000000000010',
+      idempotencyKey: 'idem-b47a-destination-mismatch-12345',
+      items: [{ productId: localState.products[0].id, quantity: 1 }],
+      email: 'delivery@insidex.test',
+      address: {
+        line1: '12 rue du Port',
+        city: 'Mamoudzou',
+        postalCode: '97600',
+        country: 'FR',
+      },
+      fulfillment: {
+        mode: 'delivery_local',
+        delivery: {
+          destination: {
+            line1: 'Other line',
+            city: 'Mamoudzou',
+            postalCode: '97600',
+            country: 'FR',
+          },
+        },
+      },
+    })).rejects.toThrow('delivery_local destination/address mismatch is ambiguous');
+  });
+
+  test('B4.7A delivery_local accepts equivalent address compatibility input and preserves mode-aware snapshot note', async () => {
+    const localState = buildPrismaState();
+    Object.assign(prisma, createPrismaMock(localState));
+
+    const result = await orderRepository.createIdempotentWithItemsAndUpdateStock({
+      userId: '00000000-0000-0000-0000-000000000010',
+      idempotencyKey: 'idem-b47a-equivalent-address-12345',
+      items: [{ productId: localState.products[0].id, quantity: 1 }],
+      email: 'delivery@insidex.test',
+      address: {
+        line1: '12 rue du Port',
+        line2: 'Bâtiment A',
+        city: 'Mamoudzou',
+        postalCode: '97600',
+        country: 'FR',
+      },
+      fulfillment: {
+        mode: 'delivery_local',
+        delivery: {
+          destination: {
+            line1: '12 rue du Port',
+            line2: 'Bâtiment A',
+            city: 'Mamoudzou',
+            postalCode: '97600',
+            country: 'FR',
+          },
+          note: 'Leave at gate',
+        },
+      },
+    });
+
+    expect(result.replayed).toBe(false);
+    expect(localState.orders[0].fulfillmentSnapshot).toMatchObject({
+      mode: 'delivery_local',
+      delivery: {
+        note: 'Leave at gate',
+        destination: {
+          line1: '12 rue du Port',
+          line2: 'Bâtiment A',
+          city: 'Mamoudzou',
+          postalCode: '97600',
+          country: 'FR',
+        },
+      },
+    });
   });
   
 });

@@ -131,6 +131,7 @@ describe('runtime business routes', () => {
       .set('Authorization', `Bearer ${token('admin')}`)
       .send({
         ...validCheckoutPayload,
+        fulfillment: { mode: 'pickup_local' },
         idempotencyKey: 'idem-runtime-test-123',
       });
     expect(res.status).toBe(403);
@@ -147,6 +148,7 @@ describe('runtime business routes', () => {
       .set('Authorization', `Bearer ${token('guest', '00000000-0000-0000-0000-000000000123', true)}`)
       .send({
         ...validCheckoutPayload,
+        fulfillment: { mode: 'pickup_local' },
         idempotencyKey: 'idem-runtime-test-guest-123',
       });
 
@@ -165,6 +167,7 @@ describe('runtime business routes', () => {
       .set('Authorization', `Bearer ${token('customer', '00000000-0000-0000-0000-000000000123', false)}`)
       .send({
         ...validCheckoutPayload,
+        fulfillment: { mode: 'pickup_local' },
         idempotencyKey: 'idem-runtime-test-customer-123',
       });
 
@@ -179,6 +182,7 @@ describe('runtime business routes', () => {
       .set('Authorization', `Bearer ${tamperedGuestToken}`)
       .send({
         ...validCheckoutPayload,
+        fulfillment: { mode: 'pickup_local' },
         idempotencyKey: 'idem-runtime-test-tamper-123',
       });
 

@@ -114,9 +114,19 @@ describe('orders schema hardening', () => {
     expect(result.success).toBe(false);
   });
 
-  test('create schema accepts delivery_local when destination is provided through compatibility address', () => {
+  test('create schema rejects missing fulfillment selection (no silent canonical default)', () => {
     const result = ordersSchemas.create.safeParse({
-      idempotencyKey: 'idem-orders-schema-delivery-address-compat',
+      idempotencyKey: 'idem-orders-schema-missing-fulfillment',
+      email: 'pickup@insidex.test',
+      items: [{ id: '00000000-0000-0000-0000-000000000999', quantity: 1 }],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  test('create schema rejects ambiguous delivery_local destination/address mismatch', () => {
+    const result = ordersSchemas.create.safeParse({
+      idempotencyKey: 'idem-orders-schema-delivery-address-mismatch',
       email: 'delivery@insidex.test',
       address: {
         line1: '12 rue du Port',
@@ -124,7 +134,39 @@ describe('orders schema hardening', () => {
         postalCode: '97600',
         country: 'FR',
       },
-      fulfillment: { mode: 'delivery_local' },
+      fulfillment: {
+        mode: 'delivery_local',
+        delivery: {
+          destination: {
+            line1: '99 avenue mismatch',
+            city: 'Mamoudzou',
+            postalCode: '97600',
+            country: 'FR',
+          },
+        },
+      },
+      items: [{ id: '00000000-0000-0000-0000-000000000999', quantity: 1 }],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  test('create schema accepts delivery_local when address compatibility payload matches destination exactly', () => {
+    const destination = {
+      line1: '12 rue du Port',
+      city: 'Mamoudzou',
+      postalCode: '97600',
+      country: 'FR',
+    };
+
+    const result = ordersSchemas.create.safeParse({
+      idempotencyKey: 'idem-orders-schema-delivery-address-equivalent',
+      email: 'delivery@insidex.test',
+      address: destination,
+      fulfillment: {
+        mode: 'delivery_local',
+        delivery: { destination },
+      },
       items: [{ id: '00000000-0000-0000-0000-000000000999', quantity: 1 }],
     });
 

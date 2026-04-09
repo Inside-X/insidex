@@ -169,6 +169,8 @@ describe('Order repository fintech audit', () => {
       userId: '00000000-0000-0000-0000-000000000010',
       idempotencyKey: 'idem-1234567890',
       items: [{ productId: state.products[0].id, quantity: 2 }],
+      email: 'fintech@insidex.test',
+      fulfillment: { mode: 'pickup_local' },
     };
 
     const first = await orderRepository.createIdempotentWithItemsAndUpdateStock(payload);
@@ -185,6 +187,8 @@ describe('Order repository fintech audit', () => {
     const base = {
       userId: '00000000-0000-0000-0000-000000000010',
       items: [{ productId, quantity: 1 }],
+      email: 'fintech@insidex.test',
+      fulfillment: { mode: 'pickup_local' },
     };
 
     const results = await Promise.allSettled(
@@ -204,6 +208,8 @@ describe('Order repository fintech audit', () => {
     await expect(orderRepository.createIdempotentWithItemsAndUpdateStock({
       userId: '00000000-0000-0000-0000-000000000010',
       idempotencyKey: 'idem-rollback-123456',
+      email: 'fintech@insidex.test',
+      fulfillment: { mode: 'pickup_local' },
       items: [
         { productId: state.products[0].id, quantity: 1 },
         { productId: state.products[1].id, quantity: 999 },
@@ -220,6 +226,8 @@ describe('Order repository fintech audit', () => {
       userId: '00000000-0000-0000-0000-000000000010',
       idempotencyKey: 'idem-webhook-123456',
       stripePaymentIntentId: 'pi_abc_123',
+      email: 'fintech@insidex.test',
+      fulfillment: { mode: 'pickup_local' },
       items: [{ productId: state.products[0].id, quantity: 1 }],
     });
 

@@ -24,7 +24,7 @@ export const ordersSchemas = {
     stripePaymentIntentId: z.string().max(255).optional(),
     email: checkoutCustomerSchema.shape.email,
     address: checkoutCustomerSchema.shape.address.optional(),
-    fulfillment: fulfillmentSchema.optional().default({ mode: 'pickup_local' }),
+    fulfillment: fulfillmentSchema,
     items: z.array(checkoutItemSchema).min(1),
   }).strict({ message: 'unknown field in order payload' }).superRefine((value, ctx) => {
     if (value.fulfillment.mode === 'pickup_local') {
@@ -54,6 +54,26 @@ export const ordersSchemas = {
           message: 'delivery_local requires destination truth',
           path: ['fulfillment', 'delivery', 'destination'],
         });
+      }
+
+      if (value.fulfillment.delivery?.destination && value.address) {
+        const destination = value.fulfillment.delivery.destination;
+        const address = value.address;
+        const destinationLine2 = destination.line2?.trim() || '';
+        const addressLine2 = address.line2?.trim() || '';
+        const isEquivalent = destination.line1 === address.line1
+          && destination.city === address.city
+          && destination.postalCode === address.postalCode
+          && destination.country === address.country
+          && destinationLine2 === addressLine2;
+
+        if (!isEquivalent) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'delivery_local destination/address mismatch is ambiguous',
+            path: ['fulfillment', 'delivery', 'destination'],
+          });
+        }
       }
     }
   }),

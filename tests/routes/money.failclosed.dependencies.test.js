@@ -229,6 +229,7 @@ describe('money routes fail-closed dependency behavior', () => {
         idempotencyKey: 'idem_order_dep_12345',
         email: 'dep@test.local',
         address: { line1: '1 rue', city: 'Paris', postalCode: '75001', country: 'FR' },
+        fulfillment: { mode: 'pickup_local' },
         items: [{ id: '00000000-0000-0000-0000-000000000999', quantity: 1 }],
       });
 

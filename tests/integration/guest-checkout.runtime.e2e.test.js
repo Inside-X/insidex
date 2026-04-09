@@ -74,7 +74,7 @@ describe('guest checkout runtime e2e', () => {
     const ok = await request(app)
       .post('/api/orders')
       .set('Authorization', `Bearer ${token('customer')}`)
-      .send({ ...checkoutPayload, idempotencyKey: 'idem-order-success-12345' });
+      .send({ ...checkoutPayload, fulfillment: { mode: 'pickup_local' }, idempotencyKey: 'idem-order-success-12345' });
 
     expect(ok.status).toBe(201);
     expect(ok.body.data.id).toBe('order-ok-1');
@@ -142,6 +142,7 @@ describe('guest checkout runtime e2e', () => {
       .post('/api/orders')
       .send({
         ...checkoutPayload,
+        fulfillment: { mode: 'pickup_local' },
         idempotencyKey: 'idem-order-guest-owner-12345',
       });
 
@@ -161,7 +162,7 @@ describe('guest checkout runtime e2e', () => {
     const replay = await request(app)
       .post('/api/orders')
       .set('Authorization', `Bearer ${token('customer')}`)
-      .send({ ...checkoutPayload, idempotencyKey: 'idem-order-replay-12345' });
+      .send({ ...checkoutPayload, fulfillment: { mode: 'pickup_local' }, idempotencyKey: 'idem-order-replay-12345' });
 
     expect(replay.status).toBe(200);
     expect(replay.body.meta.replayed).toBe(true);
@@ -181,7 +182,7 @@ describe('guest checkout runtime e2e', () => {
     const unauthorized = await request(app)
       .post('/api/orders')
       .set('Authorization', 'Bearer invalid.token.value')
-      .send({ ...checkoutPayload, idempotencyKey: 'idem-order-unauth-12345' });
+      .send({ ...checkoutPayload, fulfillment: { mode: 'pickup_local' }, idempotencyKey: 'idem-order-unauth-12345' });
 
     expect(unauthorized.status).toBe(401);
     expect(unauthorized.body.error.code).toBe('UNAUTHORIZED');
@@ -191,7 +192,7 @@ describe('guest checkout runtime e2e', () => {
     const spoof = await request(app)
       .post('/api/orders')
       .set('Authorization', `Bearer ${token('customer', '00000000-0000-0000-0000-000000000123')}`)
-      .send({ ...checkoutPayload, userId: '00000000-0000-0000-0000-000000000999', idempotencyKey: 'idem-order-spoof-12345' });
+      .send({ ...checkoutPayload, fulfillment: { mode: 'pickup_local' }, userId: '00000000-0000-0000-0000-000000000999', idempotencyKey: 'idem-order-spoof-12345' });
     expect(spoof.status).toBe(400);
     
     jest.spyOn(orderRepository, 'createIdempotentWithItemsAndUpdateStock').mockRejectedValueOnce(
@@ -201,7 +202,7 @@ describe('guest checkout runtime e2e', () => {
     const lowStock = await request(app)
       .post('/api/orders')
       .set('Authorization', `Bearer ${token('customer')}`)
-      .send({ ...checkoutPayload, idempotencyKey: 'idem-order-low-stock-12345' });
+      .send({ ...checkoutPayload, fulfillment: { mode: 'pickup_local' }, idempotencyKey: 'idem-order-low-stock-12345' });
     expect(lowStock.status).toBe(400);
     expect(lowStock.body.error.code).toBe('INSUFFICIENT_STOCK');
   });
@@ -298,8 +299,8 @@ describe('guest checkout runtime e2e', () => {
       throw Object.assign(new Error('Insufficient stock for product'), { statusCode: 400, code: 'INSUFFICIENT_STOCK' });
     });
 
-    const reqBodyA = { ...checkoutPayload, idempotencyKey: 'idem-concurrency-a-12345' };
-    const reqBodyB = { ...checkoutPayload, idempotencyKey: 'idem-concurrency-b-12345' };
+    const reqBodyA = { ...checkoutPayload, fulfillment: { mode: 'pickup_local' }, idempotencyKey: 'idem-concurrency-a-12345' };
+    const reqBodyB = { ...checkoutPayload, fulfillment: { mode: 'pickup_local' }, idempotencyKey: 'idem-concurrency-b-12345' };
 
     const [a, b] = await Promise.all([
       request(app).post('/api/orders').set('Authorization', `Bearer ${token('customer')}`).send(reqBodyA),
