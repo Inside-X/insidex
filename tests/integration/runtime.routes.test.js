@@ -189,6 +189,49 @@ describe('runtime business routes', () => {
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('UNAUTHORIZED');
   });
+
+  test('orders readiness accepts admin and keeps readiness semantics bounded', async () => {
+    jest.spyOn(orderRepository, 'markFulfillmentReady').mockResolvedValue({
+      id: '00000000-0000-0000-0000-000000000555',
+      status: 'paid',
+      fulfillmentMode: 'pickup_local',
+      fulfillmentSnapshot: {
+        mode: 'pickup_local',
+        readiness: { state: 'ready_for_pickup' },
+      },
+      items: [],
+    });
+
+    const res = await request(app)
+      .post('/api/orders/00000000-0000-0000-0000-000000000555/readiness')
+      .set('Authorization', `Bearer ${token('admin')}`)
+      .send({ target: 'ready_for_pickup', note: 'ready now' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('paid');
+    expect(res.body.data.fulfillmentSnapshot.readiness.state).toBe('ready_for_pickup');
+    expect(orderRepository.markFulfillmentReady).toHaveBeenCalledWith({
+      orderId: '00000000-0000-0000-0000-000000000555',
+      target: 'ready_for_pickup',
+      actorType: 'admin',
+      note: 'ready now',
+    });
+  });
+
+  test('orders readiness rejects non-admin and invalid readiness payload', async () => {
+    const nonAdmin = await request(app)
+      .post('/api/orders/00000000-0000-0000-0000-000000000555/readiness')
+      .set('Authorization', `Bearer ${token('customer')}`)
+      .send({ target: 'ready_for_pickup' });
+    expect(nonAdmin.status).toBe(403);
+
+    const invalid = await request(app)
+      .post('/api/orders/00000000-0000-0000-0000-000000000555/readiness')
+      .set('Authorization', `Bearer ${token('admin')}`)
+      .send({ target: 'shipped' });
+    expect(invalid.status).toBe(400);
+    expect(invalid.body.error.code).toBe('VALIDATION_ERROR');
+  });
   
   test('payments create-intent computes amount from DB and returns metadata', async () => {
     jest.spyOn(prisma.product, 'findMany').mockResolvedValue([{ id: validCheckoutPayload.items[0].id, price: 120.5 }]);

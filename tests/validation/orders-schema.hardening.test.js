@@ -223,4 +223,24 @@ describe('orders schema hardening', () => {
       extra: true,
     }).success).toBe(false);
   });
+
+  test('readiness schema accepts allowed readiness targets and optional note', () => {
+    const payload = {
+      target: 'ready_for_pickup',
+      note: 'Prepared for front desk handoff',
+    };
+
+    expect(ordersSchemas.markReadiness.parse(payload)).toEqual(payload);
+  });
+
+  test('readiness schema rejects unknown targets and unknown fields', () => {
+    expect(ordersSchemas.markReadiness.safeParse({
+      target: 'shipped',
+    }).success).toBe(false);
+
+    expect(ordersSchemas.markReadiness.safeParse({
+      target: 'ready_for_local_delivery',
+      extra: true,
+    }).success).toBe(false);
+  });
 });

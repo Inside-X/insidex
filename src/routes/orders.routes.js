@@ -81,4 +81,26 @@ router.post('/webhooks/payments', strictValidate(ordersSchemas.paymentWebhook), 
 
 router.get('/:id', strictValidate(ordersSchemas.byIdParams, 'params'), authenticateJWT, authorizeRole(['admin', 'customer']), (req, res) => res.status(200).json({ data: { id: req.params.id } }));
 
+router.post(
+  '/:id/readiness',
+  strictValidate(ordersSchemas.byIdParams, 'params'),
+  strictValidate(ordersSchemas.markReadiness),
+  authenticateJWT,
+  authorizeRole(['admin']),
+  async (req, res, next) => {
+    try {
+      const order = await orderRepository.markFulfillmentReady({
+        orderId: req.params.id,
+        target: req.body.target,
+        actorType: 'admin',
+        note: req.body.note,
+      });
+
+      return res.status(200).json({ data: order });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
 export default router;

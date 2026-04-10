@@ -18,6 +18,8 @@ const fulfillmentSchema = z.object({
   }).strict({ message: 'unknown field in delivery fulfillment payload' }).optional(),
 }).strict({ message: 'unknown field in fulfillment payload' });
 
+const readinessTargetSchema = z.enum(['ready_for_pickup', 'ready_for_local_delivery']);
+
 export const ordersSchemas = {
   create: z.object({
     idempotencyKey: z.string().min(10).max(128),
@@ -87,6 +89,10 @@ export const ordersSchemas = {
     message: 'orderId or stripePaymentIntentId is required',
     path: ['orderId'],
   }),
+  markReadiness: z.object({
+    target: readinessTargetSchema,
+    note: z.string().trim().max(500).optional(),
+  }).strict({ message: 'unknown field in readiness payload' }),
   byIdParams: z.object({ id: uuidSchema }).strict({ message: 'unknown field in order params payload' }),
 };
 

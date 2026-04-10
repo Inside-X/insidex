@@ -115,6 +115,18 @@ function buildFulfillmentSnapshot({ fulfillment, email, address }) {
   };
 }
 
+function expectedReadinessForMode(mode) {
+  if (mode === 'pickup_local') return 'ready_for_pickup';
+  if (mode === 'delivery_local') return 'ready_for_local_delivery';
+  return null;
+}
+
+function sanitizeReadinessNote(note) {
+  if (note == null) return undefined;
+  const normalized = String(note).trim();
+  return normalized || undefined;
+}
+
 function assertExpectedAmountMatches({ expectedTotalAmount, expectedTotalAmountMinor, totalAmountMinor, currency = 'EUR' }) {
   if (expectedTotalAmountMinor !== undefined && expectedTotalAmountMinor !== null) {
     if (!Number.isInteger(expectedTotalAmountMinor) || expectedTotalAmountMinor < 0) {
@@ -351,6 +363,94 @@ export const orderRepository = {
       });
     } catch (error) {
       normalizeDbError(error, { repository: 'order', operation: 'createIdempotentWithItemsAndUpdateStock' });
+    }
+  },
+
+  async markFulfillmentReady({ orderId, target, actorType = 'admin', note = undefined }) {
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: true } });
+        if (!order) {
+          const error = new Error('Order not found');
+          error.statusCode = 404;
+          throw error;
+        }
+
+        if (order.status !== 'paid') {
+          throw badRequest('Order must be paid before readiness transition');
+        }
+
+        const fulfillmentMode = typeof order.fulfillmentMode === 'string' ? order.fulfillmentMode.trim() : '';
+        const expectedReadiness = expectedReadinessForMode(fulfillmentMode);
+        if (!expectedReadiness) {
+          throw badRequest('Order fulfillment mode is not readiness-compatible');
+        }
+        if (target !== expectedReadiness) {
+          throw badRequest('Readiness target is incompatible with fulfillment mode');
+        }
+
+        if (!order.fulfillmentSnapshot || typeof order.fulfillmentSnapshot !== 'object') {
+          throw badRequest('Order fulfillment snapshot is missing canonical truth');
+        }
+
+        const snapshotMode = typeof order.fulfillmentSnapshot.mode === 'string'
+          ? order.fulfillmentSnapshot.mode.trim()
+          : '';
+        if (snapshotMode !== fulfillmentMode) {
+          throw badRequest('Order fulfillment snapshot/mode contradiction');
+        }
+
+        const currentReadiness = typeof order.fulfillmentSnapshot.readiness?.state === 'string'
+          ? order.fulfillmentSnapshot.readiness.state.trim()
+          : null;
+        if (currentReadiness && currentReadiness !== expectedReadiness) {
+          const error = new Error('Order readiness state is incompatible with fulfillment mode');
+          error.statusCode = 409;
+          throw error;
+        }
+        if (currentReadiness === expectedReadiness) {
+          const error = new Error('Order is already in readiness state');
+          error.statusCode = 409;
+          throw error;
+        }
+
+        const readinessNote = sanitizeReadinessNote(note);
+        const nextSnapshot = {
+          ...order.fulfillmentSnapshot,
+          readiness: {
+            state: expectedReadiness,
+            readyAt: new Date().toISOString(),
+            ...(readinessNote ? { note: readinessNote } : {}),
+          },
+        };
+
+        const updateResult = await tx.order.updateMany({
+          where: { id: order.id, status: 'paid' },
+          data: { fulfillmentSnapshot: nextSnapshot },
+        });
+        if (updateResult.count !== 1) {
+          const error = new Error('Readiness transition conflict');
+          error.statusCode = 409;
+          throw error;
+        }
+
+        await tx.orderEvent.create({
+          data: {
+            orderId: order.id,
+            type: 'fulfillment_readiness',
+            fromStatus: order.status,
+            toStatus: order.status,
+            source: actorType,
+            sourceEventId: null,
+            idempotencyKey: order.idempotencyKey || null,
+            correlationId: null,
+          },
+        });
+
+        return tx.order.findUnique({ where: { id: order.id }, include: { items: true } });
+      });
+    } catch (error) {
+      normalizeDbError(error, { repository: 'order', operation: 'markFulfillmentReady' });
     }
   },
 
