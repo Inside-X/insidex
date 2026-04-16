@@ -4,12 +4,20 @@ async function loadProductRepository({ normalizeImpl } = {}) {
   jest.resetModules();
 
   const prismaMock = {
+    $transaction: jest.fn(),
     product: {
       create: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
       findMany: jest.fn(),
+      updateMany: jest.fn(),
+    },
+    productVariant: {
+      findUnique: jest.fn(),
+    },
+    adminStockAdjustmentAudit: {
+      create: jest.fn(),
     },
   };
 
@@ -53,6 +61,98 @@ describe('productRepository', () => {
 
     await expect(productRepository[method](...args)).rejects.toThrow(dbError);
     expect(normalizeDbError).toHaveBeenCalledWith(dbError, { repository: 'product', operation });
+  });
+
+  test('applyAdminStockAdjustment applies a single deterministic mutation with authoritative audit write', async () => {
+    const { productRepository, prismaMock } = await loadProductRepository();
+    prismaMock.$transaction.mockImplementationOnce((callback) => callback(prismaMock));
+    prismaMock.productVariant.findUnique.mockResolvedValueOnce({ productId: 'prod_1' });
+    prismaMock.product.findUnique.mockResolvedValueOnce({ id: 'prod_1', stock: 8 });
+    prismaMock.product.updateMany.mockResolvedValueOnce({ count: 1 });
+    prismaMock.adminStockAdjustmentAudit.create.mockResolvedValueOnce({ id: 'audit_1' });
+
+    const result = await productRepository.applyAdminStockAdjustment({
+      actorUserId: '00000000-0000-0000-0000-000000000001',
+      intentClass: 'RECOUNT_CORRECTION',
+      target: { sku: 'SKU-1' },
+      quantityDelta: -2,
+      expectedStock: 8,
+      evidenceRef: 'cycle-count-1',
+      note: 'verified',
+    });
+
+    expect(prismaMock.product.updateMany).toHaveBeenCalledWith({
+      where: { id: 'prod_1', stock: 8 },
+      data: { stock: 6 },
+    });
+    expect(prismaMock.adminStockAdjustmentAudit.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        actorUserId: '00000000-0000-0000-0000-000000000001',
+        targetProductId: 'prod_1',
+        targetResolverSku: 'SKU-1',
+        intentClass: 'RECOUNT_CORRECTION',
+        beforeQuantity: 8,
+        afterQuantity: 6,
+        outcomeClass: 'APPLIED',
+      }),
+    });
+    expect(result).toEqual({
+      applied: true,
+      outcomeClass: 'APPLIED',
+      rejectionClass: null,
+      targetProductId: 'prod_1',
+      beforeQuantity: 8,
+      afterQuantity: 6,
+      auditId: 'audit_1',
+    });
+  });
+
+  test('applyAdminStockAdjustment rejects invalid precondition with audit and no stock mutation', async () => {
+    const { productRepository, prismaMock } = await loadProductRepository();
+    prismaMock.$transaction.mockImplementationOnce((callback) => callback(prismaMock));
+    prismaMock.product.findUnique.mockResolvedValueOnce({ id: 'prod_1', stock: 8 });
+    prismaMock.adminStockAdjustmentAudit.create.mockResolvedValueOnce({ id: 'audit_2' });
+
+    const result = await productRepository.applyAdminStockAdjustment({
+      actorUserId: '00000000-0000-0000-0000-000000000001',
+      intentClass: 'DAMAGE_LOSS_CORRECTION',
+      target: { productId: 'prod_1' },
+      quantityDelta: -2,
+      expectedStock: 7,
+    });
+
+    expect(prismaMock.product.updateMany).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      applied: false,
+      outcomeClass: 'REJECTED',
+      rejectionClass: 'INVALID_PRECONDITION',
+      targetProductId: 'prod_1',
+      beforeQuantity: 8,
+      auditId: 'audit_2',
+    });
+  });
+
+  test('applyAdminStockAdjustment rejects invalid target deterministically with audit', async () => {
+    const { productRepository, prismaMock } = await loadProductRepository();
+    prismaMock.$transaction.mockImplementationOnce((callback) => callback(prismaMock));
+    prismaMock.productVariant.findUnique.mockResolvedValueOnce(null);
+    prismaMock.adminStockAdjustmentAudit.create.mockResolvedValueOnce({ id: 'audit_3' });
+
+    const result = await productRepository.applyAdminStockAdjustment({
+      actorUserId: '00000000-0000-0000-0000-000000000001',
+      intentClass: 'RECOUNT_CORRECTION',
+      target: { sku: 'MISSING-SKU' },
+      quantityDelta: -1,
+      expectedStock: 8,
+    });
+
+    expect(prismaMock.product.findUnique).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      applied: false,
+      outcomeClass: 'REJECTED',
+      rejectionClass: 'INVALID_TARGET',
+      auditId: 'audit_3',
+    });
   });
 
   test('list defaults', async () => {

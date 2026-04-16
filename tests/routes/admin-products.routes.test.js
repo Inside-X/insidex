@@ -6,6 +6,7 @@ import { productRepository } from '../../src/repositories/product.repository.js'
 import { mediaUploadRepository } from '../../src/repositories/media-upload.repository.js';
 
 const adminToken = buildTestToken({ role: 'admin', id: 'admin-products-1' });
+const customerToken = buildTestToken({ role: 'customer', id: 'admin-products-user-1' });
 const validId = '00000000-0000-0000-0000-000000000123';
 const validMedia = [
   {
@@ -591,5 +592,133 @@ describe('admin products routes', () => {
       .expect(400);
 
     expect(response.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  test('stock adjustment enforces admin-only boundary', async () => {
+    const adjustSpy = jest.spyOn(productRepository, 'applyAdminStockAdjustment');
+
+    await request(app)
+      .post('/api/admin/products/stock-adjustments')
+      .set('Authorization', `Bearer ${customerToken}`)
+      .send({
+        target: { productId: validId },
+        intentClass: 'RECOUNT_CORRECTION',
+        quantityDelta: -1,
+        expectedStock: 8,
+      })
+      .expect(403);
+
+    expect(adjustSpy).not.toHaveBeenCalled();
+  });
+
+  test('stock adjustment rejects ambiguous target identity', async () => {
+    const adjustSpy = jest.spyOn(productRepository, 'applyAdminStockAdjustment');
+    const response = await request(app)
+      .post('/api/admin/products/stock-adjustments')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        target: { productId: validId, sku: 'SKU-123' },
+        intentClass: 'RECOUNT_CORRECTION',
+        quantityDelta: -1,
+        expectedStock: 8,
+      })
+      .expect(400);
+
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    expect(adjustSpy).not.toHaveBeenCalled();
+  });
+
+  test('stock adjustment rejects unsupported intent class', async () => {
+    const adjustSpy = jest.spyOn(productRepository, 'applyAdminStockAdjustment');
+    const response = await request(app)
+      .post('/api/admin/products/stock-adjustments')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        target: { productId: validId },
+        intentClass: 'FIX_STOCK',
+        quantityDelta: -1,
+        expectedStock: 8,
+      })
+      .expect(400);
+
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    expect(adjustSpy).not.toHaveBeenCalled();
+  });
+
+  test('stock adjustment applies deterministically and returns audit truth', async () => {
+    jest.spyOn(productRepository, 'applyAdminStockAdjustment').mockResolvedValueOnce({
+      applied: true,
+      outcomeClass: 'APPLIED',
+      rejectionClass: null,
+      targetProductId: validId,
+      beforeQuantity: 8,
+      afterQuantity: 6,
+      auditId: 'a0d5fcba-65c0-48db-a52c-bc9786477d61',
+    });
+
+    const response = await request(app)
+      .post('/api/admin/products/stock-adjustments')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        target: { sku: 'SKU-123' },
+        intentClass: 'RECOUNT_CORRECTION',
+        quantityDelta: -2,
+        expectedStock: 8,
+        evidenceRef: 'cycle-count-2026-04-16',
+      })
+      .expect(200);
+
+    expect(productRepository.applyAdminStockAdjustment).toHaveBeenCalledWith({
+      actorUserId: 'admin-products-1',
+      intentClass: 'RECOUNT_CORRECTION',
+      target: { sku: 'SKU-123' },
+      quantityDelta: -2,
+      expectedStock: 8,
+      evidenceRef: 'cycle-count-2026-04-16',
+      note: undefined,
+    });
+    expect(response.body).toEqual({
+      data: {
+        auditId: 'a0d5fcba-65c0-48db-a52c-bc9786477d61',
+        outcomeClass: 'APPLIED',
+        rejectionClass: null,
+        targetProductId: validId,
+        beforeQuantity: 8,
+        afterQuantity: 6,
+      },
+    });
+  });
+
+  test('stock adjustment fails closed for invalid precondition and does not mutate order routes', async () => {
+    jest.spyOn(productRepository, 'applyAdminStockAdjustment').mockResolvedValueOnce({
+      applied: false,
+      outcomeClass: 'REJECTED',
+      rejectionClass: 'INVALID_PRECONDITION',
+      targetProductId: validId,
+      beforeQuantity: 8,
+      auditId: '6d95c9de-8e84-41be-a7b6-b8ad23793ad5',
+    });
+
+    const response = await request(app)
+      .post('/api/admin/products/stock-adjustments')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        target: { productId: validId },
+        intentClass: 'DAMAGE_LOSS_CORRECTION',
+        quantityDelta: -1,
+        expectedStock: 5,
+      })
+      .expect(200);
+
+    expect(response.body).toEqual({
+      data: {
+        auditId: '6d95c9de-8e84-41be-a7b6-b8ad23793ad5',
+        outcomeClass: 'REJECTED',
+        rejectionClass: 'INVALID_PRECONDITION',
+        targetProductId: validId,
+        beforeQuantity: 8,
+        afterQuantity: null,
+      },
+    });
   });
 });

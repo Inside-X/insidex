@@ -1,6 +1,7 @@
 export const ROLE_PERMISSIONS = Object.freeze({
   admin: Object.freeze([
     'admin:health:read',
+    'admin:stock:adjust',
     'reports:read',
     'audit-log:read',
   ]),

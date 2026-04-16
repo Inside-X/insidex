@@ -9,6 +9,11 @@ const nonNegativeIntegerSchema = z.number({ required_error: 'stock is required',
   .int('stock must be a non-negative integer')
   .min(0, 'stock must be a non-negative integer');
 const productStatusSchema = z.enum(['draft', 'published']);
+const stockAdjustmentIntentClassSchema = z.enum([
+  'RECOUNT_CORRECTION',
+  'DAMAGE_LOSS_CORRECTION',
+  'AUTHORIZED_RESTORATION',
+]);
 
 const mediaItemSchema = z.object({
   id: trimmedRequiredString('id'),
@@ -97,6 +102,21 @@ export const adminProductsSchemas = {
   unpublish: emptyBodySchema,
   replaceMedia: z.object({ media: mediaListSchema }).strict({ message: 'unknown field in admin product media payload' }),
   byIdParams: z.object({ id: uuidSchema }).strict({ message: 'unknown field in admin product params payload' }),
+  adjustStock: z.object({
+    target: z.union([
+      z.object({ productId: uuidSchema }).strict({ message: 'target must contain only productId or sku' }),
+      z.object({ sku: trimmedRequiredString('sku').max(120, 'sku must be 120 characters or fewer') }).strict({ message: 'target must contain only productId or sku' }),
+    ]),
+    intentClass: stockAdjustmentIntentClassSchema,
+    quantityDelta: z.number({ required_error: 'quantityDelta is required', invalid_type_error: 'quantityDelta must be a non-zero integer' })
+      .int('quantityDelta must be a non-zero integer')
+      .refine((value) => value !== 0, 'quantityDelta must be a non-zero integer'),
+    expectedStock: z.number({ required_error: 'expectedStock is required', invalid_type_error: 'expectedStock must be a non-negative integer' })
+      .int('expectedStock must be a non-negative integer')
+      .min(0, 'expectedStock must be a non-negative integer'),
+    evidenceRef: z.string().trim().min(1, 'evidenceRef must not be empty').max(120, 'evidenceRef must be 120 characters or fewer').optional(),
+    note: z.string().trim().min(1, 'note must not be empty').max(500, 'note must be 500 characters or fewer').optional(),
+  }).strict({ message: 'unknown field in admin stock adjustment payload' }),
 };
 
 export default adminProductsSchemas;

@@ -1,6 +1,12 @@
 import prisma from '../lib/prisma.js';
 import { normalizeDbError } from '../lib/db-error.js';
 
+const ALLOWED_ADMIN_STOCK_ADJUSTMENT_INTENT_CLASSES = new Set([
+  'RECOUNT_CORRECTION',
+  'DAMAGE_LOSS_CORRECTION',
+  'AUTHORIZED_RESTORATION',
+]);
+
 function mapAdminProductCoreData(payload) {
   return {
     ...(payload.name !== undefined ? { name: payload.name } : {}),
@@ -124,6 +130,182 @@ export const productRepository = {
         },
       });
     } catch (error) { normalizeDbError(error, { repository: 'product', operation: 'replaceProductMediaById' }); }
+  },
+  async applyAdminStockAdjustment({
+    actorUserId,
+    intentClass,
+    target,
+    quantityDelta,
+    expectedStock,
+    evidenceRef = null,
+    note = null,
+  }) {
+    const operation = 'applyAdminStockAdjustment';
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const baseAuditData = {
+          actorUserId,
+          intentClass,
+          targetResolverSku: target.sku || null,
+          evidenceRef: evidenceRef || null,
+          note: note || null,
+        };
+
+        if (!ALLOWED_ADMIN_STOCK_ADJUSTMENT_INTENT_CLASSES.has(intentClass)) {
+          const audit = await tx.adminStockAdjustmentAudit.create({
+            data: {
+              ...baseAuditData,
+              outcomeClass: 'REJECTED',
+              rejectionClass: 'INVALID_INTENT',
+            },
+          });
+          return {
+            applied: false,
+            outcomeClass: 'REJECTED',
+            rejectionClass: 'INVALID_INTENT',
+            auditId: audit.id,
+          };
+        }
+
+        let resolvedProductId = target.productId || null;
+        if (!resolvedProductId && target.sku) {
+          const variant = await tx.productVariant.findUnique({
+            where: { sku: target.sku },
+            select: { productId: true },
+          });
+          resolvedProductId = variant?.productId || null;
+        }
+
+        if (!resolvedProductId) {
+          const audit = await tx.adminStockAdjustmentAudit.create({
+            data: {
+              ...baseAuditData,
+              outcomeClass: 'REJECTED',
+              rejectionClass: 'INVALID_TARGET',
+            },
+          });
+          return {
+            applied: false,
+            outcomeClass: 'REJECTED',
+            rejectionClass: 'INVALID_TARGET',
+            auditId: audit.id,
+          };
+        }
+
+        const product = await tx.product.findUnique({
+          where: { id: resolvedProductId },
+          select: { id: true, stock: true },
+        });
+
+        if (!product) {
+          const audit = await tx.adminStockAdjustmentAudit.create({
+            data: {
+              ...baseAuditData,
+              targetProductId: resolvedProductId,
+              outcomeClass: 'REJECTED',
+              rejectionClass: 'INVALID_TARGET',
+            },
+          });
+          return {
+            applied: false,
+            outcomeClass: 'REJECTED',
+            rejectionClass: 'INVALID_TARGET',
+            auditId: audit.id,
+          };
+        }
+
+        if (product.stock !== expectedStock) {
+          const audit = await tx.adminStockAdjustmentAudit.create({
+            data: {
+              ...baseAuditData,
+              targetProductId: product.id,
+              beforeQuantity: product.stock,
+              outcomeClass: 'REJECTED',
+              rejectionClass: 'INVALID_PRECONDITION',
+            },
+          });
+          return {
+            applied: false,
+            outcomeClass: 'REJECTED',
+            rejectionClass: 'INVALID_PRECONDITION',
+            targetProductId: product.id,
+            beforeQuantity: product.stock,
+            auditId: audit.id,
+          };
+        }
+
+        const afterQuantity = product.stock + quantityDelta;
+        if (afterQuantity < 0) {
+          const audit = await tx.adminStockAdjustmentAudit.create({
+            data: {
+              ...baseAuditData,
+              targetProductId: product.id,
+              beforeQuantity: product.stock,
+              outcomeClass: 'REJECTED',
+              rejectionClass: 'INVALID_PRECONDITION',
+            },
+          });
+          return {
+            applied: false,
+            outcomeClass: 'REJECTED',
+            rejectionClass: 'INVALID_PRECONDITION',
+            targetProductId: product.id,
+            beforeQuantity: product.stock,
+            auditId: audit.id,
+          };
+        }
+
+        const updateResult = await tx.product.updateMany({
+          where: {
+            id: product.id,
+            stock: expectedStock,
+          },
+          data: {
+            stock: afterQuantity,
+          },
+        });
+
+        if (updateResult.count !== 1) {
+          const audit = await tx.adminStockAdjustmentAudit.create({
+            data: {
+              ...baseAuditData,
+              targetProductId: product.id,
+              beforeQuantity: product.stock,
+              outcomeClass: 'REJECTED',
+              rejectionClass: 'CONFLICT_CONCURRENT_CONTRADICTION',
+            },
+          });
+          return {
+            applied: false,
+            outcomeClass: 'REJECTED',
+            rejectionClass: 'CONFLICT_CONCURRENT_CONTRADICTION',
+            targetProductId: product.id,
+            beforeQuantity: product.stock,
+            auditId: audit.id,
+          };
+        }
+
+        const audit = await tx.adminStockAdjustmentAudit.create({
+          data: {
+            ...baseAuditData,
+            targetProductId: product.id,
+            beforeQuantity: product.stock,
+            afterQuantity,
+            outcomeClass: 'APPLIED',
+          },
+        });
+
+        return {
+          applied: true,
+          outcomeClass: 'APPLIED',
+          rejectionClass: null,
+          targetProductId: product.id,
+          beforeQuantity: product.stock,
+          afterQuantity,
+          auditId: audit.id,
+        };
+      });
+    } catch (error) { normalizeDbError(error, { repository: 'product', operation }); }
   },
 };
 

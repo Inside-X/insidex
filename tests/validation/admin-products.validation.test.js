@@ -110,3 +110,44 @@ test('publish and unpublish accept an empty object only', () => {
   expect(adminProductsSchemas.publish.safeParse({ noop: true }).success).toBe(false);
   expect(adminProductsSchemas.unpublish.safeParse({ noop: true }).success).toBe(false);
 });
+
+test('adjustStock accepts canonical productId target payload', () => {
+  const payload = {
+    target: { productId: '00000000-0000-0000-0000-000000000123' },
+    intentClass: 'RECOUNT_CORRECTION',
+    quantityDelta: -2,
+    expectedStock: 8,
+    evidenceRef: 'cycle-count-2026-04-16',
+    note: 'Shelf recount matched signed worksheet.',
+  };
+
+  expect(adminProductsSchemas.adjustStock.parse(payload)).toEqual(payload);
+});
+
+test('adjustStock rejects ambiguous target payload', () => {
+  const result = adminProductsSchemas.adjustStock.safeParse({
+    target: {
+      productId: '00000000-0000-0000-0000-000000000123',
+      sku: 'SKU-123',
+    },
+    intentClass: 'RECOUNT_CORRECTION',
+    quantityDelta: -1,
+    expectedStock: 8,
+  });
+
+  expect(result.success).toBe(false);
+});
+
+test('adjustStock rejects unsupported or missing intent class', () => {
+  expect(adminProductsSchemas.adjustStock.safeParse({
+    target: { sku: 'SKU-123' },
+    quantityDelta: -1,
+    expectedStock: 8,
+  }).success).toBe(false);
+  expect(adminProductsSchemas.adjustStock.safeParse({
+    target: { sku: 'SKU-123' },
+    intentClass: 'FIX_STOCK',
+    quantityDelta: -1,
+    expectedStock: 8,
+  }).success).toBe(false);
+});

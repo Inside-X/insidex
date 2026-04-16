@@ -4,6 +4,7 @@ import { adminProductsSchemas } from '../validation/schemas/admin-products.schem
 import { productRepository } from '../repositories/product.repository.js';
 import { mediaUploadRepository } from '../repositories/media-upload.repository.js';
 import { ValidationError } from '../errors/validation-error.js';
+import { requirePermission } from '../middlewares/requirePermission.js';
 
 const router = express.Router();
 
@@ -190,6 +191,38 @@ router.put(
         data: {
           id: updated.id,
           media: toContractMedia(updated.images ?? []),
+        },
+      });
+    } catch (error) {
+      return next(error);
+    }
+  },
+);
+
+router.post(
+  '/stock-adjustments',
+  requirePermission('admin:stock:adjust'),
+  validate(adminProductsSchemas.adjustStock),
+  async (req, res, next) => {
+    try {
+      const adjustment = await productRepository.applyAdminStockAdjustment({
+        actorUserId: req.auth?.sub,
+        intentClass: req.body.intentClass,
+        target: req.body.target,
+        quantityDelta: req.body.quantityDelta,
+        expectedStock: req.body.expectedStock,
+        evidenceRef: req.body.evidenceRef,
+        note: req.body.note,
+      });
+
+      return res.status(200).json({
+        data: {
+          auditId: adjustment.auditId,
+          outcomeClass: adjustment.outcomeClass,
+          rejectionClass: adjustment.rejectionClass,
+          targetProductId: adjustment.targetProductId ?? null,
+          beforeQuantity: adjustment.beforeQuantity ?? null,
+          afterQuantity: adjustment.afterQuantity ?? null,
         },
       });
     } catch (error) {

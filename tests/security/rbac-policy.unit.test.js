@@ -11,6 +11,7 @@ describe('rbac-policy', () => {
 
     expect(ROLE_PERMISSIONS.admin).toEqual([
       'admin:health:read',
+      'admin:stock:adjust',
       'reports:read',
       'audit-log:read',
     ]);
@@ -76,6 +77,7 @@ describe('rbac-policy', () => {
 
   test('test allowed access for known role-permission pairs', () => {
     expect(roleHasPermission('admin', 'admin:health:read')).toBe(true);
+    expect(roleHasPermission('admin', 'admin:stock:adjust')).toBe(true);
     expect(roleHasPermission('admin', 'reports:read')).toBe(true);
     expect(roleHasPermission('admin', 'audit-log:read')).toBe(true);
     expect(roleHasPermission('ops', 'audit-log:read')).toBe(true);

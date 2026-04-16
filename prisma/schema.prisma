@@ -38,6 +38,24 @@ enum StockStatus {
   unknown
 }
 
+enum AdminStockAdjustmentIntentClass {
+  RECOUNT_CORRECTION
+  DAMAGE_LOSS_CORRECTION
+  AUTHORIZED_RESTORATION
+}
+
+enum AdminStockAdjustmentOutcomeClass {
+  APPLIED
+  REJECTED
+}
+
+enum AdminStockAdjustmentRejectionClass {
+  INVALID_INTENT
+  INVALID_TARGET
+  INVALID_PRECONDITION
+  CONFLICT_CONCURRENT_CONTRADICTION
+}
+
 model User {
   id              String           @id @default(uuid()) @db.Uuid
   email           String           @unique @db.VarChar(320)
@@ -79,6 +97,7 @@ model Product {
   images          ProductImage[]
   variants        ProductVariant[]
   specs           ProductSpec[]
+  stockAdjustments AdminStockAdjustmentAudit[]
 
   @@index([active, createdAt], map: "idx_products_active_created_at")
   @@index([name], map: "idx_products_name")
@@ -86,6 +105,26 @@ model Product {
   @@index([status], map: "idx_products_status")
   @@index([stockStatus], map: "idx_products_stock_status")
   @@map("products")
+}
+
+model AdminStockAdjustmentAudit {
+  id             String                            @id @default(uuid()) @db.Uuid
+  actorUserId    String                            @map("actor_user_id") @db.Uuid
+  targetProductId String?                          @map("target_product_id") @db.Uuid
+  targetResolverSku String?                        @map("target_resolver_sku") @db.VarChar(120)
+  intentClass    AdminStockAdjustmentIntentClass   @map("intent_class")
+  beforeQuantity Int?                              @map("before_quantity")
+  afterQuantity  Int?                              @map("after_quantity")
+  outcomeClass   AdminStockAdjustmentOutcomeClass  @map("outcome_class")
+  rejectionClass AdminStockAdjustmentRejectionClass? @map("rejection_class")
+  evidenceRef    String?                           @map("evidence_ref") @db.VarChar(120)
+  note           String?                           @db.VarChar(500)
+  createdAt      DateTime                          @default(now()) @map("created_at") @db.Timestamptz(6)
+  targetProduct  Product?                          @relation(fields: [targetProductId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId, createdAt], map: "idx_admin_stock_adjustments_actor_created_at")
+  @@index([targetProductId, createdAt], map: "idx_admin_stock_adjustments_target_created_at")
+  @@map("admin_stock_adjustments_audit")
 }
 
 model ProductImage {
