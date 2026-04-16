@@ -1540,4 +1540,215 @@ describe('orderRepository additional branch coverage', () => {
     })).rejects.toThrow('Order fulfillment mode is not readiness-compatible');
   });
 
+  test('B4.7C marks pickup_local order completed with mode-aware completion only', async () => {
+    const localState = buildPrismaState({
+      orders: [{
+        id: 'order-complete-pickup',
+        userId: '00000000-0000-0000-0000-000000000010',
+        idempotencyKey: 'idem-complete-pickup-1',
+        status: 'paid',
+        fulfillmentMode: 'pickup_local',
+        fulfillmentSnapshot: {
+          mode: 'pickup_local',
+          customer: { contactEmail: 'pickup@insidex.test' },
+          readiness: { state: 'ready_for_pickup' },
+          pickup: {},
+        },
+      }],
+      seq: 1,
+    });
+    Object.assign(prisma, createPrismaMock(localState));
+
+    const result = await orderRepository.markFulfillmentCompleted({
+      orderId: 'order-complete-pickup',
+      target: 'collected',
+      actorType: 'admin',
+      note: 'Customer verified',
+    });
+
+    expect(result.fulfillmentSnapshot.completion.state).toBe('collected');
+    expect(result.fulfillmentSnapshot.completion.note).toBe('Customer verified');
+    expect(result.fulfillmentSnapshot.readiness.state).toBe('ready_for_pickup');
+    expect(result.status).toBe('paid');
+    expect(localState.orders[0].fulfillmentMode).toBe('pickup_local');
+    expect(localState.orderEvents).toContainEqual(expect.objectContaining({
+      orderId: 'order-complete-pickup',
+      type: 'fulfillment_completion',
+      fromStatus: 'paid',
+      toStatus: 'paid',
+      source: 'admin',
+    }));
+  });
+
+  test('B4.7C marks delivery_local order completed with mode-aware completion only', async () => {
+    const localState = buildPrismaState({
+      orders: [{
+        id: 'order-complete-delivery',
+        userId: '00000000-0000-0000-0000-000000000010',
+        idempotencyKey: 'idem-complete-delivery-1',
+        status: 'paid',
+        fulfillmentMode: 'delivery_local',
+        fulfillmentSnapshot: {
+          mode: 'delivery_local',
+          customer: { contactEmail: 'delivery@insidex.test' },
+          readiness: { state: 'ready_for_local_delivery' },
+          delivery: {
+            destination: { line1: '12 rue du Port', city: 'Mamoudzou', postalCode: '97600', country: 'FR' },
+          },
+        },
+      }],
+      seq: 1,
+    });
+    Object.assign(prisma, createPrismaMock(localState));
+
+    const result = await orderRepository.markFulfillmentCompleted({
+      orderId: 'order-complete-delivery',
+      target: 'delivered_local',
+      actorType: 'admin',
+    });
+
+    expect(result.fulfillmentSnapshot.completion.state).toBe('delivered_local');
+    expect(result.fulfillmentSnapshot.readiness.state).toBe('ready_for_local_delivery');
+    expect(result.status).toBe('paid');
+    expect(localState.orders[0].fulfillmentMode).toBe('delivery_local');
+  });
+
+  test('B4.7C rejects mismatched completion target and missing/incompatible readiness truth', async () => {
+    const localState = buildPrismaState({
+      orders: [
+        {
+          id: 'order-complete-no-readiness',
+          userId: '00000000-0000-0000-0000-000000000010',
+          idempotencyKey: 'idem-complete-no-readiness',
+          status: 'paid',
+          fulfillmentMode: 'pickup_local',
+          fulfillmentSnapshot: { mode: 'pickup_local', pickup: {} },
+        },
+        {
+          id: 'order-complete-readiness-mismatch',
+          userId: '00000000-0000-0000-0000-000000000010',
+          idempotencyKey: 'idem-complete-readiness-mismatch',
+          status: 'paid',
+          fulfillmentMode: 'pickup_local',
+          fulfillmentSnapshot: { mode: 'pickup_local', readiness: { state: 'ready_for_local_delivery' } },
+        },
+      ],
+      seq: 2,
+    });
+    Object.assign(prisma, createPrismaMock(localState));
+
+    await expect(orderRepository.markFulfillmentCompleted({
+      orderId: 'order-complete-no-readiness',
+      target: 'collected',
+    })).rejects.toThrow('Order readiness state is required before completion transition');
+
+    await expect(orderRepository.markFulfillmentCompleted({
+      orderId: 'order-complete-readiness-mismatch',
+      target: 'collected',
+    })).rejects.toThrow('Order readiness state is incompatible with fulfillment mode');
+
+    await expect(orderRepository.markFulfillmentCompleted({
+      orderId: 'order-complete-readiness-mismatch',
+      target: 'delivered_local',
+    })).rejects.toThrow('Completion target is incompatible with fulfillment mode');
+  });
+
+  test('B4.7C fails closed for non-paid/snapshot contradiction/non-local mode', async () => {
+    const localState = buildPrismaState({
+      orders: [
+        {
+          id: 'order-complete-not-paid',
+          userId: '00000000-0000-0000-0000-000000000010',
+          idempotencyKey: 'idem-complete-not-paid',
+          status: 'pending',
+          fulfillmentMode: 'pickup_local',
+          fulfillmentSnapshot: { mode: 'pickup_local', readiness: { state: 'ready_for_pickup' } },
+        },
+        {
+          id: 'order-complete-mode-contradiction',
+          userId: '00000000-0000-0000-0000-000000000010',
+          idempotencyKey: 'idem-complete-mode-contradiction',
+          status: 'paid',
+          fulfillmentMode: 'pickup_local',
+          fulfillmentSnapshot: { mode: 'delivery_local', readiness: { state: 'ready_for_pickup' } },
+        },
+        {
+          id: 'order-complete-nonlocal',
+          userId: '00000000-0000-0000-0000-000000000010',
+          idempotencyKey: 'idem-complete-nonlocal',
+          status: 'paid',
+          fulfillmentMode: 'carrier_shipping',
+          fulfillmentSnapshot: { mode: 'carrier_shipping', readiness: { state: 'ready_for_pickup' } },
+        },
+      ],
+      seq: 3,
+    });
+    Object.assign(prisma, createPrismaMock(localState));
+
+    await expect(orderRepository.markFulfillmentCompleted({
+      orderId: 'order-complete-not-paid',
+      target: 'collected',
+    })).rejects.toThrow('Order must be paid before completion transition');
+
+    await expect(orderRepository.markFulfillmentCompleted({
+      orderId: 'order-complete-mode-contradiction',
+      target: 'collected',
+    })).rejects.toThrow('Order fulfillment snapshot/mode contradiction');
+
+    await expect(orderRepository.markFulfillmentCompleted({
+      orderId: 'order-complete-nonlocal',
+      target: 'collected',
+    })).rejects.toThrow('Order fulfillment mode is not completion-compatible');
+  });
+
+  test('B4.7C completion is deterministic and fails closed on replay/race', async () => {
+    const localState = buildPrismaState({
+      orders: [{
+        id: 'order-complete-repeat',
+        userId: '00000000-0000-0000-0000-000000000010',
+        idempotencyKey: 'idem-complete-repeat',
+        status: 'paid',
+        fulfillmentMode: 'pickup_local',
+        fulfillmentSnapshot: { mode: 'pickup_local', readiness: { state: 'ready_for_pickup' } },
+      }],
+      seq: 1,
+    });
+    Object.assign(prisma, createPrismaMock(localState));
+
+    await expect(orderRepository.markFulfillmentCompleted({
+      orderId: 'order-complete-repeat',
+      target: 'collected',
+    })).resolves.toEqual(expect.objectContaining({
+      id: 'order-complete-repeat',
+      status: 'paid',
+    }));
+
+    await expect(orderRepository.markFulfillmentCompleted({
+      orderId: 'order-complete-repeat',
+      target: 'collected',
+    })).rejects.toThrow('Order is already in completion state');
+
+    expect(localState.orders[0].fulfillmentMode).toBe('pickup_local');
+  });
+
+  test('B4.7C fails closed when completion update races', async () => {
+    const raceState = buildPrismaState({
+      orders: [{
+        id: 'order-complete-race',
+        userId: '00000000-0000-0000-0000-000000000010',
+        idempotencyKey: 'idem-complete-race',
+        status: 'paid',
+        fulfillmentMode: 'pickup_local',
+        fulfillmentSnapshot: { mode: 'pickup_local', readiness: { state: 'ready_for_pickup' } },
+      }],
+      seq: 1,
+    });
+    Object.assign(prisma, createPrismaMock(raceState, { forceOrderUpdateNoop: true }));
+
+    await expect(orderRepository.markFulfillmentCompleted({
+      orderId: 'order-complete-race',
+      target: 'collected',
+    })).rejects.toThrow('Completion transition conflict');
+  });
+
 });

@@ -121,6 +121,12 @@ function expectedReadinessForMode(mode) {
   return null;
 }
 
+function expectedCompletionForMode(mode) {
+  if (mode === 'pickup_local') return 'collected';
+  if (mode === 'delivery_local') return 'delivered_local';
+  return null;
+}
+
 function sanitizeReadinessNote(note) {
   if (note == null) return undefined;
   const normalized = String(note).trim();
@@ -451,6 +457,105 @@ export const orderRepository = {
       });
     } catch (error) {
       normalizeDbError(error, { repository: 'order', operation: 'markFulfillmentReady' });
+    }
+  },
+
+  async markFulfillmentCompleted({ orderId, target, actorType = 'admin', note = undefined }) {
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: true } });
+        if (!order) {
+          const error = new Error('Order not found');
+          error.statusCode = 404;
+          throw error;
+        }
+
+        if (order.status !== 'paid') {
+          throw badRequest('Order must be paid before completion transition');
+        }
+
+        const fulfillmentMode = typeof order.fulfillmentMode === 'string' ? order.fulfillmentMode.trim() : '';
+        const expectedReadiness = expectedReadinessForMode(fulfillmentMode);
+        const expectedCompletion = expectedCompletionForMode(fulfillmentMode);
+        if (!expectedReadiness || !expectedCompletion) {
+          throw badRequest('Order fulfillment mode is not completion-compatible');
+        }
+        if (target !== expectedCompletion) {
+          throw badRequest('Completion target is incompatible with fulfillment mode');
+        }
+
+        if (!order.fulfillmentSnapshot || typeof order.fulfillmentSnapshot !== 'object') {
+          throw badRequest('Order fulfillment snapshot is missing canonical truth');
+        }
+
+        const snapshotMode = typeof order.fulfillmentSnapshot.mode === 'string'
+          ? order.fulfillmentSnapshot.mode.trim()
+          : '';
+        if (snapshotMode !== fulfillmentMode) {
+          throw badRequest('Order fulfillment snapshot/mode contradiction');
+        }
+
+        const readinessState = typeof order.fulfillmentSnapshot.readiness?.state === 'string'
+          ? order.fulfillmentSnapshot.readiness.state.trim()
+          : null;
+        if (!readinessState) {
+          throw badRequest('Order readiness state is required before completion transition');
+        }
+        if (readinessState !== expectedReadiness) {
+          throw badRequest('Order readiness state is incompatible with fulfillment mode');
+        }
+
+        const currentCompletion = typeof order.fulfillmentSnapshot.completion?.state === 'string'
+          ? order.fulfillmentSnapshot.completion.state.trim()
+          : null;
+        if (currentCompletion && currentCompletion !== expectedCompletion) {
+          const error = new Error('Order completion state is incompatible with fulfillment mode');
+          error.statusCode = 409;
+          throw error;
+        }
+        if (currentCompletion === expectedCompletion) {
+          const error = new Error('Order is already in completion state');
+          error.statusCode = 409;
+          throw error;
+        }
+
+        const completionNote = sanitizeReadinessNote(note);
+        const nextSnapshot = {
+          ...order.fulfillmentSnapshot,
+          completion: {
+            state: expectedCompletion,
+            completedAt: new Date().toISOString(),
+            ...(completionNote ? { note: completionNote } : {}),
+          },
+        };
+
+        const updateResult = await tx.order.updateMany({
+          where: { id: order.id, status: 'paid' },
+          data: { fulfillmentSnapshot: nextSnapshot },
+        });
+        if (updateResult.count !== 1) {
+          const error = new Error('Completion transition conflict');
+          error.statusCode = 409;
+          throw error;
+        }
+
+        await tx.orderEvent.create({
+          data: {
+            orderId: order.id,
+            type: 'fulfillment_completion',
+            fromStatus: order.status,
+            toStatus: order.status,
+            source: actorType,
+            sourceEventId: null,
+            idempotencyKey: order.idempotencyKey || null,
+            correlationId: null,
+          },
+        });
+
+        return tx.order.findUnique({ where: { id: order.id }, include: { items: true } });
+      });
+    } catch (error) {
+      normalizeDbError(error, { repository: 'order', operation: 'markFulfillmentCompleted' });
     }
   },
 

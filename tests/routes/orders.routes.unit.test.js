@@ -7,10 +7,12 @@ describe('orders.routes', () => {
     const orderRepository = {
       createIdempotentWithItemsAndUpdateStock: jest.fn().mockResolvedValue({ order: { id: 'o1' }, replayed: false }),
       processPaymentWebhookEvent: jest.fn().mockResolvedValue({ ok: true }),
+      markFulfillmentReady: jest.fn().mockResolvedValue({ id: 'o-ready' }),
+      markFulfillmentCompleted: jest.fn().mockResolvedValue({ id: 'o-complete' }),
     };
     const sendApiError = jest.fn((_req, res, status) => res.status(status).json({}));
     const routes = await loadRoute('../../src/routes/orders.routes.js', {
-      '../../src/validation/schemas/index.js': () => ({ authSchemas: { register: {}, login: {}, forgot: {}, reset: {}, refresh: {}, logout: {} }, ordersSchemas: { create: {}, paymentWebhook: {}, byIdParams: {} }, paymentsSchemas: { createIntent: {} }, cartSchemas: { getCartQuery: {}, add: {}, updateItemParams: {}, updateItemBody: {}, removeItemParams: {}, removeItemBody: {} }, productsSchemas: { listQuery: {}, byIdParams: {}, create: {} }, leadsSchemas: { create: {}, listQuery: {} }, analyticsSchemas: { track: {}, listQuery: {} } }),
+      '../../src/validation/schemas/index.js': () => ({ authSchemas: { register: {}, login: {}, forgot: {}, reset: {}, refresh: {}, logout: {} }, ordersSchemas: { create: {}, paymentWebhook: {}, byIdParams: {}, markReadiness: {}, markCompletion: {} }, paymentsSchemas: { createIntent: {} }, cartSchemas: { getCartQuery: {}, add: {}, updateItemParams: {}, updateItemBody: {}, removeItemParams: {}, removeItemBody: {} }, productsSchemas: { listQuery: {}, byIdParams: {}, create: {} }, leadsSchemas: { create: {}, listQuery: {} }, analyticsSchemas: { track: {}, listQuery: {} } }),
       '../../src/validation/strict-validate.middleware.js': () => ({ strictValidate: jest.fn(() => pass) }),
       '../../src/middlewares/authenticate.js': () => ({ default: (req, _res, n) => { req.auth = { sub: 'u1', isGuest: false }; n(); } }),
       '../../src/middlewares/authorizeRole.js': () => ({ default: jest.fn(() => pass) }),
@@ -52,6 +54,37 @@ describe('orders.routes', () => {
     res = { status: jest.fn(() => res), json: jest.fn() };
     byId.handlers.at(-1)(req, res);
     expect(res.json).toHaveBeenCalledWith({ data: { id: 'i1' } });
+
+    const readiness = routes.find((r) => r.path === '/:id/readiness' && r.method === 'post');
+    req = { params: { id: 'o-ready' }, body: { target: 'ready_for_pickup', note: 'n' } };
+    res = { status: jest.fn(() => res), json: jest.fn() };
+    await readiness.handlers.at(-1)(req, res, next);
+    expect(orderRepository.markFulfillmentReady).toHaveBeenCalledWith({
+      orderId: 'o-ready',
+      target: 'ready_for_pickup',
+      actorType: 'admin',
+      note: 'n',
+    });
+    expect(res.status).toHaveBeenCalledWith(200);
+
+    const completion = routes.find((r) => r.path === '/:id/completion' && r.method === 'post');
+    req = { params: { id: 'o-complete' }, body: { target: 'collected', note: 'done' } };
+    res = { status: jest.fn(() => res), json: jest.fn() };
+    await completion.handlers.at(-1)(req, res, next);
+    expect(orderRepository.markFulfillmentCompleted).toHaveBeenCalledWith({
+      orderId: 'o-complete',
+      target: 'collected',
+      actorType: 'admin',
+      note: 'done',
+    });
+    expect(res.status).toHaveBeenCalledWith(200);
+
+    const completionErr = new Error('completion failed');
+    orderRepository.markFulfillmentCompleted.mockRejectedValueOnce(completionErr);
+    req = { params: { id: 'o-complete' }, body: { target: 'collected' } };
+    res = { status: jest.fn(() => res), json: jest.fn() };
+    await completion.handlers.at(-1)(req, res, next);
+    expect(next).toHaveBeenCalledWith(completionErr);
   });
 
   test('create endpoint returns 503 when database dependency is unavailable', async () => {
@@ -63,10 +96,12 @@ describe('orders.routes', () => {
     const orderRepository = {
       createIdempotentWithItemsAndUpdateStock: jest.fn(),
       processPaymentWebhookEvent: jest.fn(),
+      markFulfillmentReady: jest.fn(),
+      markFulfillmentCompleted: jest.fn(),
     };
 
     const routes = await loadRoute('../../src/routes/orders.routes.js', {
-      '../../src/validation/schemas/index.js': () => ({ authSchemas: { register: {}, login: {}, forgot: {}, reset: {}, refresh: {}, logout: {} }, ordersSchemas: { create: {}, paymentWebhook: {}, byIdParams: {} }, paymentsSchemas: { createIntent: {} }, cartSchemas: { getCartQuery: {}, add: {}, updateItemParams: {}, updateItemBody: {}, removeItemParams: {}, removeItemBody: {} }, productsSchemas: { listQuery: {}, byIdParams: {}, create: {} }, leadsSchemas: { create: {}, listQuery: {} }, analyticsSchemas: { track: {}, listQuery: {} } }),
+      '../../src/validation/schemas/index.js': () => ({ authSchemas: { register: {}, login: {}, forgot: {}, reset: {}, refresh: {}, logout: {} }, ordersSchemas: { create: {}, paymentWebhook: {}, byIdParams: {}, markReadiness: {}, markCompletion: {} }, paymentsSchemas: { createIntent: {} }, cartSchemas: { getCartQuery: {}, add: {}, updateItemParams: {}, updateItemBody: {}, removeItemParams: {}, removeItemBody: {} }, productsSchemas: { listQuery: {}, byIdParams: {}, create: {} }, leadsSchemas: { create: {}, listQuery: {} }, analyticsSchemas: { track: {}, listQuery: {} } }),
       '../../src/validation/strict-validate.middleware.js': () => ({ strictValidate: jest.fn(() => pass) }),
       '../../src/middlewares/authenticate.js': () => ({ default: (req, _res, n) => { req.auth = { sub: 'u1', isGuest: false }; n(); } }),
       '../../src/middlewares/authorizeRole.js': () => ({ default: jest.fn(() => pass) }),

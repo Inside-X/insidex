@@ -232,6 +232,50 @@ describe('runtime business routes', () => {
     expect(invalid.status).toBe(400);
     expect(invalid.body.error.code).toBe('VALIDATION_ERROR');
   });
+
+  test('orders completion accepts admin and keeps completion semantics bounded', async () => {
+    jest.spyOn(orderRepository, 'markFulfillmentCompleted').mockResolvedValue({
+      id: '00000000-0000-0000-0000-000000000556',
+      status: 'paid',
+      fulfillmentMode: 'delivery_local',
+      fulfillmentSnapshot: {
+        mode: 'delivery_local',
+        readiness: { state: 'ready_for_local_delivery' },
+        completion: { state: 'delivered_local' },
+      },
+      items: [],
+    });
+
+    const res = await request(app)
+      .post('/api/orders/00000000-0000-0000-0000-000000000556/completion')
+      .set('Authorization', `Bearer ${token('admin')}`)
+      .send({ target: 'delivered_local', note: 'Drop-off completed' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('paid');
+    expect(res.body.data.fulfillmentSnapshot.completion.state).toBe('delivered_local');
+    expect(orderRepository.markFulfillmentCompleted).toHaveBeenCalledWith({
+      orderId: '00000000-0000-0000-0000-000000000556',
+      target: 'delivered_local',
+      actorType: 'admin',
+      note: 'Drop-off completed',
+    });
+  });
+
+  test('orders completion rejects non-admin and invalid completion payload', async () => {
+    const nonAdmin = await request(app)
+      .post('/api/orders/00000000-0000-0000-0000-000000000556/completion')
+      .set('Authorization', `Bearer ${token('customer')}`)
+      .send({ target: 'collected' });
+    expect(nonAdmin.status).toBe(403);
+
+    const invalid = await request(app)
+      .post('/api/orders/00000000-0000-0000-0000-000000000556/completion')
+      .set('Authorization', `Bearer ${token('admin')}`)
+      .send({ target: 'ready_for_pickup' });
+    expect(invalid.status).toBe(400);
+    expect(invalid.body.error.code).toBe('VALIDATION_ERROR');
+  });
   
   test('payments create-intent computes amount from DB and returns metadata', async () => {
     jest.spyOn(prisma.product, 'findMany').mockResolvedValue([{ id: validCheckoutPayload.items[0].id, price: 120.5 }]);

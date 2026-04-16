@@ -243,4 +243,24 @@ describe('orders schema hardening', () => {
       extra: true,
     }).success).toBe(false);
   });
+
+  test('completion schema accepts allowed completion targets and optional note', () => {
+    const payload = {
+      target: 'collected',
+      note: 'Handoff verified',
+    };
+
+    expect(ordersSchemas.markCompletion.parse(payload)).toEqual(payload);
+  });
+
+  test('completion schema rejects unknown targets and unknown fields', () => {
+    expect(ordersSchemas.markCompletion.safeParse({
+      target: 'shipped',
+    }).success).toBe(false);
+
+    expect(ordersSchemas.markCompletion.safeParse({
+      target: 'delivered_local',
+      extra: true,
+    }).success).toBe(false);
+  });
 });

@@ -103,4 +103,26 @@ router.post(
   }
 );
 
+router.post(
+  '/:id/completion',
+  strictValidate(ordersSchemas.byIdParams, 'params'),
+  strictValidate(ordersSchemas.markCompletion),
+  authenticateJWT,
+  authorizeRole(['admin']),
+  async (req, res, next) => {
+    try {
+      const order = await orderRepository.markFulfillmentCompleted({
+        orderId: req.params.id,
+        target: req.body.target,
+        actorType: 'admin',
+        note: req.body.note,
+      });
+
+      return res.status(200).json({ data: order });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
 export default router;
