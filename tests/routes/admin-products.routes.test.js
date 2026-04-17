@@ -601,6 +601,7 @@ describe('admin products routes', () => {
       .post('/api/admin/products/stock-adjustments')
       .set('Authorization', `Bearer ${customerToken}`)
       .send({
+        requestKey: '11111111-1111-4111-8111-111111111111',
         target: { productId: validId },
         intentClass: 'RECOUNT_CORRECTION',
         quantityDelta: -1,
@@ -617,6 +618,7 @@ describe('admin products routes', () => {
       .post('/api/admin/products/stock-adjustments')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
+        requestKey: '22222222-2222-4222-8222-222222222222',
         target: { productId: validId, sku: 'SKU-123' },
         intentClass: 'RECOUNT_CORRECTION',
         quantityDelta: -1,
@@ -634,6 +636,7 @@ describe('admin products routes', () => {
       .post('/api/admin/products/stock-adjustments')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
+        requestKey: '33333333-3333-4333-8333-333333333333',
         target: { productId: validId },
         intentClass: 'FIX_STOCK',
         quantityDelta: -1,
@@ -648,6 +651,7 @@ describe('admin products routes', () => {
   test('stock adjustment applies deterministically and returns audit truth', async () => {
     jest.spyOn(productRepository, 'applyAdminStockAdjustment').mockResolvedValueOnce({
       applied: true,
+      attemptClass: 'NEW_INTENDED_ADJUSTMENT',
       outcomeClass: 'APPLIED',
       rejectionClass: null,
       targetProductId: validId,
@@ -660,6 +664,7 @@ describe('admin products routes', () => {
       .post('/api/admin/products/stock-adjustments')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
+        requestKey: '44444444-4444-4444-8444-444444444444',
         target: { sku: 'SKU-123' },
         intentClass: 'RECOUNT_CORRECTION',
         quantityDelta: -2,
@@ -670,6 +675,7 @@ describe('admin products routes', () => {
 
     expect(productRepository.applyAdminStockAdjustment).toHaveBeenCalledWith({
       actorUserId: 'admin-products-1',
+      requestKey: '44444444-4444-4444-8444-444444444444',
       intentClass: 'RECOUNT_CORRECTION',
       target: { sku: 'SKU-123' },
       quantityDelta: -2,
@@ -680,8 +686,10 @@ describe('admin products routes', () => {
     expect(response.body).toEqual({
       data: {
         auditId: 'a0d5fcba-65c0-48db-a52c-bc9786477d61',
+        attemptClass: 'NEW_INTENDED_ADJUSTMENT',
         outcomeClass: 'APPLIED',
         rejectionClass: null,
+        replayOfAuditId: null,
         targetProductId: validId,
         beforeQuantity: 8,
         afterQuantity: 6,
@@ -692,8 +700,10 @@ describe('admin products routes', () => {
   test('stock adjustment fails closed for invalid precondition and does not mutate order routes', async () => {
     jest.spyOn(productRepository, 'applyAdminStockAdjustment').mockResolvedValueOnce({
       applied: false,
+      attemptClass: 'REPLAYED_PRIOR_OUTCOME',
       outcomeClass: 'REJECTED',
       rejectionClass: 'INVALID_PRECONDITION',
+      replayOfAuditId: 'f8a4fd33-6d74-4baf-b24d-cd7f905b8bf4',
       targetProductId: validId,
       beforeQuantity: 8,
       auditId: '6d95c9de-8e84-41be-a7b6-b8ad23793ad5',
@@ -703,6 +713,7 @@ describe('admin products routes', () => {
       .post('/api/admin/products/stock-adjustments')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
+        requestKey: '55555555-5555-4555-8555-555555555555',
         target: { productId: validId },
         intentClass: 'DAMAGE_LOSS_CORRECTION',
         quantityDelta: -1,
@@ -713,8 +724,10 @@ describe('admin products routes', () => {
     expect(response.body).toEqual({
       data: {
         auditId: '6d95c9de-8e84-41be-a7b6-b8ad23793ad5',
+        attemptClass: 'REPLAYED_PRIOR_OUTCOME',
         outcomeClass: 'REJECTED',
         rejectionClass: 'INVALID_PRECONDITION',
+        replayOfAuditId: 'f8a4fd33-6d74-4baf-b24d-cd7f905b8bf4',
         targetProductId: validId,
         beforeQuantity: 8,
         afterQuantity: null,

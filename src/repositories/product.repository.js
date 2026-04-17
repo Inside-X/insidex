@@ -7,6 +7,40 @@ const ALLOWED_ADMIN_STOCK_ADJUSTMENT_INTENT_CLASSES = new Set([
   'AUTHORIZED_RESTORATION',
 ]);
 
+const ADMIN_STOCK_ADJUSTMENT_ATTEMPT_CLASS = Object.freeze({
+  NEW_INTENDED_ADJUSTMENT: 'NEW_INTENDED_ADJUSTMENT',
+  REPLAYED_PRIOR_OUTCOME: 'REPLAYED_PRIOR_OUTCOME',
+  DUPLICATE_REQUEST: 'DUPLICATE_REQUEST',
+});
+
+function buildAuthoritativeSamenessFingerprint({
+  resolvedProductId,
+  intentClass,
+  quantityDelta,
+  expectedStock,
+  evidenceRef,
+}) {
+  return {
+    resolvedProductId,
+    intentClass,
+    quantityDelta,
+    expectedStock,
+    evidenceRef: evidenceRef || null,
+  };
+}
+
+function hasAuthoritativeSameness(priorAudit, currentFingerprint) {
+  if (!priorAudit || !currentFingerprint) {
+    return false;
+  }
+
+  return priorAudit.targetProductId === currentFingerprint.resolvedProductId
+    && priorAudit.intentClass === currentFingerprint.intentClass
+    && priorAudit.requestedQuantityDelta === currentFingerprint.quantityDelta
+    && priorAudit.requestedExpectedStock === currentFingerprint.expectedStock
+    && (priorAudit.evidenceRef || null) === currentFingerprint.evidenceRef;
+}
+
 function mapAdminProductCoreData(payload) {
   return {
     ...(payload.name !== undefined ? { name: payload.name } : {}),
@@ -137,6 +171,7 @@ export const productRepository = {
     target,
     quantityDelta,
     expectedStock,
+    requestKey,
     evidenceRef = null,
     note = null,
   }) {
@@ -145,22 +180,35 @@ export const productRepository = {
       return await prisma.$transaction(async (tx) => {
         const baseAuditData = {
           actorUserId,
+          requestKey,
           intentClass,
           targetResolverSku: target.sku || null,
+          requestedQuantityDelta: quantityDelta,
+          requestedExpectedStock: expectedStock,
           evidenceRef: evidenceRef || null,
           note: note || null,
         };
+
+        const existingAttempt = await tx.adminStockAdjustmentAudit.findFirst({
+          where: {
+            actorUserId,
+            requestKey,
+          },
+          orderBy: { createdAt: 'asc' },
+        });
 
         if (!ALLOWED_ADMIN_STOCK_ADJUSTMENT_INTENT_CLASSES.has(intentClass)) {
           const audit = await tx.adminStockAdjustmentAudit.create({
             data: {
               ...baseAuditData,
+              attemptClass: ADMIN_STOCK_ADJUSTMENT_ATTEMPT_CLASS.NEW_INTENDED_ADJUSTMENT,
               outcomeClass: 'REJECTED',
               rejectionClass: 'INVALID_INTENT',
             },
           });
           return {
             applied: false,
+            attemptClass: ADMIN_STOCK_ADJUSTMENT_ATTEMPT_CLASS.NEW_INTENDED_ADJUSTMENT,
             outcomeClass: 'REJECTED',
             rejectionClass: 'INVALID_INTENT',
             auditId: audit.id,
@@ -177,18 +225,81 @@ export const productRepository = {
         }
 
         if (!resolvedProductId) {
+          const unresolvedTargetAttemptClass = existingAttempt
+            ? ADMIN_STOCK_ADJUSTMENT_ATTEMPT_CLASS.DUPLICATE_REQUEST
+            : ADMIN_STOCK_ADJUSTMENT_ATTEMPT_CLASS.NEW_INTENDED_ADJUSTMENT;
           const audit = await tx.adminStockAdjustmentAudit.create({
             data: {
               ...baseAuditData,
+              attemptClass: unresolvedTargetAttemptClass,
               outcomeClass: 'REJECTED',
               rejectionClass: 'INVALID_TARGET',
             },
           });
           return {
             applied: false,
+            attemptClass: unresolvedTargetAttemptClass,
             outcomeClass: 'REJECTED',
             rejectionClass: 'INVALID_TARGET',
             auditId: audit.id,
+          };
+        }
+
+        const currentFingerprint = buildAuthoritativeSamenessFingerprint({
+          resolvedProductId,
+          intentClass,
+          quantityDelta,
+          expectedStock,
+          evidenceRef,
+        });
+
+        if (existingAttempt) {
+          if (hasAuthoritativeSameness(existingAttempt, currentFingerprint)) {
+            const replayAudit = await tx.adminStockAdjustmentAudit.create({
+              data: {
+                ...baseAuditData,
+                attemptClass: ADMIN_STOCK_ADJUSTMENT_ATTEMPT_CLASS.REPLAYED_PRIOR_OUTCOME,
+                replayOfAuditId: existingAttempt.id,
+                targetProductId: existingAttempt.targetProductId,
+                beforeQuantity: existingAttempt.beforeQuantity,
+                afterQuantity: existingAttempt.afterQuantity,
+                outcomeClass: existingAttempt.outcomeClass,
+                rejectionClass: existingAttempt.rejectionClass,
+              },
+            });
+
+            return {
+              applied: false,
+              attemptClass: ADMIN_STOCK_ADJUSTMENT_ATTEMPT_CLASS.REPLAYED_PRIOR_OUTCOME,
+              outcomeClass: existingAttempt.outcomeClass,
+              rejectionClass: existingAttempt.rejectionClass,
+              targetProductId: existingAttempt.targetProductId,
+              beforeQuantity: existingAttempt.beforeQuantity,
+              afterQuantity: existingAttempt.afterQuantity,
+              replayOfAuditId: existingAttempt.id,
+              auditId: replayAudit.id,
+            };
+          }
+
+          const duplicateAudit = await tx.adminStockAdjustmentAudit.create({
+            data: {
+              ...baseAuditData,
+              attemptClass: ADMIN_STOCK_ADJUSTMENT_ATTEMPT_CLASS.DUPLICATE_REQUEST,
+              replayOfAuditId: existingAttempt.id,
+              targetProductId: resolvedProductId,
+              outcomeClass: 'REJECTED',
+              rejectionClass: 'INVALID_PRECONDITION',
+            },
+          });
+
+          return {
+            applied: false,
+            attemptClass: ADMIN_STOCK_ADJUSTMENT_ATTEMPT_CLASS.DUPLICATE_REQUEST,
+            outcomeClass: 'REJECTED',
+            rejectionClass: 'INVALID_PRECONDITION',
+            targetProductId: resolvedProductId,
+            replayOfAuditId: existingAttempt.id,
+            auditId: duplicateAudit.id,
           };
         }
 
@@ -202,12 +313,14 @@ export const productRepository = {
             data: {
               ...baseAuditData,
               targetProductId: resolvedProductId,
+              attemptClass: ADMIN_STOCK_ADJUSTMENT_ATTEMPT_CLASS.NEW_INTENDED_ADJUSTMENT,
               outcomeClass: 'REJECTED',
               rejectionClass: 'INVALID_TARGET',
             },
           });
           return {
             applied: false,
+            attemptClass: ADMIN_STOCK_ADJUSTMENT_ATTEMPT_CLASS.NEW_INTENDED_ADJUSTMENT,
             outcomeClass: 'REJECTED',
             rejectionClass: 'INVALID_TARGET',
             auditId: audit.id,
@@ -220,12 +333,14 @@ export const productRepository = {
               ...baseAuditData,
               targetProductId: product.id,
               beforeQuantity: product.stock,
+              attemptClass: ADMIN_STOCK_ADJUSTMENT_ATTEMPT_CLASS.NEW_INTENDED_ADJUSTMENT,
               outcomeClass: 'REJECTED',
               rejectionClass: 'INVALID_PRECONDITION',
             },
           });
           return {
             applied: false,
+            attemptClass: ADMIN_STOCK_ADJUSTMENT_ATTEMPT_CLASS.NEW_INTENDED_ADJUSTMENT,
             outcomeClass: 'REJECTED',
             rejectionClass: 'INVALID_PRECONDITION',
             targetProductId: product.id,
@@ -241,12 +356,14 @@ export const productRepository = {
               ...baseAuditData,
               targetProductId: product.id,
               beforeQuantity: product.stock,
+              attemptClass: ADMIN_STOCK_ADJUSTMENT_ATTEMPT_CLASS.NEW_INTENDED_ADJUSTMENT,
               outcomeClass: 'REJECTED',
               rejectionClass: 'INVALID_PRECONDITION',
             },
           });
           return {
             applied: false,
+            attemptClass: ADMIN_STOCK_ADJUSTMENT_ATTEMPT_CLASS.NEW_INTENDED_ADJUSTMENT,
             outcomeClass: 'REJECTED',
             rejectionClass: 'INVALID_PRECONDITION',
             targetProductId: product.id,
@@ -271,12 +388,14 @@ export const productRepository = {
               ...baseAuditData,
               targetProductId: product.id,
               beforeQuantity: product.stock,
+              attemptClass: ADMIN_STOCK_ADJUSTMENT_ATTEMPT_CLASS.NEW_INTENDED_ADJUSTMENT,
               outcomeClass: 'REJECTED',
               rejectionClass: 'CONFLICT_CONCURRENT_CONTRADICTION',
             },
           });
           return {
             applied: false,
+            attemptClass: ADMIN_STOCK_ADJUSTMENT_ATTEMPT_CLASS.NEW_INTENDED_ADJUSTMENT,
             outcomeClass: 'REJECTED',
             rejectionClass: 'CONFLICT_CONCURRENT_CONTRADICTION',
             targetProductId: product.id,
@@ -291,12 +410,14 @@ export const productRepository = {
             targetProductId: product.id,
             beforeQuantity: product.stock,
             afterQuantity,
+            attemptClass: ADMIN_STOCK_ADJUSTMENT_ATTEMPT_CLASS.NEW_INTENDED_ADJUSTMENT,
             outcomeClass: 'APPLIED',
           },
         });
 
         return {
           applied: true,
+          attemptClass: ADMIN_STOCK_ADJUSTMENT_ATTEMPT_CLASS.NEW_INTENDED_ADJUSTMENT,
           outcomeClass: 'APPLIED',
           rejectionClass: null,
           targetProductId: product.id,

@@ -113,6 +113,7 @@ test('publish and unpublish accept an empty object only', () => {
 
 test('adjustStock accepts canonical productId target payload', () => {
   const payload = {
+    requestKey: '11111111-1111-4111-8111-111111111111',
     target: { productId: '00000000-0000-0000-0000-000000000123' },
     intentClass: 'RECOUNT_CORRECTION',
     quantityDelta: -2,
@@ -130,6 +131,7 @@ test('adjustStock rejects ambiguous target payload', () => {
       productId: '00000000-0000-0000-0000-000000000123',
       sku: 'SKU-123',
     },
+    requestKey: '22222222-2222-4222-8222-222222222222',
     intentClass: 'RECOUNT_CORRECTION',
     quantityDelta: -1,
     expectedStock: 8,
@@ -140,13 +142,32 @@ test('adjustStock rejects ambiguous target payload', () => {
 
 test('adjustStock rejects unsupported or missing intent class', () => {
   expect(adminProductsSchemas.adjustStock.safeParse({
+    requestKey: '33333333-3333-4333-8333-333333333333',
     target: { sku: 'SKU-123' },
     quantityDelta: -1,
     expectedStock: 8,
   }).success).toBe(false);
   expect(adminProductsSchemas.adjustStock.safeParse({
+    requestKey: '33333333-3333-4333-8333-333333333333',
     target: { sku: 'SKU-123' },
     intentClass: 'FIX_STOCK',
+    quantityDelta: -1,
+    expectedStock: 8,
+  }).success).toBe(false);
+});
+
+test('adjustStock rejects missing or invalid requestKey', () => {
+  expect(adminProductsSchemas.adjustStock.safeParse({
+    target: { sku: 'SKU-123' },
+    intentClass: 'RECOUNT_CORRECTION',
+    quantityDelta: -1,
+    expectedStock: 8,
+  }).success).toBe(false);
+
+  expect(adminProductsSchemas.adjustStock.safeParse({
+    requestKey: 'not-a-uuid',
+    target: { sku: 'SKU-123' },
+    intentClass: 'RECOUNT_CORRECTION',
     quantityDelta: -1,
     expectedStock: 8,
   }).success).toBe(false);

@@ -103,6 +103,7 @@ export const adminProductsSchemas = {
   replaceMedia: z.object({ media: mediaListSchema }).strict({ message: 'unknown field in admin product media payload' }),
   byIdParams: z.object({ id: uuidSchema }).strict({ message: 'unknown field in admin product params payload' }),
   adjustStock: z.object({
+    requestKey: z.string({ required_error: 'requestKey is required' }).uuid('requestKey must be a valid UUID'),
     target: z.union([
       z.object({ productId: uuidSchema }).strict({ message: 'target must contain only productId or sku' }),
       z.object({ sku: trimmedRequiredString('sku').max(120, 'sku must be 120 characters or fewer') }).strict({ message: 'target must contain only productId or sku' }),

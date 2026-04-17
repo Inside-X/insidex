@@ -207,6 +207,7 @@ router.post(
     try {
       const adjustment = await productRepository.applyAdminStockAdjustment({
         actorUserId: req.auth?.sub,
+        requestKey: req.body.requestKey,
         intentClass: req.body.intentClass,
         target: req.body.target,
         quantityDelta: req.body.quantityDelta,
@@ -218,8 +219,10 @@ router.post(
       return res.status(200).json({
         data: {
           auditId: adjustment.auditId,
+          attemptClass: adjustment.attemptClass,
           outcomeClass: adjustment.outcomeClass,
           rejectionClass: adjustment.rejectionClass,
+          replayOfAuditId: adjustment.replayOfAuditId ?? null,
           targetProductId: adjustment.targetProductId ?? null,
           beforeQuantity: adjustment.beforeQuantity ?? null,
           afterQuantity: adjustment.afterQuantity ?? null,

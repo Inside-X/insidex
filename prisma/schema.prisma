@@ -49,6 +49,12 @@ enum AdminStockAdjustmentOutcomeClass {
   REJECTED
 }
 
+enum AdminStockAdjustmentAttemptClass {
+  NEW_INTENDED_ADJUSTMENT
+  REPLAYED_PRIOR_OUTCOME
+  DUPLICATE_REQUEST
+}
+
 enum AdminStockAdjustmentRejectionClass {
   INVALID_INTENT
   INVALID_TARGET
@@ -110,19 +116,27 @@ model Product {
 model AdminStockAdjustmentAudit {
   id             String                            @id @default(uuid()) @db.Uuid
   actorUserId    String                            @map("actor_user_id") @db.Uuid
+  requestKey     String                            @map("request_key") @db.VarChar(120)
   targetProductId String?                          @map("target_product_id") @db.Uuid
   targetResolverSku String?                        @map("target_resolver_sku") @db.VarChar(120)
   intentClass    AdminStockAdjustmentIntentClass   @map("intent_class")
+  requestedQuantityDelta Int                       @map("requested_quantity_delta")
+  requestedExpectedStock Int                       @map("requested_expected_stock")
   beforeQuantity Int?                              @map("before_quantity")
   afterQuantity  Int?                              @map("after_quantity")
+  attemptClass   AdminStockAdjustmentAttemptClass  @map("attempt_class")
   outcomeClass   AdminStockAdjustmentOutcomeClass  @map("outcome_class")
   rejectionClass AdminStockAdjustmentRejectionClass? @map("rejection_class")
+  replayOfAuditId String?                          @map("replay_of_audit_id") @db.Uuid
   evidenceRef    String?                           @map("evidence_ref") @db.VarChar(120)
   note           String?                           @db.VarChar(500)
   createdAt      DateTime                          @default(now()) @map("created_at") @db.Timestamptz(6)
   targetProduct  Product?                          @relation(fields: [targetProductId], references: [id], onDelete: SetNull)
+  replayOfAudit  AdminStockAdjustmentAudit?        @relation("AdminStockAdjustmentReplayLink", fields: [replayOfAuditId], references: [id], onDelete: SetNull)
+  replayChildren AdminStockAdjustmentAudit[]        @relation("AdminStockAdjustmentReplayLink")
 
   @@index([actorUserId, createdAt], map: "idx_admin_stock_adjustments_actor_created_at")
+  @@index([actorUserId, requestKey, createdAt], map: "idx_admin_stock_adjustments_actor_request_key_created_at")
   @@index([targetProductId, createdAt], map: "idx_admin_stock_adjustments_target_created_at")
   @@map("admin_stock_adjustments_audit")
 }
