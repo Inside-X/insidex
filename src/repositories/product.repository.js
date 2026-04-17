@@ -428,6 +428,51 @@ export const productRepository = {
       });
     } catch (error) { normalizeDbError(error, { repository: 'product', operation }); }
   },
+  async listAdminStockAdjustmentAttempts({
+    limit = 50,
+    actorUserId,
+    targetProductId,
+    requestKey,
+    attemptClass,
+  } = {}) {
+    const operation = 'listAdminStockAdjustmentAttempts';
+    const where = {
+      ...(actorUserId ? { actorUserId } : {}),
+      ...(targetProductId ? { targetProductId } : {}),
+      ...(requestKey ? { requestKey } : {}),
+      ...(attemptClass ? { attemptClass } : {}),
+    };
+
+    try {
+      return await prisma.adminStockAdjustmentAudit.findMany({
+        where,
+        take: limit,
+        orderBy: [
+          { createdAt: 'desc' },
+          { id: 'desc' },
+        ],
+        select: {
+          id: true,
+          actorUserId: true,
+          requestKey: true,
+          targetProductId: true,
+          targetResolverSku: true,
+          intentClass: true,
+          requestedQuantityDelta: true,
+          requestedExpectedStock: true,
+          beforeQuantity: true,
+          afterQuantity: true,
+          attemptClass: true,
+          outcomeClass: true,
+          rejectionClass: true,
+          replayOfAuditId: true,
+          evidenceRef: true,
+          note: true,
+          createdAt: true,
+        },
+      });
+    } catch (error) { normalizeDbError(error, { repository: 'product', operation }); }
+  },
 };
 
 export default productRepository;

@@ -19,6 +19,7 @@ async function loadProductRepository({ normalizeImpl } = {}) {
     adminStockAdjustmentAudit: {
       create: jest.fn(),
       findFirst: jest.fn(),
+      findMany: jest.fn(),
     },
   };
 
@@ -348,6 +349,84 @@ describe('productRepository', () => {
 
     await expect(productRepository.list(params)).resolves.toEqual([{ id: 'p2' }]);
     expect(prismaMock.product.findMany).toHaveBeenCalledWith(params);
+  });
+
+  test('listAdminStockAdjustmentAttempts returns bounded authoritative audit rows without mutation', async () => {
+    const { productRepository, prismaMock } = await loadProductRepository();
+    prismaMock.adminStockAdjustmentAudit.findMany.mockResolvedValueOnce([
+      {
+        id: 'audit_1',
+        actorUserId: '00000000-0000-0000-0000-000000000001',
+        attemptClass: 'REPLAYED_PRIOR_OUTCOME',
+      },
+    ]);
+
+    const result = await productRepository.listAdminStockAdjustmentAttempts({
+      limit: 25,
+      actorUserId: '00000000-0000-0000-0000-000000000001',
+      targetProductId: '00000000-0000-0000-0000-000000000002',
+      requestKey: '11111111-1111-4111-8111-111111111111',
+      attemptClass: 'REPLAYED_PRIOR_OUTCOME',
+    });
+
+    expect(prismaMock.product.updateMany).not.toHaveBeenCalled();
+    expect(prismaMock.adminStockAdjustmentAudit.findMany).toHaveBeenCalledWith({
+      where: {
+        actorUserId: '00000000-0000-0000-0000-000000000001',
+        targetProductId: '00000000-0000-0000-0000-000000000002',
+        requestKey: '11111111-1111-4111-8111-111111111111',
+        attemptClass: 'REPLAYED_PRIOR_OUTCOME',
+      },
+      take: 25,
+      orderBy: [
+        { createdAt: 'desc' },
+        { id: 'desc' },
+      ],
+      select: expect.objectContaining({
+        id: true,
+        actorUserId: true,
+        requestKey: true,
+        targetProductId: true,
+        targetResolverSku: true,
+        intentClass: true,
+        requestedQuantityDelta: true,
+        requestedExpectedStock: true,
+        beforeQuantity: true,
+        afterQuantity: true,
+        attemptClass: true,
+        outcomeClass: true,
+        rejectionClass: true,
+        replayOfAuditId: true,
+        evidenceRef: true,
+        note: true,
+        createdAt: true,
+      }),
+    });
+    expect(result).toEqual([
+      {
+        id: 'audit_1',
+        actorUserId: '00000000-0000-0000-0000-000000000001',
+        attemptClass: 'REPLAYED_PRIOR_OUTCOME',
+      },
+    ]);
+  });
+
+  test('listAdminStockAdjustmentAttempts defaults to bounded latest rows with empty filter', async () => {
+    const { productRepository, prismaMock } = await loadProductRepository();
+    prismaMock.adminStockAdjustmentAudit.findMany.mockResolvedValueOnce([]);
+
+    const result = await productRepository.listAdminStockAdjustmentAttempts();
+
+    expect(prismaMock.adminStockAdjustmentAudit.findMany).toHaveBeenCalledWith({
+      where: {},
+      take: 50,
+      orderBy: [
+        { createdAt: 'desc' },
+        { id: 'desc' },
+      ],
+      select: expect.any(Object),
+    });
+    expect(result).toEqual([]);
   });
 
   test('createAdminProduct delegates correctly with faithful product and media persistence', async () => {

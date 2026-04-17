@@ -7,6 +7,7 @@ import { mediaUploadRepository } from '../../src/repositories/media-upload.repos
 
 const adminToken = buildTestToken({ role: 'admin', id: 'admin-products-1' });
 const customerToken = buildTestToken({ role: 'customer', id: 'admin-products-user-1' });
+const opsToken = buildTestToken({ role: 'ops', id: 'admin-products-ops-1' });
 const validId = '00000000-0000-0000-0000-000000000123';
 const validMedia = [
   {
@@ -610,6 +611,190 @@ describe('admin products routes', () => {
       .expect(403);
 
     expect(adjustSpy).not.toHaveBeenCalled();
+  });
+
+  test('stock adjustment observability seam enforces admin-only boundary', async () => {
+    const listSpy = jest.spyOn(productRepository, 'listAdminStockAdjustmentAttempts');
+
+    await request(app)
+      .get('/api/admin/products/stock-adjustments')
+      .set('Authorization', `Bearer ${customerToken}`)
+      .expect(403);
+
+    await request(app)
+      .get('/api/admin/products/stock-adjustments')
+      .set('Authorization', `Bearer ${opsToken}`)
+      .expect(403);
+
+    expect(listSpy).not.toHaveBeenCalled();
+  });
+
+  test('stock adjustment observability seam rejects invalid filters deterministically', async () => {
+    const listSpy = jest.spyOn(productRepository, 'listAdminStockAdjustmentAttempts');
+
+    const response = await request(app)
+      .get('/api/admin/products/stock-adjustments?unsupported=1')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(400);
+
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    expect(listSpy).not.toHaveBeenCalled();
+  });
+
+  test('stock adjustment observability seam returns authoritative attempts without mutation side effects', async () => {
+    const applySpy = jest.spyOn(productRepository, 'applyAdminStockAdjustment');
+    jest.spyOn(productRepository, 'listAdminStockAdjustmentAttempts').mockResolvedValueOnce([
+      {
+        id: 'a0d5fcba-65c0-48db-a52c-bc9786477d61',
+        actorUserId: 'admin-products-1',
+        requestKey: '44444444-4444-4444-8444-444444444444',
+        targetProductId: validId,
+        targetResolverSku: 'SKU-123',
+        intentClass: 'RECOUNT_CORRECTION',
+        requestedQuantityDelta: -2,
+        requestedExpectedStock: 8,
+        beforeQuantity: 8,
+        afterQuantity: 6,
+        attemptClass: 'NEW_INTENDED_ADJUSTMENT',
+        outcomeClass: 'APPLIED',
+        rejectionClass: null,
+        replayOfAuditId: null,
+        evidenceRef: 'cycle-count-2026-04-16',
+        note: 'Verified signed worksheet.',
+        createdAt: '2026-04-17T10:00:00.000Z',
+      },
+      {
+        id: '6d95c9de-8e84-41be-a7b6-b8ad23793ad5',
+        actorUserId: 'admin-products-1',
+        requestKey: '44444444-4444-4444-8444-444444444444',
+        targetProductId: validId,
+        targetResolverSku: 'SKU-123',
+        intentClass: 'RECOUNT_CORRECTION',
+        requestedQuantityDelta: -2,
+        requestedExpectedStock: 8,
+        beforeQuantity: 8,
+        afterQuantity: 6,
+        attemptClass: 'REPLAYED_PRIOR_OUTCOME',
+        outcomeClass: 'APPLIED',
+        rejectionClass: null,
+        replayOfAuditId: 'a0d5fcba-65c0-48db-a52c-bc9786477d61',
+        evidenceRef: 'cycle-count-2026-04-16',
+        note: null,
+        createdAt: '2026-04-17T10:00:03.000Z',
+      },
+      {
+        id: '9d89d981-b0d7-4bc3-a997-6b3d7088e6c3',
+        actorUserId: 'admin-products-1',
+        requestKey: '44444444-4444-4444-8444-444444444444',
+        targetProductId: validId,
+        targetResolverSku: 'SKU-123',
+        intentClass: 'RECOUNT_CORRECTION',
+        requestedQuantityDelta: -3,
+        requestedExpectedStock: 8,
+        beforeQuantity: null,
+        afterQuantity: null,
+        attemptClass: 'DUPLICATE_REQUEST',
+        outcomeClass: 'REJECTED',
+        rejectionClass: 'INVALID_PRECONDITION',
+        replayOfAuditId: 'a0d5fcba-65c0-48db-a52c-bc9786477d61',
+        evidenceRef: null,
+        note: null,
+        createdAt: '2026-04-17T10:00:05.000Z',
+      },
+    ]);
+
+    const response = await request(app)
+      .get(`/api/admin/products/stock-adjustments?limit=25&targetProductId=${validId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(productRepository.listAdminStockAdjustmentAttempts).toHaveBeenCalledWith({
+      limit: 25,
+      actorUserId: undefined,
+      targetProductId: validId,
+      requestKey: undefined,
+      attemptClass: undefined,
+    });
+    expect(applySpy).not.toHaveBeenCalled();
+    expect(response.body).toEqual({
+      data: [
+        {
+          auditId: 'a0d5fcba-65c0-48db-a52c-bc9786477d61',
+          actorUserId: 'admin-products-1',
+          requestKey: '44444444-4444-4444-8444-444444444444',
+          targetProductId: validId,
+          targetResolverSku: 'SKU-123',
+          intentClass: 'RECOUNT_CORRECTION',
+          requestedQuantityDelta: -2,
+          requestedExpectedStock: 8,
+          beforeQuantity: 8,
+          afterQuantity: 6,
+          attemptClass: 'NEW_INTENDED_ADJUSTMENT',
+          outcomeClass: 'APPLIED',
+          rejectionClass: null,
+          replayOfAuditId: null,
+          evidenceRef: 'cycle-count-2026-04-16',
+          note: 'Verified signed worksheet.',
+          createdAt: '2026-04-17T10:00:00.000Z',
+        },
+        {
+          auditId: '6d95c9de-8e84-41be-a7b6-b8ad23793ad5',
+          actorUserId: 'admin-products-1',
+          requestKey: '44444444-4444-4444-8444-444444444444',
+          targetProductId: validId,
+          targetResolverSku: 'SKU-123',
+          intentClass: 'RECOUNT_CORRECTION',
+          requestedQuantityDelta: -2,
+          requestedExpectedStock: 8,
+          beforeQuantity: 8,
+          afterQuantity: 6,
+          attemptClass: 'REPLAYED_PRIOR_OUTCOME',
+          outcomeClass: 'APPLIED',
+          rejectionClass: null,
+          replayOfAuditId: 'a0d5fcba-65c0-48db-a52c-bc9786477d61',
+          evidenceRef: 'cycle-count-2026-04-16',
+          note: null,
+          createdAt: '2026-04-17T10:00:03.000Z',
+        },
+        {
+          auditId: '9d89d981-b0d7-4bc3-a997-6b3d7088e6c3',
+          actorUserId: 'admin-products-1',
+          requestKey: '44444444-4444-4444-8444-444444444444',
+          targetProductId: validId,
+          targetResolverSku: 'SKU-123',
+          intentClass: 'RECOUNT_CORRECTION',
+          requestedQuantityDelta: -3,
+          requestedExpectedStock: 8,
+          beforeQuantity: null,
+          afterQuantity: null,
+          attemptClass: 'DUPLICATE_REQUEST',
+          outcomeClass: 'REJECTED',
+          rejectionClass: 'INVALID_PRECONDITION',
+          replayOfAuditId: 'a0d5fcba-65c0-48db-a52c-bc9786477d61',
+          evidenceRef: null,
+          note: null,
+          createdAt: '2026-04-17T10:00:05.000Z',
+        },
+      ],
+    });
+  });
+
+  test('stock adjustment observability seam forwards deterministic filter set', async () => {
+    jest.spyOn(productRepository, 'listAdminStockAdjustmentAttempts').mockResolvedValueOnce([]);
+
+    const response = await request(app)
+      .get(`/api/admin/products/stock-adjustments?limit=1&actorUserId=00000000-0000-0000-0000-000000000111&requestKey=11111111-1111-4111-8111-111111111111&attemptClass=DUPLICATE_REQUEST`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(productRepository.listAdminStockAdjustmentAttempts).toHaveBeenCalledWith({
+      limit: 1,
+      actorUserId: '00000000-0000-0000-0000-000000000111',
+      targetProductId: undefined,
+      requestKey: '11111111-1111-4111-8111-111111111111',
+      attemptClass: 'DUPLICATE_REQUEST',
+    });
+    expect(response.body).toEqual({ data: [] });
   });
 
   test('stock adjustment rejects ambiguous target identity', async () => {

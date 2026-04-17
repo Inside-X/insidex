@@ -14,6 +14,11 @@ const stockAdjustmentIntentClassSchema = z.enum([
   'DAMAGE_LOSS_CORRECTION',
   'AUTHORIZED_RESTORATION',
 ]);
+const stockAdjustmentAttemptClassSchema = z.enum([
+  'NEW_INTENDED_ADJUSTMENT',
+  'REPLAYED_PRIOR_OUTCOME',
+  'DUPLICATE_REQUEST',
+]);
 
 const mediaItemSchema = z.object({
   id: trimmedRequiredString('id'),
@@ -118,6 +123,17 @@ export const adminProductsSchemas = {
     evidenceRef: z.string().trim().min(1, 'evidenceRef must not be empty').max(120, 'evidenceRef must be 120 characters or fewer').optional(),
     note: z.string().trim().min(1, 'note must not be empty').max(500, 'note must be 500 characters or fewer').optional(),
   }).strict({ message: 'unknown field in admin stock adjustment payload' }),
+  listStockAdjustments: z.object({
+    limit: z.coerce.number({ invalid_type_error: 'limit must be an integer between 1 and 100' })
+      .int('limit must be an integer between 1 and 100')
+      .min(1, 'limit must be an integer between 1 and 100')
+      .max(100, 'limit must be an integer between 1 and 100')
+      .optional(),
+    actorUserId: z.string().uuid('actorUserId must be a valid UUID').optional(),
+    targetProductId: z.string().uuid('targetProductId must be a valid UUID').optional(),
+    requestKey: z.string().uuid('requestKey must be a valid UUID').optional(),
+    attemptClass: stockAdjustmentAttemptClassSchema.optional(),
+  }).strict({ message: 'unknown field in admin stock adjustment query payload' }),
 };
 
 export default adminProductsSchemas;

@@ -95,6 +95,10 @@ describe('webhooks middleware ordering runtime guard (real app wiring)', () => {
       const { port } = server.address();
 
       res = await new Promise((resolve, reject) => {
+        const responseTimeout = setTimeout(() => {
+          reject(new Error('stripe runtime guard response timeout'));
+        }, 1500);
+
         req = http.request(
           {
             host: '127.0.0.1',
@@ -109,11 +113,17 @@ describe('webhooks middleware ordering runtime guard (real app wiring)', () => {
               connection: 'close',
             },
           },
-          resolve
+          (incomingResponse) => {
+            clearTimeout(responseTimeout);
+            resolve(incomingResponse);
+          }
         );
 
-        req.on('error', reject);
-        req.write('{"any":"partial');
+        req.on('error', (error) => {
+          clearTimeout(responseTimeout);
+          reject(error);
+        });
+        req.end('{"any":"partial');
       });
     } finally {
       if (res) {

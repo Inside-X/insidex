@@ -172,3 +172,25 @@ test('adjustStock rejects missing or invalid requestKey', () => {
     expectedStock: 8,
   }).success).toBe(false);
 });
+
+test('listStockAdjustments accepts bounded deterministic query filters', () => {
+  const query = {
+    limit: '25',
+    actorUserId: '00000000-0000-0000-0000-000000000123',
+    targetProductId: '00000000-0000-0000-0000-000000000124',
+    requestKey: '11111111-1111-4111-8111-111111111111',
+    attemptClass: 'REPLAYED_PRIOR_OUTCOME',
+  };
+
+  expect(adminProductsSchemas.listStockAdjustments.parse(query)).toEqual({
+    ...query,
+    limit: 25,
+  });
+});
+
+test('listStockAdjustments rejects unknown filters and invalid limit', () => {
+  expect(adminProductsSchemas.listStockAdjustments.safeParse({ unsupported: 'x' }).success).toBe(false);
+  expect(adminProductsSchemas.listStockAdjustments.safeParse({ limit: '0' }).success).toBe(false);
+  expect(adminProductsSchemas.listStockAdjustments.safeParse({ limit: '101' }).success).toBe(false);
+  expect(adminProductsSchemas.listStockAdjustments.safeParse({ attemptClass: 'UNKNOWN' }).success).toBe(false);
+});

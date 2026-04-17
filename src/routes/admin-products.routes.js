@@ -42,6 +42,28 @@ function toContractProduct(product, media = []) {
   };
 }
 
+function toContractStockAdjustmentAttempt(attempt) {
+  return {
+    auditId: attempt.id,
+    actorUserId: attempt.actorUserId,
+    requestKey: attempt.requestKey,
+    targetProductId: attempt.targetProductId,
+    targetResolverSku: attempt.targetResolverSku,
+    intentClass: attempt.intentClass,
+    requestedQuantityDelta: attempt.requestedQuantityDelta,
+    requestedExpectedStock: attempt.requestedExpectedStock,
+    beforeQuantity: attempt.beforeQuantity,
+    afterQuantity: attempt.afterQuantity,
+    attemptClass: attempt.attemptClass,
+    outcomeClass: attempt.outcomeClass,
+    rejectionClass: attempt.rejectionClass,
+    replayOfAuditId: attempt.replayOfAuditId,
+    evidenceRef: attempt.evidenceRef,
+    note: attempt.note,
+    createdAt: attempt.createdAt,
+  };
+}
+
 router.post(
   '/',
   validate(adminProductsSchemas.create),
@@ -66,6 +88,29 @@ router.get(
 
       return res.status(200).json({
         data: products.map((product) => toContractProduct(product, toContractMedia(product.images ?? []))),
+      });
+    } catch (error) {
+      return next(error);
+    }
+  },
+);
+
+router.get(
+  '/stock-adjustments',
+  requirePermission('admin:stock:adjustments:read'),
+  validate(adminProductsSchemas.listStockAdjustments, 'query'),
+  async (req, res, next) => {
+    try {
+      const attempts = await productRepository.listAdminStockAdjustmentAttempts({
+        limit: req.query.limit,
+        actorUserId: req.query.actorUserId,
+        targetProductId: req.query.targetProductId,
+        requestKey: req.query.requestKey,
+        attemptClass: req.query.attemptClass,
+      });
+
+      return res.status(200).json({
+        data: attempts.map((attempt) => toContractStockAdjustmentAttempt(attempt)),
       });
     } catch (error) {
       return next(error);
