@@ -297,6 +297,33 @@ export const orderRepository = {
     }
   },
 
+  async findCustomerOrderDetailVisibility({ userId, orderId } = {}) {
+    try {
+      return await prisma.order.findFirst({
+        where: { id: orderId, userId },
+        select: {
+          id: true,
+          userId: true,
+          createdAt: true,
+          status: true,
+          fulfillmentMode: true,
+          fulfillmentSnapshot: true,
+          totalAmount: true,
+          items: {
+            select: {
+              quantity: true,
+              unitPrice: true,
+              product: { select: { name: true } },
+            },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          },
+        },
+      });
+    } catch (error) {
+      normalizeDbError(error, { repository: 'order', operation: 'findCustomerOrderDetailVisibility' });
+    }
+  },
+
   async createIdempotentWithItemsAndUpdateStock({
     userId,
     items,

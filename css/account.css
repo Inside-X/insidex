@@ -199,6 +199,16 @@
   grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
 }
 
+.account-order__actions{
+  display:flex;
+  justify-content:flex-end;
+}
+
+.account-order--detail{
+  margin-top:8px;
+  border-radius:20px;
+}
+
 .account-order__label{
   font-weight:600;
   margin-bottom:6px;

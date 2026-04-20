@@ -32,7 +32,8 @@ const selectors = {
   profilePhone: document.getElementById('profilePhone'),
   addressForm: document.getElementById('addressForm'),
   addressList: document.getElementById('addressesList'),
-  ordersList: document.getElementById('ordersList')
+  ordersList: document.getElementById('ordersList'),
+  orderDetailSurface: document.getElementById('orderDetailSurface'),
 };
 
 let activeEmail = '';
@@ -128,9 +129,93 @@ function renderOrdersList(orders, { degraded = false } = {}) {
             <p>${totalAmount || 'Amount unavailable'}</p>
           </div>
         </div>
+        <div class="account-order__actions">
+          <button class="btn btn-outline" type="button" data-order-detail-id="${order.orderId || ''}">View details</button>
+        </div>
       </article>
     `;
   }).join('') + degradedBanner;
+}
+
+function renderOrderDetailIdle() {
+  if (!selectors.orderDetailSurface) return;
+  selectors.orderDetailSurface.hidden = false;
+  selectors.orderDetailSurface.innerHTML = '<p class="account-info">Select an order to view details.</p>';
+}
+
+function renderOrderDetailLoading() {
+  if (!selectors.orderDetailSurface) return;
+  selectors.orderDetailSurface.hidden = false;
+  selectors.orderDetailSurface.innerHTML = '<p class="account-info">Loading order details…</p>';
+}
+
+function renderOrderDetailError(message) {
+  if (!selectors.orderDetailSurface) return;
+  selectors.orderDetailSurface.hidden = false;
+  selectors.orderDetailSurface.innerHTML = `<p class="account-info account-info--error">${message}</p>`;
+}
+
+function renderOrderDetail(detail, { degraded = false } = {}) {
+  if (!selectors.orderDetailSurface) return;
+  const orderDate = detail?.orderDate ? dateFormatter.format(new Date(detail.orderDate)) : 'Date unavailable';
+  const statusLabel = detail?.status?.label || 'Update in progress';
+  const statusCode = detail?.status?.code || 'pending_confirmation';
+  const fulfillmentLabel = detail?.fulfillmentMode?.label || 'Fulfillment update';
+  const totalAmount = detail?.totals?.totalAmount == null ? 'Amount unavailable' : formatEuroAmount(detail.totals.totalAmount);
+  const paymentLabel = detail?.payment?.label || 'Payment details are currently limited';
+  const readinessLabel = detail?.readiness?.label;
+  const completionLabel = detail?.completion?.label;
+  const dispatchLabel = detail?.contextual?.dispatch;
+  const nextStep = detail?.contextual?.nextStep;
+  const modeNote = detail?.fulfillmentDetails?.modeNote || 'Fulfillment details are currently limited';
+  const items = Array.isArray(detail?.items) ? detail.items : [];
+
+  const itemsMarkup = items.length
+    ? `<ul>${items.map((item) => `
+      <li>
+        <span>${item.name || 'Item details unavailable'} × ${item.quantity || 0}</span>
+        <strong>${item.lineTotal == null ? 'Amount unavailable' : formatEuroAmount(item.lineTotal)}</strong>
+      </li>
+    `).join('')}</ul>`
+    : '<p class="account-muted">Item details are currently limited.</p>';
+
+  selectors.orderDetailSurface.hidden = false;
+  selectors.orderDetailSurface.innerHTML = `
+    <article class="account-order account-order--detail">
+      <header class="account-order__header">
+        <div>
+          <h3>Order ${detail?.orderId || '—'}</h3>
+          <p class="account-muted">Placed ${orderDate}</p>
+          <p class="account-muted">${fulfillmentLabel}</p>
+        </div>
+        <span class="account-badge ${badgeClassForStatus(statusCode)}">${statusLabel}</span>
+      </header>
+
+      ${nextStep ? `<p class="account-info">${nextStep}</p>` : ''}
+
+      <div class="account-order__body">
+        <div>
+          <p class="account-order__label">Items</p>
+          ${itemsMarkup}
+        </div>
+        <div>
+          <p class="account-order__label">Payment</p>
+          <p>${paymentLabel}</p>
+          <p class="account-order__label">Total</p>
+          <p>${totalAmount}</p>
+        </div>
+        <div>
+          <p class="account-order__label">Fulfillment details</p>
+          <p>${modeNote}</p>
+          ${readinessLabel ? `<p class="account-muted">${readinessLabel}</p>` : ''}
+          ${completionLabel ? `<p class="account-muted">${completionLabel}</p>` : ''}
+          ${dispatchLabel ? `<p class="account-muted">${dispatchLabel}</p>` : ''}
+        </div>
+      </div>
+
+      ${(degraded || detail?.contextual?.degradedNotice) ? '<p class="account-info account-info--warning">Some order details are currently limited.</p>' : ''}
+    </article>
+  `;
 }
 
 function renderOrdersLoading() {
@@ -168,8 +253,30 @@ async function fetchCustomerOrders(limit = 20) {
   return { kind: 'ok', data: Array.isArray(payload?.data) ? payload.data : [], meta: payload?.meta || {} };
 }
 
+async function fetchCustomerOrderDetail(orderId) {
+  const accessToken = getAccessToken();
+  if (!accessToken) {
+    return { kind: 'unauthenticated' };
+  }
+
+  const response = await fetch(`/api/orders/mine/${encodeURIComponent(orderId)}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return { kind: 'error', status: response.status, payload };
+  }
+
+  return { kind: 'ok', data: payload?.data || null, meta: payload?.meta || {} };
+}
+
 async function renderOrdersSurface() {
   renderOrdersLoading();
+  renderOrderDetailIdle();
   const result = await fetchCustomerOrders(20);
 
   if (result.kind === 'unauthenticated' || result.status === 401) {
@@ -187,6 +294,29 @@ async function renderOrdersSurface() {
   renderOrdersList(result.data, { degraded: result.meta?.degraded === true });
 }
 
+async function handleOrderDetailSelection(orderId) {
+  if (!orderId) return;
+  renderOrderDetailLoading();
+  const result = await fetchCustomerOrderDetail(orderId);
+
+  if (result.kind === 'unauthenticated' || result.status === 401) {
+    renderOrderDetailError('Sign in to view this order.');
+    return;
+  }
+
+  if (result.kind === 'error' && result.status === 404) {
+    renderOrderDetailError('We couldn’t find this order in your account.');
+    return;
+  }
+
+  if (result.kind === 'error') {
+    renderOrderDetailError('Unable to load this order right now. Please try again shortly.');
+    return;
+  }
+
+  renderOrderDetail(result.data, { degraded: result.meta?.degraded === true });
+}
+
 function renderAccount(email) {
   if (selectors.activeEmail) {
     selectors.activeEmail.textContent = email ? `Commandes associées à ${email}` : 'Aucun compte sélectionné';
@@ -198,6 +328,7 @@ function renderAccount(email) {
     if (selectors.ordersList) {
       selectors.ordersList.innerHTML = '<p class="account-info">Sign in to view your order history.</p>';
     }
+    renderOrderDetailError('Sign in to view order details.');
     return;
   }
   const account = getAccount(email);
@@ -307,6 +438,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (selectors.lookupForm) {
     selectors.lookupForm.addEventListener('submit', handleLookup);
+  }
+
+  if (selectors.ordersList) {
+    selectors.ordersList.addEventListener('click', (event) => {
+      const detailButton = event.target.closest('[data-order-detail-id]');
+      if (!detailButton) return;
+      const orderId = detailButton.getAttribute('data-order-detail-id');
+      void handleOrderDetailSelection(orderId);
+    });
   }
   if (selectors.profileForm) {
     selectors.profileForm.addEventListener('submit', handleProfileSubmit);

@@ -287,6 +287,66 @@ describe('runtime business routes', () => {
     expect(admin.status).toBe(403);
   });
 
+  test('order detail mine/:id requires authentication and customer role', async () => {
+    const orderId = '00000000-0000-0000-0000-000000000981';
+    const unauthenticated = await request(app).get(`/api/orders/mine/${orderId}`);
+    expect(unauthenticated.status).toBe(401);
+
+    const admin = await request(app)
+      .get(`/api/orders/mine/${orderId}`)
+      .set('Authorization', `Bearer ${token('admin')}`);
+    expect(admin.status).toBe(403);
+  });
+
+  test('order detail mine/:id returns customer-safe detail for owner only', async () => {
+    const userId = '00000000-0000-0000-0000-000000000abc';
+    const orderId = '00000000-0000-0000-0000-000000000991';
+    jest.spyOn(orderRepository, 'findCustomerOrderDetailVisibility').mockResolvedValue({
+      id: orderId,
+      userId,
+      createdAt: '2026-04-18T10:00:00.000Z',
+      status: 'paid',
+      fulfillmentMode: 'delivery_local',
+      fulfillmentSnapshot: {
+        mode: 'delivery_local',
+        readiness: { state: 'ready_for_local_delivery' },
+        delivery: { destination: { line1: '10 Rue du Port', postalCode: '97600', city: 'Mamoudzou' } },
+      },
+      totalAmount: '179.90',
+      items: [{ quantity: 2, unitPrice: '89.95', product: { name: 'Inside X Kit' } }],
+      operatorNotes: 'manual_remediation',
+    });
+
+    const res = await request(app)
+      .get(`/api/orders/mine/${orderId}`)
+      .set('Authorization', `Bearer ${token('customer', userId)}`);
+
+    expect(res.status).toBe(200);
+    expect(orderRepository.findCustomerOrderDetailVisibility).toHaveBeenCalledWith({ userId, orderId });
+    expect(res.body.data).toEqual(expect.objectContaining({
+      orderId,
+      status: expect.objectContaining({ code: 'ready', label: 'Ready for local delivery' }),
+      fulfillmentMode: expect.objectContaining({ code: 'delivery_local', label: 'Local delivery' }),
+      payment: expect.objectContaining({ code: 'payment_confirmed' }),
+      totals: expect.objectContaining({ totalAmount: '179.90', currency: 'EUR' }),
+    }));
+    expect(JSON.stringify(res.body.data)).not.toContain('ready_for_local_delivery');
+    expect(JSON.stringify(res.body.data)).not.toContain('manual_remediation');
+  });
+
+  test('order detail mine/:id returns not found for non-owned or missing order', async () => {
+    const userId = '00000000-0000-0000-0000-000000000abc';
+    const orderId = '00000000-0000-0000-0000-000000000992';
+    jest.spyOn(orderRepository, 'findCustomerOrderDetailVisibility').mockResolvedValue(null);
+
+    const res = await request(app)
+      .get(`/api/orders/mine/${orderId}`)
+      .set('Authorization', `Bearer ${token('customer', userId)}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('NOT_FOUND');
+  });
+
   test('orders mine returns customer-safe list for authenticated customer', async () => {
     const userId = '00000000-0000-0000-0000-000000000abc';
     jest.spyOn(orderRepository, 'listCustomerOrderVisibility').mockResolvedValue([

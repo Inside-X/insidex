@@ -9,7 +9,7 @@ import { sendApiError } from '../utils/api-error.js';
 import { orderRepository } from '../repositories/order.repository.js';
 import { logger } from '../utils/logger.js';
 import { assertDatabaseReady, isDependencyUnavailableError } from '../lib/critical-dependencies.js';
-import { toCustomerOrderListEntry } from './orders.customer-view.js';
+import { toCustomerOrderDetailEntry, toCustomerOrderListEntry } from './orders.customer-view.js';
 
 const router = express.Router();
 
@@ -99,6 +99,45 @@ router.get(
           correlationId: req.requestId || req.get('x-request-id') || 'unknown',
         });
         return sendApiError(req, res, 503, 'SERVICE_UNAVAILABLE', 'Order history is temporarily unavailable');
+      }
+      return next(error);
+    }
+  }
+);
+
+router.get(
+  '/mine/:id',
+  strictValidate(ordersSchemas.byIdParams, 'params'),
+  authenticateJWT,
+  authorizeRole(['customer']),
+  async (req, res, next) => {
+    try {
+      await assertDatabaseReady();
+      const order = await orderRepository.findCustomerOrderDetailVisibility({
+        userId: req.auth.sub,
+        orderId: req.params.id,
+      });
+
+      if (!order) {
+        return sendApiError(req, res, 404, 'NOT_FOUND', 'Order not found');
+      }
+
+      const data = toCustomerOrderDetailEntry(order);
+      return res.status(200).json({
+        data,
+        meta: {
+          ...(data.degraded ? { degraded: true, message: 'Some order details are currently limited.' } : {}),
+        },
+      });
+    } catch (error) {
+      if (isDependencyUnavailableError(error)) {
+        logger.error('critical_dependency_unavailable', {
+          endpoint: 'GET /api/orders/mine/:id',
+          reasonCode: 'db_unavailable',
+          reason: error?.code || error?.message,
+          correlationId: req.requestId || req.get('x-request-id') || 'unknown',
+        });
+        return sendApiError(req, res, 503, 'SERVICE_UNAVAILABLE', 'Order details are temporarily unavailable');
       }
       return next(error);
     }

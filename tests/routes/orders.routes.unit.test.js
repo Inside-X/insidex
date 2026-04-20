@@ -25,11 +25,14 @@ describe('orders.routes', () => {
     });
 
     const create = routes.find((r) => r.path === '/' && r.method === 'post');
-    let req = { body: { items: [], idempotencyKey: 'k' }, auth: { sub: 'u1', isGuest: false } };
-    let res = { locals: {}, status: jest.fn(() => res), json: jest.fn() };
+    let req = { body: { items: [{ id: 'p1', quantity: 2 }], idempotencyKey: 'k', fulfillment: { mode: 'pickup_local' }, email: 'u1@test.dev' }, auth: { sub: 'u1', isGuest: false } };
+    let res = { locals: { implicitGuestToken: 'guest-token-1' }, status: jest.fn(() => res), json: jest.fn() };
     const next = jest.fn();
     await create.handlers.at(-1)(req, res, next);
     expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      meta: expect.objectContaining({ guestSessionToken: 'guest-token-1' }),
+    }));
 
     process.env.PAYMENT_WEBHOOK_SECRET = 'sec';
     const hook = routes.find((r) => r.path === '/webhooks/payments');
@@ -93,6 +96,13 @@ describe('orders.routes', () => {
     res = { status: jest.fn(() => res), json: jest.fn() };
     await completion.handlers.at(-1)(req, res, next);
     expect(next).toHaveBeenCalledWith(completionErr);
+
+    const readinessErr = new Error('readiness failed');
+    orderRepository.markFulfillmentReady.mockRejectedValueOnce(readinessErr);
+    req = { params: { id: 'o-ready' }, body: { target: 'ready_for_pickup' } };
+    res = { status: jest.fn(() => res), json: jest.fn() };
+    await readiness.handlers.at(-1)(req, res, next);
+    expect(next).toHaveBeenCalledWith(readinessErr);
   });
 
   test('create endpoint returns 503 when database dependency is unavailable', async () => {
@@ -257,5 +267,123 @@ describe('orders.routes', () => {
 
     expect(next).toHaveBeenCalledWith(outage);
     expect(res.status).not.toHaveBeenCalled();
+  });
+
+  test('mine/:id detail returns customer-safe detail and degraded metadata when needed', async () => {
+    const orderRepository = {
+      createIdempotentWithItemsAndUpdateStock: jest.fn(),
+      listCustomerOrderVisibility: jest.fn(),
+      findCustomerOrderDetailVisibility: jest.fn().mockResolvedValue({
+        id: 'ord-detail-1',
+        userId: 'u1',
+        createdAt: '2026-04-20T10:00:00.000Z',
+        status: 'pending',
+        fulfillmentMode: '',
+        fulfillmentSnapshot: {},
+        items: [{ quantity: 1, product: { name: 'Inside X Kit' } }],
+        totalAmount: '149.90',
+      }),
+      processPaymentWebhookEvent: jest.fn(),
+      markFulfillmentReady: jest.fn(),
+      markFulfillmentCompleted: jest.fn(),
+    };
+    const routes = await loadRoute('../../src/routes/orders.routes.js', {
+      '../../src/validation/schemas/index.js': () => ({ authSchemas: { register: {}, login: {}, forgot: {}, reset: {}, refresh: {}, logout: {} }, ordersSchemas: { create: {}, paymentWebhook: {}, byIdParams: {}, markReadiness: {}, markCompletion: {}, mineListQuery: {} }, paymentsSchemas: { createIntent: {} }, cartSchemas: { getCartQuery: {}, add: {}, updateItemParams: {}, updateItemBody: {}, removeItemParams: {}, removeItemBody: {} }, productsSchemas: { listQuery: {}, byIdParams: {}, create: {} }, leadsSchemas: { create: {}, listQuery: {} }, analyticsSchemas: { track: {}, listQuery: {} } }),
+      '../../src/validation/strict-validate.middleware.js': () => ({ strictValidate: jest.fn(() => pass) }),
+      '../../src/middlewares/authenticate.js': () => ({ default: pass }),
+      '../../src/middlewares/authorizeRole.js': () => ({ default: jest.fn(() => pass) }),
+      '../../src/middlewares/checkoutIdentity.js': () => ({ default: pass }),
+      '../../src/middlewares/checkoutCustomerAccess.js': () => ({ default: pass, enforceOrderOwnership: pass }),
+      '../../src/utils/api-error.js': () => ({ sendApiError: jest.fn() }),
+      '../../src/repositories/order.repository.js': () => ({ orderRepository }),
+      '../../src/lib/critical-dependencies.js': () => ({ assertDatabaseReady: jest.fn().mockResolvedValue(undefined), isDependencyUnavailableError: jest.fn(() => false) }),
+    });
+
+    const detail = routes.find((r) => r.path === '/mine/:id' && r.method === 'get');
+    const req = { auth: { sub: 'u1' }, params: { id: 'ord-detail-1' }, get: jest.fn(() => 'req-detail') };
+    const res = { status: jest.fn(() => res), json: jest.fn() };
+
+    await detail.handlers.at(-1)(req, res, jest.fn());
+
+    expect(orderRepository.findCustomerOrderDetailVisibility).toHaveBeenCalledWith({ userId: 'u1', orderId: 'ord-detail-1' });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ orderId: 'ord-detail-1' }),
+      meta: expect.objectContaining({ degraded: true, message: 'Some order details are currently limited.' }),
+    }));
+  });
+
+  test('mine/:id detail returns not found when order is missing', async () => {
+    const sendApiError = jest.fn((_req, res, status, code) => res.status(status).json({ error: { code } }));
+    const orderRepository = {
+      createIdempotentWithItemsAndUpdateStock: jest.fn(),
+      listCustomerOrderVisibility: jest.fn(),
+      findCustomerOrderDetailVisibility: jest.fn().mockResolvedValue(null),
+      processPaymentWebhookEvent: jest.fn(),
+      markFulfillmentReady: jest.fn(),
+      markFulfillmentCompleted: jest.fn(),
+    };
+    const routes = await loadRoute('../../src/routes/orders.routes.js', {
+      '../../src/validation/schemas/index.js': () => ({ authSchemas: { register: {}, login: {}, forgot: {}, reset: {}, refresh: {}, logout: {} }, ordersSchemas: { create: {}, paymentWebhook: {}, byIdParams: {}, markReadiness: {}, markCompletion: {}, mineListQuery: {} }, paymentsSchemas: { createIntent: {} }, cartSchemas: { getCartQuery: {}, add: {}, updateItemParams: {}, updateItemBody: {}, removeItemParams: {}, removeItemBody: {} }, productsSchemas: { listQuery: {}, byIdParams: {}, create: {} }, leadsSchemas: { create: {}, listQuery: {} }, analyticsSchemas: { track: {}, listQuery: {} } }),
+      '../../src/validation/strict-validate.middleware.js': () => ({ strictValidate: jest.fn(() => pass) }),
+      '../../src/middlewares/authenticate.js': () => ({ default: pass }),
+      '../../src/middlewares/authorizeRole.js': () => ({ default: jest.fn(() => pass) }),
+      '../../src/middlewares/checkoutIdentity.js': () => ({ default: pass }),
+      '../../src/middlewares/checkoutCustomerAccess.js': () => ({ default: pass, enforceOrderOwnership: pass }),
+      '../../src/utils/api-error.js': () => ({ sendApiError }),
+      '../../src/repositories/order.repository.js': () => ({ orderRepository }),
+      '../../src/lib/critical-dependencies.js': () => ({ assertDatabaseReady: jest.fn().mockResolvedValue(undefined), isDependencyUnavailableError: jest.fn(() => false) }),
+    });
+
+    const detail = routes.find((r) => r.path === '/mine/:id' && r.method === 'get');
+    const req = { auth: { sub: 'u1' }, params: { id: 'ord-missing' }, get: jest.fn(() => 'req-detail-missing') };
+    const res = { status: jest.fn(() => res), json: jest.fn() };
+
+    await detail.handlers.at(-1)(req, res, jest.fn());
+
+    expect(sendApiError).toHaveBeenCalledWith(req, res, 404, 'NOT_FOUND', 'Order not found');
+  });
+
+  test('mine/:id detail returns 503 on dependency outage and forwards non-dependency errors', async () => {
+    const outage = new Error('db unavailable');
+    const sendApiError = jest.fn((_req, res, status, code) => res.status(status).json({ error: { code } }));
+    const logger = { error: jest.fn() };
+    const orderRepository = {
+      createIdempotentWithItemsAndUpdateStock: jest.fn(),
+      listCustomerOrderVisibility: jest.fn(),
+      findCustomerOrderDetailVisibility: jest.fn()
+        .mockRejectedValueOnce(outage)
+        .mockRejectedValueOnce(new Error('unexpected detail failure')),
+      processPaymentWebhookEvent: jest.fn(),
+      markFulfillmentReady: jest.fn(),
+      markFulfillmentCompleted: jest.fn(),
+    };
+    const assertDatabaseReady = jest.fn().mockResolvedValue(undefined);
+    const isDependencyUnavailableError = jest.fn((error) => error === outage);
+
+    const routes = await loadRoute('../../src/routes/orders.routes.js', {
+      '../../src/validation/schemas/index.js': () => ({ authSchemas: { register: {}, login: {}, forgot: {}, reset: {}, refresh: {}, logout: {} }, ordersSchemas: { create: {}, paymentWebhook: {}, byIdParams: {}, markReadiness: {}, markCompletion: {}, mineListQuery: {} }, paymentsSchemas: { createIntent: {} }, cartSchemas: { getCartQuery: {}, add: {}, updateItemParams: {}, updateItemBody: {}, removeItemParams: {}, removeItemBody: {} }, productsSchemas: { listQuery: {}, byIdParams: {}, create: {} }, leadsSchemas: { create: {}, listQuery: {} }, analyticsSchemas: { track: {}, listQuery: {} } }),
+      '../../src/validation/strict-validate.middleware.js': () => ({ strictValidate: jest.fn(() => pass) }),
+      '../../src/middlewares/authenticate.js': () => ({ default: pass }),
+      '../../src/middlewares/authorizeRole.js': () => ({ default: jest.fn(() => pass) }),
+      '../../src/middlewares/checkoutIdentity.js': () => ({ default: pass }),
+      '../../src/middlewares/checkoutCustomerAccess.js': () => ({ default: pass, enforceOrderOwnership: pass }),
+      '../../src/utils/api-error.js': () => ({ sendApiError }),
+      '../../src/utils/logger.js': () => ({ logger }),
+      '../../src/repositories/order.repository.js': () => ({ orderRepository }),
+      '../../src/lib/critical-dependencies.js': () => ({ assertDatabaseReady, isDependencyUnavailableError }),
+    });
+
+    const detail = routes.find((r) => r.path === '/mine/:id' && r.method === 'get');
+    const req = { auth: { sub: 'u1' }, params: { id: 'ord-outage' }, get: jest.fn(() => 'req-outage') };
+    const res = { status: jest.fn(() => res), json: jest.fn() };
+    const next = jest.fn();
+
+    await detail.handlers.at(-1)(req, res, next);
+    expect(sendApiError).toHaveBeenCalledWith(req, res, 503, 'SERVICE_UNAVAILABLE', 'Order details are temporarily unavailable');
+    expect(logger.error).toHaveBeenCalledWith('critical_dependency_unavailable', expect.objectContaining({ endpoint: 'GET /api/orders/mine/:id' }));
+
+    await detail.handlers.at(-1)(req, res, next);
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ message: 'unexpected detail failure' }));
   });
 });
