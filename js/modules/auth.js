@@ -214,8 +214,13 @@ async function refreshSession(modal) {
     }
   } catch (error) {
     state.error = error.message;
-    clearStoredTokens();
-    clearUserId();
+    const isAuthRejection = error?.status === 401 || error?.status === 403;
+    if (isAuthRejection) {
+      clearStoredTokens();
+      clearUserId();
+    } else {
+      loadStoredSession();
+    }
     updateAccountButton(document.getElementById('accountBtn'));
   } finally {
     state.loading = false;
