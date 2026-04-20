@@ -268,6 +268,35 @@ export const orderRepository = {
     try { return await prisma.order.findMany({ skip, take, where, orderBy, include: { items: true } }); } catch (error) { normalizeDbError(error, { repository: 'order', operation: 'list' }); }
   },
 
+  async listCustomerOrderVisibility({ userId, take = 20 } = {}) {
+    const normalizedTake = Number.isInteger(take) ? Math.max(1, Math.min(50, take)) : 20;
+    try {
+      return await prisma.order.findMany({
+        where: { userId },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: normalizedTake,
+        select: {
+          id: true,
+          userId: true,
+          createdAt: true,
+          status: true,
+          fulfillmentMode: true,
+          fulfillmentSnapshot: true,
+          totalAmount: true,
+          items: {
+            select: {
+              quantity: true,
+              product: { select: { name: true } },
+            },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          },
+        },
+      });
+    } catch (error) {
+      normalizeDbError(error, { repository: 'order', operation: 'listCustomerOrderVisibility' });
+    }
+  },
+
   async createIdempotentWithItemsAndUpdateStock({
     userId,
     items,

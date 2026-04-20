@@ -9,6 +9,7 @@ import { sendApiError } from '../utils/api-error.js';
 import { orderRepository } from '../repositories/order.repository.js';
 import { logger } from '../utils/logger.js';
 import { assertDatabaseReady, isDependencyUnavailableError } from '../lib/critical-dependencies.js';
+import { toCustomerOrderListEntry } from './orders.customer-view.js';
 
 const router = express.Router();
 
@@ -59,6 +60,45 @@ router.post(
           correlationId: req.requestId || req.get('x-request-id') || 'unknown',
         });
         return sendApiError(req, res, 503, 'SERVICE_UNAVAILABLE', 'Critical dependency unavailable');
+      }
+      return next(error);
+    }
+  }
+);
+
+router.get(
+  '/mine',
+  strictValidate(ordersSchemas.mineListQuery, 'query'),
+  authenticateJWT,
+  authorizeRole(['customer']),
+  async (req, res, next) => {
+    try {
+      await assertDatabaseReady();
+      const take = req.query?.limit == null ? 20 : Number(req.query.limit);
+      const orders = await orderRepository.listCustomerOrderVisibility({
+        userId: req.auth.sub,
+        take,
+      });
+
+      const ownOrders = orders.filter((order) => order?.userId === req.auth.sub);
+      const data = ownOrders.map(toCustomerOrderListEntry);
+      const degraded = data.some((order) => order.degraded === true);
+      return res.status(200).json({
+        data,
+        meta: {
+          count: data.length,
+          ...(degraded ? { degraded: true, message: 'Some order details are currently limited.' } : {}),
+        },
+      });
+    } catch (error) {
+      if (isDependencyUnavailableError(error)) {
+        logger.error('critical_dependency_unavailable', {
+          endpoint: 'GET /api/orders/mine',
+          reasonCode: 'db_unavailable',
+          reason: error?.code || error?.message,
+          correlationId: req.requestId || req.get('x-request-id') || 'unknown',
+        });
+        return sendApiError(req, res, 503, 'SERVICE_UNAVAILABLE', 'Order history is temporarily unavailable');
       }
       return next(error);
     }

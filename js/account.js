@@ -13,7 +13,7 @@ import {
   setActiveEmail,
   upsertProfile
 } from './modules/accountData.js';
-import { fromMinorUnitsNumber, multiplyMinorUnits, toMinorUnitsDecimalString } from './modules/money.js';
+import { fromMinorUnitsNumber, toMinorUnitsDecimalString } from './modules/money.js';
 
 const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
   dateStyle: 'medium',
@@ -36,14 +36,11 @@ const selectors = {
 };
 
 let activeEmail = '';
+const ACCESS_TOKEN_KEY = 'insidex_access_token';
 
-
-function toMoneyMinor(value) {
-  return toMinorUnitsDecimalString(String(value ?? 0), 'EUR');
-}
-
-function minorToDisplay(minor) {
-  return fromMinorUnitsNumber(minor, 'EUR');
+function formatEuroAmount(amount) {
+  const normalizedMinor = toMinorUnitsDecimalString(String(amount ?? '0'), 'EUR');
+  return currency.format(fromMinorUnitsNumber(normalizedMinor, 'EUR'));
 }
 
 
@@ -82,52 +79,112 @@ function renderAddresses(account) {
   `).join('');
 }
 
-function renderOrders(account) {
+function badgeClassForStatus(statusCode) {
+  if (statusCode === 'completed' || statusCode === 'confirmed') return 'account-badge--success';
+  if (statusCode === 'ready') return 'account-badge--info';
+  if (statusCode === 'cancelled') return 'account-badge--neutral';
+  return 'account-badge--warning';
+}
+
+function renderOrdersList(orders, { degraded = false } = {}) {
   if (!selectors.ordersList) return;
-  const orders = account.orders || [];
   if (orders.length === 0) {
-    selectors.ordersList.innerHTML = '<p class="account-empty">Aucune commande enregistrée. Finalisez un achat pour la voir ici.</p>';
+    selectors.ordersList.innerHTML = '<p class="account-empty">Vous n’avez pas encore de commande. Une fois votre premier achat finalisé, il apparaîtra ici.</p>';
     return;
   }
+
+  const degradedBanner = degraded
+    ? '<p class="account-info account-info--warning">Certaines informations de commande sont momentanément limitées.</p>'
+    : '';
+
   selectors.ordersList.innerHTML = orders.map((order) => {
-    const items = order.items || [];
-    const totals = order.totals || {};
+    const statusLabel = order?.status?.label || 'Update in progress';
+    const statusCode = order?.status?.code || 'pending_confirmation';
+    const fulfillmentLabel = order?.fulfillmentMode?.label || 'Fulfillment update';
+    const itemSummary = order?.itemSummary?.text || 'Item details unavailable';
+    const totalAmount = order?.totalAmount == null ? null : formatEuroAmount(order.totalAmount);
+    const orderDate = order?.orderDate ? dateFormatter.format(new Date(order.orderDate)) : 'Date unavailable';
+
     return `
       <article class="account-order">
         <header class="account-order__header">
           <div>
-            <h3>Commande ${order.id}</h3>
-            <p class="account-muted">${dateFormatter.format(new Date(order.date))}</p>
+            <h3>Order ${order.orderId || '—'}</h3>
+            <p class="account-muted">${orderDate}</p>
           </div>
-          <span class="account-badge account-badge--success">${order.status}</span>
+          <span class="account-badge ${badgeClassForStatus(statusCode)}">${statusLabel}</span>
         </header>
         <div class="account-order__body">
           <div>
-            <p class="account-order__label">Articles</p>
-            <ul>
-              ${items.map((item) => `
-                <li>${item.name} × ${item.qty} <span>${currency.format(minorToDisplay(multiplyMinorUnits(toMoneyMinor(item.price), item.qty)))}</span></li>
-              `).join('')}
-            </ul>
+            <p class="account-order__label">Items</p>
+            <p>${itemSummary}</p>
           </div>
           <div>
-            <p class="account-order__label">Livraison</p>
-            <p>${order.address?.line || ''}</p>
-            <p>${order.address?.postalCode || ''} ${order.address?.city || ''}</p>
-            <p>${order.address?.country || ''}</p>
-            <p class="account-muted">${order.delivery?.methodLabel || ''}</p>
+            <p class="account-order__label">Fulfillment</p>
+            <p>${fulfillmentLabel}</p>
           </div>
           <div>
             <p class="account-order__label">Total</p>
-            <p>${currency.format(minorToDisplay(toMoneyMinor(totals.total || 0)))}</p>
-            <p class="account-muted">Sous-total ${currency.format(minorToDisplay(toMoneyMinor(totals.subtotal || 0)))}</p>
-            <p class="account-muted">Livraison ${currency.format(minorToDisplay(toMoneyMinor(totals.shipping || 0)))}</p>
-            <p class="account-muted">TVA ${currency.format(minorToDisplay(toMoneyMinor(totals.tax || 0)))}</p>
+            <p>${totalAmount || 'Amount unavailable'}</p>
           </div>
         </div>
       </article>
     `;
-  }).join('');
+  }).join('') + degradedBanner;
+}
+
+function renderOrdersLoading() {
+  if (!selectors.ordersList) return;
+  selectors.ordersList.innerHTML = '<p class="account-info">Loading your orders…</p>';
+}
+
+function renderOrdersError() {
+  if (!selectors.ordersList) return;
+  selectors.ordersList.innerHTML = '<p class="account-info account-info--error">Unable to load your order history right now. Please try again shortly.</p>';
+}
+
+function getAccessToken() {
+  return localStorage.getItem(ACCESS_TOKEN_KEY);
+}
+
+async function fetchCustomerOrders(limit = 20) {
+  const accessToken = getAccessToken();
+  if (!accessToken) {
+    return { kind: 'unauthenticated' };
+  }
+
+  const response = await fetch(`/api/orders/mine?limit=${limit}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return { kind: 'error', status: response.status, payload };
+  }
+
+  return { kind: 'ok', data: Array.isArray(payload?.data) ? payload.data : [], meta: payload?.meta || {} };
+}
+
+async function renderOrdersSurface() {
+  renderOrdersLoading();
+  const result = await fetchCustomerOrders(20);
+
+  if (result.kind === 'unauthenticated' || result.status === 401) {
+    if (selectors.ordersList) {
+      selectors.ordersList.innerHTML = '<p class="account-info">Sign in to view your order history.</p>';
+    }
+    return;
+  }
+
+  if (result.kind === 'error') {
+    renderOrdersError();
+    return;
+  }
+
+  renderOrdersList(result.data, { degraded: result.meta?.degraded === true });
 }
 
 function renderAccount(email) {
@@ -135,16 +192,18 @@ function renderAccount(email) {
     selectors.activeEmail.textContent = email ? `Commandes associées à ${email}` : 'Aucun compte sélectionné';
   }
   if (!email) {
-    setStatus('Ajoutez votre email ou connectez-vous pour accéder à vos commandes.', 'info');
+    setStatus('Connectez-vous pour accéder à vos commandes.', 'info');
     renderProfile({ profile: null, addresses: [], orders: [] });
     renderAddresses({ addresses: [] });
-    renderOrders({ orders: [] });
+    if (selectors.ordersList) {
+      selectors.ordersList.innerHTML = '<p class="account-info">Sign in to view your order history.</p>';
+    }
     return;
   }
   const account = getAccount(email);
   renderProfile(account);
   renderAddresses(account);
-  renderOrders(account);
+  void renderOrdersSurface();
   setStatus('Profil synchronisé avec vos données locales.', 'success');
 }
 
@@ -204,12 +263,41 @@ function handleAddressSubmit(event) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  initAnalytics();
-  initHeader();
-  initAuth();
-  initCartDrawer();
-  await renderTexts();
-  await updateBadge();
+  try {
+    initAnalytics();
+  } catch (error) {
+    console.error('analytics bootstrap failed:', error);
+  }
+
+  try {
+    initHeader();
+  } catch (error) {
+    console.error('header bootstrap failed:', error);
+  }
+
+  try {
+    await initAuth();
+  } catch (error) {
+    console.error('auth bootstrap failed:', error);
+  }
+
+  try {
+    initCartDrawer();
+  } catch (error) {
+    console.error('cart drawer bootstrap failed:', error);
+  }
+
+  try {
+    await renderTexts();
+  } catch (error) {
+    console.error('content rendering failed:', error);
+  }
+
+  try {
+    await updateBadge();
+  } catch (error) {
+    console.error('cart badge refresh failed:', error);
+  }
 
   activeEmail = getActiveEmail();
   if (selectors.lookupEmail && activeEmail) {

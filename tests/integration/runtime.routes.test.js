@@ -276,6 +276,107 @@ describe('runtime business routes', () => {
     expect(invalid.status).toBe(400);
     expect(invalid.body.error.code).toBe('VALIDATION_ERROR');
   });
+
+  test('orders mine requires authentication and customer role', async () => {
+    const unauthenticated = await request(app).get('/api/orders/mine');
+    expect(unauthenticated.status).toBe(401);
+
+    const admin = await request(app)
+      .get('/api/orders/mine')
+      .set('Authorization', `Bearer ${token('admin')}`);
+    expect(admin.status).toBe(403);
+  });
+
+  test('orders mine returns customer-safe list for authenticated customer', async () => {
+    const userId = '00000000-0000-0000-0000-000000000abc';
+    jest.spyOn(orderRepository, 'listCustomerOrderVisibility').mockResolvedValue([
+      {
+        id: '00000000-0000-0000-0000-000000000901',
+        userId,
+        createdAt: '2026-04-17T10:00:00.000Z',
+        status: 'paid',
+        fulfillmentMode: 'pickup_local',
+        totalAmount: '149.90',
+        fulfillmentSnapshot: {
+          mode: 'pickup_local',
+          readiness: { state: 'ready_for_pickup' },
+        },
+        items: [{ quantity: 2, product: { name: 'Inside X Kit' } }],
+      },
+      {
+        id: '00000000-0000-0000-0000-000000000902',
+        userId,
+        createdAt: '2026-04-17T11:00:00.000Z',
+        status: 'pending',
+        fulfillmentMode: 'delivery_local',
+        totalAmount: '79.90',
+        fulfillmentSnapshot: {
+          mode: 'delivery_local',
+          completion: { state: 'delivered_local' },
+        },
+        items: [{ quantity: 1, product: { name: 'Flow Sensor' } }],
+      },
+    ]);
+
+    const res = await request(app)
+      .get('/api/orders/mine?limit=10')
+      .set('Authorization', `Bearer ${token('customer', userId)}`);
+
+    expect(res.status).toBe(200);
+    expect(orderRepository.listCustomerOrderVisibility).toHaveBeenCalledWith({ userId, take: 10 });
+    expect(res.body.meta.count).toBe(2);
+    expect(res.body.data).toEqual([
+      expect.objectContaining({
+        orderId: '00000000-0000-0000-0000-000000000901',
+        status: expect.objectContaining({ code: 'ready', label: 'Ready for pickup' }),
+        fulfillmentMode: expect.objectContaining({ code: 'pickup_local', label: 'Local pickup' }),
+        itemSummary: expect.objectContaining({ count: 2 }),
+      }),
+      expect.objectContaining({
+        orderId: '00000000-0000-0000-0000-000000000902',
+        status: expect.objectContaining({ code: 'completed', label: 'Completed' }),
+        fulfillmentMode: expect.objectContaining({ code: 'delivery_local', label: 'Local delivery' }),
+      }),
+    ]);
+    expect(JSON.stringify(res.body.data)).not.toContain('ready_for_pickup');
+    expect(JSON.stringify(res.body.data)).not.toContain('delivered_local');
+    expect(JSON.stringify(res.body.data)).not.toContain('shipped');
+  });
+
+  test('orders mine returns empty list for authenticated customer without orders', async () => {
+    jest.spyOn(orderRepository, 'listCustomerOrderVisibility').mockResolvedValue([]);
+    const res = await request(app)
+      .get('/api/orders/mine')
+      .set('Authorization', `Bearer ${token('customer', '00000000-0000-0000-0000-000000000abc')}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual([]);
+    expect(res.body.meta.count).toBe(0);
+  });
+
+  test('orders mine fail-closes by excluding records not owned by authenticated customer', async () => {
+    const userId = '00000000-0000-0000-0000-000000000abc';
+    jest.spyOn(orderRepository, 'listCustomerOrderVisibility').mockResolvedValue([
+      {
+        id: '00000000-0000-0000-0000-000000000903',
+        userId: '00000000-0000-0000-0000-000000000999',
+        createdAt: '2026-04-17T12:00:00.000Z',
+        status: 'paid',
+        fulfillmentMode: 'pickup_local',
+        totalAmount: '49.90',
+        fulfillmentSnapshot: { mode: 'pickup_local' },
+        items: [{ quantity: 1, product: { name: 'Water Sensor' } }],
+      },
+    ]);
+
+    const res = await request(app)
+      .get('/api/orders/mine')
+      .set('Authorization', `Bearer ${token('customer', userId)}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual([]);
+    expect(res.body.meta.count).toBe(0);
+  });
   
   test('payments create-intent computes amount from DB and returns metadata', async () => {
     jest.spyOn(prisma.product, 'findMany').mockResolvedValue([{ id: validCheckoutPayload.items[0].id, price: 120.5 }]);

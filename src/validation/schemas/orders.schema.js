@@ -20,6 +20,9 @@ const fulfillmentSchema = z.object({
 
 const readinessTargetSchema = z.enum(['ready_for_pickup', 'ready_for_local_delivery']);
 const completionTargetSchema = z.enum(['collected', 'delivered_local']);
+const mineListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).optional(),
+}).strict({ message: 'unknown field in order list query payload' });
 
 export const ordersSchemas = {
   create: z.object({
@@ -99,6 +102,7 @@ export const ordersSchemas = {
     note: z.string().trim().max(500).optional(),
   }).strict({ message: 'unknown field in completion payload' }),
   byIdParams: z.object({ id: uuidSchema }).strict({ message: 'unknown field in order params payload' }),
+  mineListQuery: mineListQuerySchema,
 };
 
 export default ordersSchemas;

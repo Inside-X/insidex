@@ -117,6 +117,25 @@
   font-size:.95rem;
 }
 
+.account-info{
+  color:var(--muted);
+  font-size:.95rem;
+  background:rgba(15, 118, 110, .06);
+  border:1px solid rgba(15, 118, 110, .12);
+  border-radius:12px;
+  padding:10px 12px;
+}
+.account-info--error{
+  color:var(--danger);
+  background:rgba(220, 38, 38, .06);
+  border-color:rgba(220, 38, 38, .16);
+}
+.account-info--warning{
+  color:#92400e;
+  background:rgba(245, 158, 11, .08);
+  border-color:rgba(245, 158, 11, .22);
+}
+
 .account-address{
   display:flex;
   justify-content:space-between;
@@ -144,6 +163,18 @@
 
 .account-badge--success{
   background:rgba(15, 118, 110, .15);
+}
+.account-badge--info{
+  background:rgba(59, 130, 246, .14);
+  color:#1d4ed8;
+}
+.account-badge--warning{
+  background:rgba(245, 158, 11, .18);
+  color:#92400e;
+}
+.account-badge--neutral{
+  background:rgba(107, 114, 128, .16);
+  color:#374151;
 }
 
 .account-order{
