@@ -39,7 +39,7 @@ describe('I1 stripe success emission boundary wiring', () => {
     signalBoundary,
     stripeEvent = baseEvent,
     markPaidResult = { replayed: false, orderMarkedPaid: true },
-    communicationUnitResult = { recorded: false, deduped: false, reason: 'insufficient_context', communicationUnitId: null },
+    communicationIntentResult = { ok: false, outcome: 'suppressed', reason: 'stronger_or_missing_truth' },
   }) {
     const claim = jest.fn().mockResolvedValue({ accepted: true });
     const constructEvent = jest.fn(() => stripeEvent);
@@ -47,8 +47,8 @@ describe('I1 stripe success emission boundary wiring', () => {
       findById: jest.fn().mockResolvedValue(order),
       markPaidFromWebhook: jest.fn().mockResolvedValue(markPaidResult),
       processPaymentWebhookEvent: jest.fn(),
-      recordUnderReviewCommunicationUnitFromWebhook: jest.fn().mockResolvedValue(communicationUnitResult),
     };
+    const createUnderReviewCommunicationIntent = jest.fn().mockResolvedValue(communicationIntentResult);
 
     const routes = await loadRoute('../../src/routes/webhooks.routes.js', {
       zod: () => ({ ZodError: class ZodError extends Error {} }),
@@ -73,11 +73,21 @@ describe('I1 stripe success emission boundary wiring', () => {
       '../../src/domain/reconciliation-remediation-boundary-signaler.js': () => ({
         signalReconciliationRemediationBoundary: signalBoundary,
       }),
+      '../../src/services/transactional-communication.service.js': () => ({
+        createUnderReviewCommunicationIntent,
+      }),
     });
 
     process.env.PAYMENT_WEBHOOK_SECRET = 'sec';
     const stripe = routes.find((r) => r.path === '/stripe').handlers.at(-1);
-    return { stripe, orderRepository, claim, constructEvent, ...buildReqRes(claim) };
+    return {
+      stripe,
+      orderRepository,
+      createUnderReviewCommunicationIntent,
+      claim,
+      constructEvent,
+      ...buildReqRes(claim),
+    };
   }
 
   test('emits success only when R4 allows and R5 does not signal remediation boundary', async () => {
@@ -92,7 +102,7 @@ describe('I1 stripe success emission boundary wiring', () => {
       signalingReasonCodes: [],
     }));
 
-    const { stripe, req, res, orderRepository } = await loadStripeHandler({
+    const { stripe, req, res, orderRepository, createUnderReviewCommunicationIntent } = await loadStripeHandler({
       order: {
         id: 'ord_1',
         status: 'pending',
@@ -124,7 +134,7 @@ describe('I1 stripe success emission boundary wiring', () => {
       signalingReasonCodes: [],
     }));
 
-    const { stripe, req, res, orderRepository } = await loadStripeHandler({
+    const { stripe, req, res, orderRepository, createUnderReviewCommunicationIntent } = await loadStripeHandler({
       order: {
         id: 'ord_1',
         status: 'pending',
@@ -140,12 +150,9 @@ describe('I1 stripe success emission boundary wiring', () => {
     await stripe(req, res, jest.fn());
 
     expect(orderRepository.markPaidFromWebhook).not.toHaveBeenCalled();
-    expect(orderRepository.recordUnderReviewCommunicationUnitFromWebhook).toHaveBeenCalledTimes(1);
-    expect(orderRepository.recordUnderReviewCommunicationUnitFromWebhook).toHaveBeenCalledWith({
+    expect(createUnderReviewCommunicationIntent).toHaveBeenCalledTimes(1);
+    expect(createUnderReviewCommunicationIntent).toHaveBeenCalledWith({
       orderId: 'ord_1',
-      currentStatus: 'pending',
-      intendedFinalizationKey: 'idem_1',
-      stripePaymentIntentId: 'pi_i1_1',
       correlationId: 'unknown',
     });
     expect(res.json).toHaveBeenCalledWith({
@@ -172,7 +179,7 @@ describe('I1 stripe success emission boundary wiring', () => {
       signalingReasonCodes: ['remediation_boundary_nonconverged_state'],
     }));
 
-    const { stripe, req, res, orderRepository } = await loadStripeHandler({
+    const { stripe, req, res, orderRepository, createUnderReviewCommunicationIntent } = await loadStripeHandler({
       order: {
         id: 'ord_1',
         status: 'pending',
@@ -191,6 +198,52 @@ describe('I1 stripe success emission boundary wiring', () => {
     expect(res.status).toHaveBeenCalledWith(200);
   });
 
+  test('blocked success path still records under-review intent when authoritative under-review truth is eligible', async () => {
+    const enforceBoundary = jest.fn(async () => ({
+      mayFinalizeAsSuccess: false,
+      boundaryDecision: 'block_success',
+      blockingReasonCodes: ['finalization_boundary_uncertain'],
+    }));
+    const signalBoundary = jest.fn(async () => ({
+      isInRemediationBoundary: true,
+      boundaryStatus: 'reconciliation_remediation_boundary',
+      signalingReasonCodes: ['remediation_boundary_uncertain'],
+    }));
+
+    const { stripe, req, res, createUnderReviewCommunicationIntent } = await loadStripeHandler({
+      order: {
+        id: 'ord_1',
+        status: 'processing_exception',
+        totalAmount: '10.00',
+        currency: 'EUR',
+        idempotencyKey: 'idem_1',
+        items: [{ productId: 'prod_1', quantity: 1 }],
+      },
+      enforceBoundary,
+      signalBoundary,
+      communicationIntentResult: {
+        ok: true,
+        outcome: 'created',
+        sourceEventId: 'comm.under_review.order:ord_1',
+      },
+    });
+
+    await stripe(req, res, jest.fn());
+
+    expect(createUnderReviewCommunicationIntent).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      data: {
+        ignored: true,
+        reason: 'success_emission_blocked',
+        boundary: {
+          finalizationBlockingReasonCodes: ['finalization_boundary_uncertain'],
+          remediationSignalingReasonCodes: ['remediation_boundary_uncertain'],
+        },
+      },
+    });
+  });
+
   test('ambiguous repeated-handling classification fails closed at seam', async () => {
     const enforceBoundary = jest.fn(async () => ({
       mayFinalizeAsSuccess: false,
@@ -207,7 +260,7 @@ describe('I1 stripe success emission boundary wiring', () => {
       signalingReasonCodes: ['remediation_boundary_truth_unresolved'],
     }));
 
-    const { stripe, req, res, orderRepository } = await loadStripeHandler({
+    const { stripe, req, res, orderRepository, createUnderReviewCommunicationIntent } = await loadStripeHandler({
       order: {
         id: 'ord_1',
         status: 'pending',
@@ -222,7 +275,7 @@ describe('I1 stripe success emission boundary wiring', () => {
 
     await stripe(req, res, jest.fn());
     expect(orderRepository.markPaidFromWebhook).not.toHaveBeenCalled();
-    expect(orderRepository.recordUnderReviewCommunicationUnitFromWebhook).toHaveBeenCalledTimes(1);
+    expect(createUnderReviewCommunicationIntent).toHaveBeenCalledTimes(1);
   });
 
   test('strict same-intent keys are passed to boundary enforcer (no fuzzy shortcut)', async () => {
@@ -299,7 +352,13 @@ describe('I1 stripe success emission boundary wiring', () => {
       stripeEvent: noIntentEvent,
     });
 
-    const { stripe: stripeNoIntent, req: reqNoIntent, res: resNoIntent, orderRepository: repoNoIntent } = loaded;
+    const {
+      stripe: stripeNoIntent,
+      req: reqNoIntent,
+      res: resNoIntent,
+      orderRepository: repoNoIntent,
+      createUnderReviewCommunicationIntent,
+    } = loaded;
 
     await stripeNoIntent(
       reqNoIntent,
@@ -308,7 +367,7 @@ describe('I1 stripe success emission boundary wiring', () => {
     );
 
     expect(repoNoIntent.markPaidFromWebhook).not.toHaveBeenCalled();
-    expect(repoNoIntent.recordUnderReviewCommunicationUnitFromWebhook).toHaveBeenCalledTimes(1);
+    expect(createUnderReviewCommunicationIntent).toHaveBeenCalledTimes(1);
     expect(resNoIntent.json).toHaveBeenCalledWith({
       data: {
         ignored: true,
@@ -332,12 +391,13 @@ describe('I1 stripe success emission boundary wiring', () => {
       '../../src/lib/paypal.js': () => ({ default: { webhooks: { verifyWebhookSignature: jest.fn() } } }),
       '../../src/validation/schemas/index.js': () => ({ paymentsSchemas: { stripeWebhook: { parse: jest.fn((x) => x) }, paypalWebhook: { parse: jest.fn((x) => x) } } }),
       '../../src/utils/api-error.js': () => ({ sendApiError }),
-      '../../src/repositories/order.repository.js': () => ({ orderRepository: { findById: jest.fn(), markPaidFromWebhook: jest.fn(), processPaymentWebhookEvent: jest.fn(), recordUnderReviewCommunicationUnitFromWebhook: jest.fn() } }),
+      '../../src/repositories/order.repository.js': () => ({ orderRepository: { findById: jest.fn(), markPaidFromWebhook: jest.fn(), processPaymentWebhookEvent: jest.fn() } }),
       '../../src/utils/logger.js': () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }),
       '../../src/domain/order-state-machine.js': () => ({ OrderInvalidTransitionError: class OrderInvalidTransitionError extends Error {}, nextStatusForEvent: jest.fn(() => 'paid'), assertValidTransition: jest.fn() }),
       '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
       '../../src/domain/finalization-boundary-enforcer.js': () => ({ enforceFinalizationBoundary: jest.fn() }),
       '../../src/domain/reconciliation-remediation-boundary-signaler.js': () => ({ signalReconciliationRemediationBoundary: jest.fn() }),
+      '../../src/services/transactional-communication.service.js': () => ({ createUnderReviewCommunicationIntent: jest.fn() }),
       '../../src/lib/webhook-idempotency-store.js': () => ({ createWebhookIdempotencyStore: () => ({ claim }) }),
     });
 
@@ -350,7 +410,7 @@ describe('I1 stripe success emission boundary wiring', () => {
     expect(sendApiError).toHaveBeenCalledWith(req, res, 503, 'SERVICE_UNAVAILABLE', 'Webhook idempotency backend unavailable');
   });
 
-  test('repeated handling keeps deterministic under_review communication unit identity at seam', async () => {
+  test('repeated handling keeps deterministic under_review communication intent input at seam', async () => {
     const claim = jest.fn()
       .mockResolvedValueOnce({ accepted: true })
       .mockResolvedValueOnce({ accepted: true });
@@ -366,20 +426,19 @@ describe('I1 stripe success emission boundary wiring', () => {
       }),
       markPaidFromWebhook: jest.fn(),
       processPaymentWebhookEvent: jest.fn(),
-      recordUnderReviewCommunicationUnitFromWebhook: jest.fn()
-        .mockResolvedValueOnce({
-          recorded: true,
-          deduped: false,
-          reason: 'recorded',
-          communicationUnitId: 'comm:stripe_success_emission_blocked:under_review:ord_1:idem_1:pi_i1_1',
-        })
-        .mockResolvedValueOnce({
-          recorded: false,
-          deduped: true,
-          reason: 'duplicate_communication_unit',
-          communicationUnitId: 'comm:stripe_success_emission_blocked:under_review:ord_1:idem_1:pi_i1_1',
-        }),
     };
+    const createUnderReviewCommunicationIntent = jest.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        outcome: 'created',
+        sourceEventId: 'comm.under_review.order:ord_1',
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        outcome: 'suppressed',
+        reason: 'duplicate_semantic_intent',
+        sourceEventId: 'comm.under_review.order:ord_1',
+      });
 
     const routes = await loadRoute('../../src/routes/webhooks.routes.js', {
       zod: () => ({ ZodError: class ZodError extends Error {} }),
@@ -414,6 +473,9 @@ describe('I1 stripe success emission boundary wiring', () => {
           signalingReasonCodes: ['remediation_boundary_uncertain'],
         })),
       }),
+      '../../src/services/transactional-communication.service.js': () => ({
+        createUnderReviewCommunicationIntent,
+      }),
     });
 
     process.env.PAYMENT_WEBHOOK_SECRET = 'sec';
@@ -427,9 +489,9 @@ describe('I1 stripe success emission boundary wiring', () => {
     await stripe(buildReq(), makeRes(), jest.fn());
     await stripe(buildReq(), makeRes(), jest.fn());
 
-    expect(orderRepository.recordUnderReviewCommunicationUnitFromWebhook).toHaveBeenCalledTimes(2);
-    expect(orderRepository.recordUnderReviewCommunicationUnitFromWebhook.mock.calls[0][0]).toEqual(
-      orderRepository.recordUnderReviewCommunicationUnitFromWebhook.mock.calls[1][0],
+    expect(createUnderReviewCommunicationIntent).toHaveBeenCalledTimes(2);
+    expect(createUnderReviewCommunicationIntent.mock.calls[0][0]).toEqual(
+      createUnderReviewCommunicationIntent.mock.calls[1][0],
     );
     expect(orderRepository.markPaidFromWebhook).not.toHaveBeenCalled();
   });

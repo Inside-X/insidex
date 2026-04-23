@@ -6,6 +6,7 @@ async function loadOrderRepository() {
   const prismaMock = {
     orderEvent: {
       create: jest.fn(),
+      findFirst: jest.fn(),
     },
     $transaction: jest.fn(async (callback) => callback({
       orderEvent: {
@@ -97,88 +98,129 @@ describe('orderRepository transactional communication seam', () => {
     await expect(orderRepository.recordPendingConfirmationCommunicationIntent(input)).rejects.toThrow(expectedMessage);
   });
 
-  test('returns insufficient_context when under-review communication context is incomplete', async () => {
+  test('checks if under-review communication intent already exists', async () => {
     const { orderRepository, prismaMock } = await loadOrderRepository();
+    prismaMock.orderEvent.findFirst.mockResolvedValueOnce({ id: 'evt-existing' });
 
-    await expect(orderRepository.recordUnderReviewCommunicationUnitFromWebhook({
-      orderId: 'ord-1',
-      currentStatus: 'pending',
-      intendedFinalizationKey: '',
-      stripePaymentIntentId: 'pi-1',
-    })).resolves.toEqual({
-      recorded: false,
-      deduped: false,
-      reason: 'insufficient_context',
-      communicationUnitId: null,
+    await expect(orderRepository.hasUnderReviewCommunicationIntent({ orderId: 'ord-1' })).resolves.toBe(true);
+
+    expect(prismaMock.orderEvent.findFirst).toHaveBeenCalledWith({
+      where: { orderId: 'ord-1', type: 'customer_comm_under_review_candidate' },
+      select: { id: true },
     });
-
-    expect(prismaMock.$transaction).not.toHaveBeenCalled();
   });
 
-  test('records under-review communication unit with normalized identifiers', async () => {
+  test('returns false when under-review communication intent does not exist', async () => {
     const { orderRepository, prismaMock } = await loadOrderRepository();
+    prismaMock.orderEvent.findFirst.mockResolvedValueOnce(null);
+    await expect(orderRepository.hasUnderReviewCommunicationIntent({ orderId: 'ord-1' })).resolves.toBe(false);
+  });
 
-    await expect(orderRepository.recordUnderReviewCommunicationUnitFromWebhook({
-      orderId: ' ord-1 ',
-      currentStatus: ' Pending ',
-      intendedFinalizationKey: ' idem-1 ',
-      stripePaymentIntentId: ' pi-1 ',
+  test('records under-review communication intent with deterministic payload', async () => {
+    const { orderRepository, prismaMock } = await loadOrderRepository();
+    const event = { id: 'evt-under-review-1' };
+    prismaMock.orderEvent.create.mockResolvedValueOnce(event);
+
+    await expect(orderRepository.recordUnderReviewCommunicationIntent({
+      orderId: 'ord-1',
+      sourceEventId: 'comm.under_review.order:ord-1',
       correlationId: 'cid-2',
-    })).resolves.toEqual({
-      recorded: true,
-      deduped: false,
-      reason: 'recorded',
-      communicationUnitId: 'comm:stripe_success_emission_blocked:under_review:ord-1:idem-1:pi-1',
-    });
+      orderStatus: 'processing_exception',
+    })).resolves.toEqual({ duplicate: false, event });
 
     expect(prismaMock.orderEvent.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
+      data: {
         orderId: 'ord-1',
-        fromStatus: 'pending',
-        toStatus: 'pending',
-        sourceEventId: 'comm:stripe_success_emission_blocked:under_review:ord-1:idem-1:pi-1',
-        idempotencyKey: 'idem-1',
+        type: 'customer_comm_under_review_candidate',
+        fromStatus: 'processing_exception',
+        toStatus: 'processing_exception',
+        source: 'system',
+        sourceEventId: 'comm.under_review.order:ord-1',
         correlationId: 'cid-2',
-      }),
+      },
     });
   });
 
   test.each([
     [{ code: 'P2002', meta: { target: ['source_event_id'] } }],
     [{ code: 'P2002' }],
-  ])('dedupes under-review communication unit writes on unique conflicts: %j', async (errorShape) => {
+  ])('dedupes under-review communication intent writes on unique conflicts: %j', async (errorShape) => {
     const { orderRepository, prismaMock } = await loadOrderRepository();
     const err = Object.assign(new Error('duplicate under-review event'), errorShape);
     prismaMock.orderEvent.create.mockRejectedValueOnce(err);
 
-    await expect(orderRepository.recordUnderReviewCommunicationUnitFromWebhook({
+    await expect(orderRepository.recordUnderReviewCommunicationIntent({
       orderId: 'ord-1',
-      currentStatus: 'pending',
-      intendedFinalizationKey: 'idem-1',
-      stripePaymentIntentId: 'pi-1',
-    })).resolves.toEqual({
-      recorded: false,
-      deduped: true,
-      reason: 'duplicate_communication_unit',
-      communicationUnitId: 'comm:stripe_success_emission_blocked:under_review:ord-1:idem-1:pi-1',
-    });
+      sourceEventId: 'comm.under_review.order:ord-1',
+      orderStatus: 'processing_exception',
+    })).resolves.toEqual({ duplicate: true, event: null });
   });
 
-  test('normalizes non-duplicate under-review write failures', async () => {
+  test('normalizes non-duplicate under-review intent write failures', async () => {
     const { orderRepository, prismaMock, normalizeDbError } = await loadOrderRepository();
     const err = Object.assign(new Error('unexpected under-review insert failure'), { code: 'P5000' });
     prismaMock.orderEvent.create.mockRejectedValueOnce(err);
 
-    await expect(orderRepository.recordUnderReviewCommunicationUnitFromWebhook({
+    await expect(orderRepository.recordUnderReviewCommunicationIntent({
       orderId: 'ord-1',
-      currentStatus: 'pending',
-      intendedFinalizationKey: 'idem-1',
-      stripePaymentIntentId: 'pi-1',
+      sourceEventId: 'comm.under_review.order:ord-1',
+      orderStatus: 'processing_exception',
     })).rejects.toThrow(err);
 
     expect(normalizeDbError).toHaveBeenCalledWith(err, {
       repository: 'order',
-      operation: 'recordUnderReviewCommunicationUnitFromWebhook',
+      operation: 'recordUnderReviewCommunicationIntent',
     });
+  });
+
+  test('records pending-confirmation supersession marker with deterministic payload', async () => {
+    const { orderRepository, prismaMock } = await loadOrderRepository();
+    prismaMock.orderEvent.create.mockResolvedValueOnce({ id: 'evt-sup-1' });
+
+    await expect(orderRepository.recordPendingConfirmationSupersession({
+      orderId: 'ord-1',
+      sourceEventId: 'comm.pending_confirmation.superseded_by_under_review.order:ord-1',
+      correlationId: 'cid-sup-1',
+      orderStatus: 'processing_exception',
+    })).resolves.toEqual({ ok: true, duplicate: false });
+
+    expect(prismaMock.orderEvent.create).toHaveBeenCalledWith({
+      data: {
+        orderId: 'ord-1',
+        type: 'customer_comm_pending_confirmation_superseded',
+        fromStatus: 'pending',
+        toStatus: 'processing_exception',
+        source: 'system',
+        sourceEventId: 'comm.pending_confirmation.superseded_by_under_review.order:ord-1',
+        correlationId: 'cid-sup-1',
+      },
+    });
+  });
+
+  test.each([
+    [{ code: 'P2002', meta: { target: ['source_event_id'] } }],
+    [{ code: 'P2002' }],
+  ])('dedupes pending-confirmation supersession marker on unique conflicts: %j', async (errorShape) => {
+    const { orderRepository, prismaMock } = await loadOrderRepository();
+    const err = Object.assign(new Error('duplicate supersession event'), errorShape);
+    prismaMock.orderEvent.create.mockRejectedValueOnce(err);
+
+    await expect(orderRepository.recordPendingConfirmationSupersession({
+      orderId: 'ord-1',
+      sourceEventId: 'comm.pending_confirmation.superseded_by_under_review.order:ord-1',
+      orderStatus: 'processing_exception',
+    })).resolves.toEqual({ ok: true, duplicate: true });
+  });
+
+  test.each([
+    [{}, 'orderId is required for communication intent', 'recordUnderReviewCommunicationIntent'],
+    [{ orderId: 'ord-1' }, 'sourceEventId is required for communication intent', 'recordUnderReviewCommunicationIntent'],
+    [{ orderId: 'ord-1', sourceEventId: 'comm.under_review.order:ord-1', orderStatus: 'pending' }, 'under-review communication requires under-review order truth', 'recordUnderReviewCommunicationIntent'],
+    [{}, 'orderId is required for pending supersession', 'recordPendingConfirmationSupersession'],
+    [{ orderId: 'ord-1' }, 'sourceEventId is required for pending supersession', 'recordPendingConfirmationSupersession'],
+    [{ orderId: 'ord-1', sourceEventId: 'comm.pending_confirmation.superseded_by_under_review.order:ord-1', orderStatus: 'paid' }, 'pending supersession requires under-review order truth', 'recordPendingConfirmationSupersession'],
+  ])('rejects invalid under-review context: %j', async (input, expectedMessage, methodName) => {
+    const { orderRepository } = await loadOrderRepository();
+    await expect(orderRepository[methodName](input)).rejects.toThrow(expectedMessage);
   });
 });

@@ -5,11 +5,10 @@ describe('webhooks route branch support coverage for I1 gate stability', () => {
   test('stripe seam uses defensive defaults when boundary engines return null', async () => {
     const claim = jest.fn().mockResolvedValue({ accepted: true });
     const markPaidFromWebhook = jest.fn();
-    const recordUnderReviewCommunicationUnitFromWebhook = jest.fn().mockResolvedValue({
-      recorded: false,
-      deduped: false,
-      reason: 'insufficient_context',
-      communicationUnitId: null,
+    const createUnderReviewCommunicationIntent = jest.fn().mockResolvedValue({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'stronger_or_missing_truth',
     });
     const routes = await loadRoute('../../src/routes/webhooks.routes.js', {
       zod: () => ({ ZodError: class ZodError extends Error {} }),
@@ -49,7 +48,6 @@ describe('webhooks route branch support coverage for I1 gate stability', () => {
           }),
           markPaidFromWebhook,
           processPaymentWebhookEvent: jest.fn(),
-          recordUnderReviewCommunicationUnitFromWebhook,
         },
       }),
       '../../src/utils/logger.js': () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }),
@@ -62,6 +60,7 @@ describe('webhooks route branch support coverage for I1 gate stability', () => {
       '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
       '../../src/domain/finalization-boundary-enforcer.js': () => ({ enforceFinalizationBoundary: jest.fn(async () => null) }),
       '../../src/domain/reconciliation-remediation-boundary-signaler.js': () => ({ signalReconciliationRemediationBoundary: jest.fn(async () => null) }),
+      '../../src/services/transactional-communication.service.js': () => ({ createUnderReviewCommunicationIntent }),
     });
 
     process.env.PAYMENT_WEBHOOK_SECRET = 'sec';
@@ -90,11 +89,10 @@ describe('webhooks route branch support coverage for I1 gate stability', () => {
   test('stripe seam keeps blocked response when fallback identity path is used', async () => {
     const claim = jest.fn().mockResolvedValue({ accepted: true });
     const markPaidFromWebhook = jest.fn();
-    const recordUnderReviewCommunicationUnitFromWebhook = jest.fn().mockResolvedValue({
-      recorded: false,
-      deduped: false,
-      reason: '',
-      communicationUnitId: null,
+    const createUnderReviewCommunicationIntent = jest.fn().mockResolvedValue({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'stronger_or_missing_truth',
     });
     const routes = await loadRoute('../../src/routes/webhooks.routes.js', {
       zod: () => ({ ZodError: class ZodError extends Error {} }),
@@ -134,7 +132,6 @@ describe('webhooks route branch support coverage for I1 gate stability', () => {
           }),
           markPaidFromWebhook,
           processPaymentWebhookEvent: jest.fn(),
-          recordUnderReviewCommunicationUnitFromWebhook,
         },
       }),
       '../../src/utils/logger.js': () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }),
@@ -147,6 +144,7 @@ describe('webhooks route branch support coverage for I1 gate stability', () => {
       '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
       '../../src/domain/finalization-boundary-enforcer.js': () => ({ enforceFinalizationBoundary: jest.fn(async () => null) }),
       '../../src/domain/reconciliation-remediation-boundary-signaler.js': () => ({ signalReconciliationRemediationBoundary: jest.fn(async () => null) }),
+      '../../src/services/transactional-communication.service.js': () => ({ createUnderReviewCommunicationIntent }),
     });
 
     process.env.PAYMENT_WEBHOOK_SECRET = 'sec';
@@ -161,7 +159,7 @@ describe('webhooks route branch support coverage for I1 gate stability', () => {
     await stripe(req, res, jest.fn());
 
     expect(markPaidFromWebhook).not.toHaveBeenCalled();
-    expect(recordUnderReviewCommunicationUnitFromWebhook).toHaveBeenCalledTimes(1);
+    expect(createUnderReviewCommunicationIntent).toHaveBeenCalledTimes(1);
     expect(res.json).toHaveBeenCalledWith({
       data: {
         ignored: true,
@@ -177,11 +175,10 @@ describe('webhooks route branch support coverage for I1 gate stability', () => {
   test('stripe seam fails closed when strict and fallback identities are both missing', async () => {
     const claim = jest.fn().mockResolvedValue({ accepted: true });
     const markPaidFromWebhook = jest.fn();
-    const recordUnderReviewCommunicationUnitFromWebhook = jest.fn().mockResolvedValue({
-      recorded: false,
-      deduped: false,
-      reason: 'insufficient_context',
-      communicationUnitId: null,
+    const createUnderReviewCommunicationIntent = jest.fn().mockResolvedValue({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'missing_order_reference',
     });
     const routes = await loadRoute('../../src/routes/webhooks.routes.js', {
       zod: () => ({ ZodError: class ZodError extends Error {} }),
@@ -221,7 +218,6 @@ describe('webhooks route branch support coverage for I1 gate stability', () => {
           }),
           markPaidFromWebhook,
           processPaymentWebhookEvent: jest.fn(),
-          recordUnderReviewCommunicationUnitFromWebhook,
         },
       }),
       '../../src/utils/logger.js': () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }),
@@ -234,6 +230,7 @@ describe('webhooks route branch support coverage for I1 gate stability', () => {
       '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
       '../../src/domain/finalization-boundary-enforcer.js': () => ({ enforceFinalizationBoundary: jest.fn(async () => null) }),
       '../../src/domain/reconciliation-remediation-boundary-signaler.js': () => ({ signalReconciliationRemediationBoundary: jest.fn(async () => null) }),
+      '../../src/services/transactional-communication.service.js': () => ({ createUnderReviewCommunicationIntent }),
     });
 
     process.env.PAYMENT_WEBHOOK_SECRET = 'sec';
@@ -248,7 +245,7 @@ describe('webhooks route branch support coverage for I1 gate stability', () => {
     await stripe(req, res, jest.fn());
 
     expect(markPaidFromWebhook).not.toHaveBeenCalled();
-    expect(recordUnderReviewCommunicationUnitFromWebhook).toHaveBeenCalledTimes(1);
+    expect(createUnderReviewCommunicationIntent).toHaveBeenCalledTimes(1);
     expect(res.json).toHaveBeenCalledWith({
       data: {
         ignored: true,
@@ -302,7 +299,6 @@ describe('webhooks route branch support coverage for I1 gate stability', () => {
           }),
           markPaidFromWebhook,
           processPaymentWebhookEvent: jest.fn(),
-          recordUnderReviewCommunicationUnitFromWebhook: jest.fn(),
         },
       }),
       '../../src/utils/logger.js': () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }),
@@ -315,6 +311,7 @@ describe('webhooks route branch support coverage for I1 gate stability', () => {
       '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
       '../../src/domain/finalization-boundary-enforcer.js': () => ({ enforceFinalizationBoundary: jest.fn(async () => null) }),
       '../../src/domain/reconciliation-remediation-boundary-signaler.js': () => ({ signalReconciliationRemediationBoundary: jest.fn(async () => null) }),
+      '../../src/services/transactional-communication.service.js': () => ({ createUnderReviewCommunicationIntent: jest.fn() }),
     });
 
     process.env.PAYMENT_WEBHOOK_SECRET = 'sec';

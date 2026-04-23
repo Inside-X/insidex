@@ -293,6 +293,96 @@ export const orderRepository = {
       normalizeDbError(error, { repository: 'order', operation: 'recordPendingConfirmationCommunicationIntent' });
     }
   },
+  async hasUnderReviewCommunicationIntent({ orderId } = {}) {
+    if (!orderId || typeof orderId !== 'string') {
+      return false;
+    }
+
+    try {
+      const existing = await prisma.orderEvent.findFirst({
+        where: {
+          orderId,
+          type: 'customer_comm_under_review_candidate',
+        },
+        select: { id: true },
+      });
+      return Boolean(existing?.id);
+    } catch (error) {
+      normalizeDbError(error, { repository: 'order', operation: 'hasUnderReviewCommunicationIntent' });
+    }
+  },
+  async recordUnderReviewCommunicationIntent({
+    orderId,
+    sourceEventId,
+    correlationId = null,
+    orderStatus = null,
+  } = {}) {
+    if (!orderId || typeof orderId !== 'string') {
+      throw badRequest('orderId is required for communication intent');
+    }
+    if (!sourceEventId || typeof sourceEventId !== 'string') {
+      throw badRequest('sourceEventId is required for communication intent');
+    }
+    if (!orderStatus || ['pending', 'paid', 'cancelled'].includes(orderStatus)) {
+      throw badRequest('under-review communication requires under-review order truth');
+    }
+
+    try {
+      const event = await prisma.orderEvent.create({
+        data: {
+          orderId,
+          type: 'customer_comm_under_review_candidate',
+          fromStatus: orderStatus,
+          toStatus: orderStatus,
+          source: 'system',
+          sourceEventId,
+          correlationId: correlationId || null,
+        },
+      });
+      return { duplicate: false, event };
+    } catch (error) {
+      if (isUniqueConstraintOnTarget(error, 'source_event_id') || error?.code === 'P2002') {
+        return { duplicate: true, event: null };
+      }
+      normalizeDbError(error, { repository: 'order', operation: 'recordUnderReviewCommunicationIntent' });
+    }
+  },
+  async recordPendingConfirmationSupersession({
+    orderId,
+    sourceEventId,
+    correlationId = null,
+    orderStatus = null,
+  } = {}) {
+    if (!orderId || typeof orderId !== 'string') {
+      throw badRequest('orderId is required for pending supersession');
+    }
+    if (!sourceEventId || typeof sourceEventId !== 'string') {
+      throw badRequest('sourceEventId is required for pending supersession');
+    }
+    if (!orderStatus || ['pending', 'paid', 'cancelled'].includes(orderStatus)) {
+      throw badRequest('pending supersession requires under-review order truth');
+    }
+
+    try {
+      await prisma.orderEvent.create({
+        data: {
+          orderId,
+          type: 'customer_comm_pending_confirmation_superseded',
+          fromStatus: 'pending',
+          toStatus: orderStatus,
+          source: 'system',
+          sourceEventId,
+          correlationId: correlationId || null,
+        },
+      });
+      return { ok: true, duplicate: false };
+    } catch (error) {
+      if (isUniqueConstraintOnTarget(error, 'source_event_id') || error?.code === 'P2002') {
+        return { ok: true, duplicate: true };
+      }
+      normalizeDbError(error, { repository: 'order', operation: 'recordPendingConfirmationSupersession' });
+    }
+  },
   async update(id, data) {
     try { return await prisma.order.update({ where: { id }, data }); } catch (error) { normalizeDbError(error, { repository: 'order', operation: 'update' }); }
   },

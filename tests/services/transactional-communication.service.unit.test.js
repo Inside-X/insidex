@@ -1,5 +1,8 @@
 import { jest } from '@jest/globals';
-import { createPendingConfirmationCommunicationIntent } from '../../src/services/transactional-communication.service.js';
+import {
+  createPendingConfirmationCommunicationIntent,
+  createUnderReviewCommunicationIntent,
+} from '../../src/services/transactional-communication.service.js';
 
 function buildPendingOrder(overrides = {}) {
   return {
@@ -225,6 +228,243 @@ describe('transactional-communication.service', () => {
       outcome: 'suppressed',
       reason: 'intent_recording_failed',
       sourceEventId: 'comm.pending_confirmation.order:ord-comm-1',
+    });
+  });
+
+  test('suppresses pending-confirmation when under-review truth was already recorded', async () => {
+    const repository = {
+      findById: jest.fn().mockResolvedValue(buildPendingOrder()),
+      hasUnderReviewCommunicationIntent: jest.fn().mockResolvedValue(true),
+      recordPendingConfirmationCommunicationIntent: jest.fn(),
+    };
+
+    const result = await createPendingConfirmationCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'superseded_by_under_review_truth',
+      sourceEventId: 'comm.pending_confirmation.order:ord-comm-1',
+    });
+    expect(repository.recordPendingConfirmationCommunicationIntent).not.toHaveBeenCalled();
+  });
+
+  test('creates under-review communication intent only from authoritative under-review truth', async () => {
+    const repository = {
+      findById: jest.fn().mockResolvedValue(buildPendingOrder({
+        status: 'processing_exception',
+      })),
+      recordUnderReviewCommunicationIntent: jest.fn().mockResolvedValue({ duplicate: false, event: { id: 'evt-ur-1' } }),
+      recordPendingConfirmationSupersession: jest.fn().mockResolvedValue({ ok: true, duplicate: false }),
+    };
+
+    const result = await createUnderReviewCommunicationIntent({
+      orderId: 'ord-comm-1',
+      correlationId: 'cid-ur-1',
+      repository,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      outcome: 'created',
+      sourceEventId: 'comm.under_review.order:ord-comm-1',
+      pendingSupersessionEventId: 'comm.pending_confirmation.superseded_by_under_review.order:ord-comm-1',
+      representation: {
+        classKey: 'under_review',
+        orderId: 'ord-comm-1',
+      },
+    });
+    expect(repository.recordUnderReviewCommunicationIntent).toHaveBeenCalledWith(expect.objectContaining({
+      orderId: 'ord-comm-1',
+      sourceEventId: 'comm.under_review.order:ord-comm-1',
+      correlationId: 'cid-ur-1',
+      orderStatus: 'processing_exception',
+    }));
+    expect(repository.recordPendingConfirmationSupersession).toHaveBeenCalledWith({
+      orderId: 'ord-comm-1',
+      sourceEventId: 'comm.pending_confirmation.superseded_by_under_review.order:ord-comm-1',
+      correlationId: 'cid-ur-1',
+      orderStatus: 'processing_exception',
+    });
+  });
+
+  test('suppresses under-review when truth is stronger or missing', async () => {
+    const repository = {
+      findById: jest.fn().mockResolvedValue(buildPendingOrder({ status: 'paid' })),
+      recordUnderReviewCommunicationIntent: jest.fn(),
+    };
+
+    const result = await createUnderReviewCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'stronger_or_missing_truth',
+    });
+    expect(repository.recordUnderReviewCommunicationIntent).not.toHaveBeenCalled();
+  });
+
+  test('dedupes under-review semantic intent deterministically', async () => {
+    const repository = {
+      findById: jest.fn().mockResolvedValue(buildPendingOrder({ status: 'processing_exception' })),
+      recordUnderReviewCommunicationIntent: jest.fn().mockResolvedValue({ duplicate: true }),
+      recordPendingConfirmationSupersession: jest.fn(),
+    };
+
+    const result = await createUnderReviewCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'duplicate_semantic_intent',
+      sourceEventId: 'comm.under_review.order:ord-comm-1',
+    });
+    expect(repository.recordPendingConfirmationSupersession).not.toHaveBeenCalled();
+  });
+
+  test('fails closed when pending supersession cannot be established', async () => {
+    const repository = {
+      findById: jest.fn().mockResolvedValue(buildPendingOrder({ status: 'processing_exception' })),
+      recordUnderReviewCommunicationIntent: jest.fn().mockResolvedValue({ duplicate: false, event: { id: 'evt-ur-1' } }),
+      recordPendingConfirmationSupersession: jest.fn().mockResolvedValue({ ok: false }),
+    };
+
+    const result = await createUnderReviewCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'pending_supersession_uncertain',
+      sourceEventId: 'comm.under_review.order:ord-comm-1',
+      pendingSupersessionEventId: 'comm.pending_confirmation.superseded_by_under_review.order:ord-comm-1',
+    });
+  });
+
+  test('under-review representation never leaks raw internal/operator wording', async () => {
+    const repository = {
+      findById: jest.fn().mockResolvedValue(buildPendingOrder({ status: 'processing_exception' })),
+      recordUnderReviewCommunicationIntent: jest.fn().mockResolvedValue({ duplicate: false, event: { id: 'evt-ur-1' } }),
+      recordPendingConfirmationSupersession: jest.fn().mockResolvedValue({ ok: true }),
+    };
+
+    const result = await createUnderReviewCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+
+    const rendered = JSON.stringify(result.representation).toLowerCase();
+    expect(rendered).not.toContain('remediation');
+    expect(rendered).not.toContain('operator');
+    expect(rendered).not.toContain('audit');
+    expect(rendered).not.toContain('confirmed');
+    expect(rendered).not.toContain('ready');
+    expect(rendered).not.toContain('completed');
+    expect(rendered).not.toContain('cancelled');
+  });
+
+  test('fails closed when under-review order reference is missing', async () => {
+    const result = await createUnderReviewCommunicationIntent({});
+    expect(result).toEqual({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'missing_order_reference',
+    });
+  });
+
+  test('fails closed when under-review truth lookup returns null order', async () => {
+    const repository = {
+      findById: jest.fn().mockResolvedValue(null),
+    };
+    const result = await createUnderReviewCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+    expect(result).toEqual({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'stronger_or_missing_truth',
+    });
+  });
+
+  test('fails closed with truth_unavailable on non-dependency under-review lookup failure', async () => {
+    const repository = {
+      findById: jest.fn().mockRejectedValue(new Error('lookup failed')),
+    };
+    const result = await createUnderReviewCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+    expect(result).toEqual({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'truth_unavailable',
+    });
+  });
+
+  test('fails closed with dependency_unavailable on under-review intent recording dependency failure', async () => {
+    const error = new Error('db unavailable');
+    error.code = 'DB_OPERATION_FAILED';
+    const repository = {
+      findById: jest.fn().mockResolvedValue(buildPendingOrder({ status: 'processing_exception' })),
+      recordUnderReviewCommunicationIntent: jest.fn().mockRejectedValue(error),
+    };
+    const result = await createUnderReviewCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+    expect(result).toEqual({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'dependency_unavailable',
+      sourceEventId: 'comm.under_review.order:ord-comm-1',
+    });
+  });
+
+  test('creates under-review intent when pending supersession hook is unavailable', async () => {
+    const repository = {
+      findById: jest.fn().mockResolvedValue(buildPendingOrder({ status: 'processing_exception' })),
+      recordUnderReviewCommunicationIntent: jest.fn().mockResolvedValue({ duplicate: false, event: { id: 'evt-ur-2' } }),
+    };
+    const result = await createUnderReviewCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      outcome: 'created',
+      sourceEventId: 'comm.under_review.order:ord-comm-1',
+      pendingSupersessionEventId: 'comm.pending_confirmation.superseded_by_under_review.order:ord-comm-1',
+    });
+  });
+
+  test('fails closed with intent_recording_failed on non-dependency under-review write failure', async () => {
+    const repository = {
+      findById: jest.fn().mockResolvedValue(buildPendingOrder({ status: 'processing_exception' })),
+      recordUnderReviewCommunicationIntent: jest.fn().mockRejectedValue(new Error('insert failed')),
+    };
+
+    const result = await createUnderReviewCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'intent_recording_failed',
+      sourceEventId: 'comm.under_review.order:ord-comm-1',
     });
   });
 });

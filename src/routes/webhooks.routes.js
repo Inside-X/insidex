@@ -15,6 +15,7 @@ import { sendDependencyUnavailable } from '../middlewares/webhookStrictDependenc
 import { assertValidTransition, nextStatusForEvent, OrderInvalidTransitionError } from '../domain/order-state-machine.js';
 import { enforceFinalizationBoundary } from '../domain/finalization-boundary-enforcer.js';
 import { signalReconciliationRemediationBoundary } from '../domain/reconciliation-remediation-boundary-signaler.js';
+import { createUnderReviewCommunicationIntent } from '../services/transactional-communication.service.js';
 
 const router = express.Router();
 const MAX_WEBHOOK_BODY_SIZE_BYTES = 1024 * 1024;
@@ -362,39 +363,36 @@ router.post('/stripe', async (req, res, next) => {
     });
 
     if (!boundary.allowed) {
-      const communicationUnit = await orderRepository.recordUnderReviewCommunicationUnitFromWebhook({
+      const communicationIntent = await createUnderReviewCommunicationIntent({
         orderId: order.id,
-        currentStatus: order.status,
-        intendedFinalizationKey: metadata?.idempotencyKey,
-        stripePaymentIntentId: paymentIntentId,
         correlationId,
       });
 
-      if (communicationUnit?.recorded === true) {
-        logger.info('stripe_webhook_under_review_communication_unit_recorded', {
+      if (communicationIntent?.ok === true) {
+        logger.info('stripe_webhook_under_review_communication_intent_created', {
           orderId: order.id,
           eventId: validatedPayload.id,
-          communicationUnitId: communicationUnit.communicationUnitId,
+          sourceEventId: communicationIntent.sourceEventId,
           semanticClass: 'under_review',
-          seam: 'stripe_success_emission_blocked',
+          seam: 'b7_4a_under_review_runtime_seam',
           correlationId,
         });
-      } else if (communicationUnit?.deduped === true) {
-        logger.info('stripe_webhook_under_review_communication_unit_deduped', {
+      } else if (communicationIntent?.reason === 'duplicate_semantic_intent') {
+        logger.info('stripe_webhook_under_review_communication_intent_deduped', {
           orderId: order.id,
           eventId: validatedPayload.id,
-          communicationUnitId: communicationUnit.communicationUnitId,
+          sourceEventId: communicationIntent.sourceEventId || null,
           semanticClass: 'under_review',
-          seam: 'stripe_success_emission_blocked',
+          seam: 'b7_4a_under_review_runtime_seam',
           correlationId,
         });
       } else {
-        logger.warn('stripe_webhook_under_review_communication_unit_not_recorded', {
+        logger.warn('stripe_webhook_under_review_communication_intent_suppressed', {
           orderId: order.id,
           eventId: validatedPayload.id,
-          reason: communicationUnit?.reason || 'insufficient_context',
+          reasonCode: communicationIntent?.reason || 'truth_unavailable',
           semanticClass: 'under_review',
-          seam: 'stripe_success_emission_blocked',
+          seam: 'b7_4a_under_review_runtime_seam',
           correlationId,
         });
       }
