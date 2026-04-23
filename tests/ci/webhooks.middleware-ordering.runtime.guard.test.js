@@ -1,5 +1,4 @@
 import { jest } from '@jest/globals';
-import http from 'node:http';
 import request from 'supertest';
 
 function buildRawBodySpy() {
@@ -82,88 +81,13 @@ describe('webhooks middleware ordering runtime guard (real app wiring)', () => {
     const app = (await import('../../src/app.js')).default;
     app.locals.webhookIdempotencyRedisClient = { incr: jest.fn().mockResolvedValue(1) }; // idempotency backend only: unavailable for set(NX)
 
-    const server = app.listen(0);
-    let req;
-    let res;
+    const res = await request(app)
+      .post('/api/webhooks/stripe')
+      .set('x-request-id', 'cid-runtime-stripe-1')
+      .set('stripe-signature', 'sig')
+      .set('content-type', 'application/json')
+      .send('{"any":"partial');
 
-    try {
-      await new Promise((resolve, reject) => {
-        server.once('listening', resolve);
-        server.once('error', reject);
-      });
-
-      const { port } = server.address();
-
-      res = await new Promise((resolve, reject) => {
-        const responseTimeout = setTimeout(() => {
-          reject(new Error('stripe runtime guard response timeout'));
-        }, 1500);
-
-        req = http.request(
-          {
-            host: '127.0.0.1',
-            port,
-            path: '/api/webhooks/stripe',
-            method: 'POST',
-            agent: false,
-            headers: {
-              'x-request-id': 'cid-runtime-stripe-1',
-              'stripe-signature': 'sig',
-              'content-type': 'application/json',
-              connection: 'close',
-            },
-          },
-          (incomingResponse) => {
-            clearTimeout(responseTimeout);
-            resolve(incomingResponse);
-          }
-        );
-
-        req.on('error', (error) => {
-          clearTimeout(responseTimeout);
-          reject(error);
-        });
-        req.end('{"any":"partial');
-      });
-    } finally {
-      if (res) {
-        res.resume();
-        if (!res.destroyed) {
-          res.destroy();
-        }
-      }
-
-      if (req) {
-        req.destroy();
-      }
-
-      const closeServer = () =>
-        new Promise((resolve, reject) => {
-          server.close((error) => {
-            if (error) {
-              reject(error);
-              return;
-            }
-            resolve();
-          });
-        });
-
-      try {
-        await Promise.race([
-          closeServer(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('server close timeout')), 500)),
-        ]);
-      } catch {
-        if (typeof server.closeAllConnections === 'function') {
-          server.closeAllConnections();
-        }
-        if (typeof server.closeIdleConnections === 'function') {
-          server.closeIdleConnections();
-        }
-        await closeServer();
-      }
-    }
-      
     expect(res.statusCode).toBe(503);
     expect(rawBodySpy).not.toHaveBeenCalled();
     expect(stripeConstructEvent).not.toHaveBeenCalled();

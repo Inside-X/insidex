@@ -257,6 +257,42 @@ export const orderRepository = {
   async findById(id) {
     try { return await prisma.order.findUnique({ where: { id }, include: { items: true } }); } catch (error) { normalizeDbError(error, { repository: 'order', operation: 'findById' }); }
   },
+  async recordPendingConfirmationCommunicationIntent({
+    orderId,
+    sourceEventId,
+    correlationId = null,
+    orderStatus = null,
+  } = {}) {
+    if (!orderId || typeof orderId !== 'string') {
+      throw badRequest('orderId is required for communication intent');
+    }
+    if (!sourceEventId || typeof sourceEventId !== 'string') {
+      throw badRequest('sourceEventId is required for communication intent');
+    }
+    if (orderStatus !== 'pending') {
+      throw badRequest('pending-confirmation communication requires pending order truth');
+    }
+
+    try {
+      const event = await prisma.orderEvent.create({
+        data: {
+          orderId,
+          type: 'customer_comm_pending_confirmation_candidate',
+          fromStatus: 'pending',
+          toStatus: 'pending',
+          source: 'system',
+          sourceEventId,
+          correlationId: correlationId || null,
+        },
+      });
+      return { duplicate: false, event };
+    } catch (error) {
+      if (isUniqueConstraintOnTarget(error, 'source_event_id') || error?.code === 'P2002') {
+        return { duplicate: true, event: null };
+      }
+      normalizeDbError(error, { repository: 'order', operation: 'recordPendingConfirmationCommunicationIntent' });
+    }
+  },
   async update(id, data) {
     try { return await prisma.order.update({ where: { id }, data }); } catch (error) { normalizeDbError(error, { repository: 'order', operation: 'update' }); }
   },

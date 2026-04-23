@@ -22,6 +22,7 @@ describe('orders.routes', () => {
       '../../src/utils/api-error.js': () => ({ sendApiError }),
       '../../src/repositories/order.repository.js': () => ({ orderRepository }),
       '../../src/lib/critical-dependencies.js': () => ({ assertDatabaseReady: jest.fn().mockResolvedValue(undefined), isDependencyUnavailableError: jest.fn(() => false) }),
+      '../../src/services/transactional-communication.service.js': () => ({ createPendingConfirmationCommunicationIntent: jest.fn().mockResolvedValue({ ok: true, outcome: 'created' }) }),
     });
 
     const create = routes.find((r) => r.path === '/' && r.method === 'post');
@@ -130,6 +131,7 @@ describe('orders.routes', () => {
       '../../src/utils/logger.js': () => ({ logger }),
       '../../src/repositories/order.repository.js': () => ({ orderRepository }),
       '../../src/lib/critical-dependencies.js': () => ({ assertDatabaseReady, isDependencyUnavailableError }),
+      '../../src/services/transactional-communication.service.js': () => ({ createPendingConfirmationCommunicationIntent: jest.fn().mockResolvedValue({ ok: true, outcome: 'created' }) }),
     });
 
     const create = routes.find((r) => r.path === '/' && r.method === 'post');
@@ -173,6 +175,7 @@ describe('orders.routes', () => {
       '../../src/utils/api-error.js': () => ({ sendApiError: jest.fn() }),
       '../../src/repositories/order.repository.js': () => ({ orderRepository }),
       '../../src/lib/critical-dependencies.js': () => ({ assertDatabaseReady: jest.fn().mockResolvedValue(undefined), isDependencyUnavailableError: jest.fn(() => false) }),
+      '../../src/services/transactional-communication.service.js': () => ({ createPendingConfirmationCommunicationIntent: jest.fn().mockResolvedValue({ ok: true, outcome: 'created' }) }),
     });
 
     const mine = routes.find((r) => r.path === '/mine' && r.method === 'get');
@@ -216,6 +219,7 @@ describe('orders.routes', () => {
       '../../src/utils/logger.js': () => ({ logger }),
       '../../src/repositories/order.repository.js': () => ({ orderRepository }),
       '../../src/lib/critical-dependencies.js': () => ({ assertDatabaseReady, isDependencyUnavailableError }),
+      '../../src/services/transactional-communication.service.js': () => ({ createPendingConfirmationCommunicationIntent: jest.fn().mockResolvedValue({ ok: true, outcome: 'created' }) }),
     });
 
     const mine = routes.find((r) => r.path === '/mine' && r.method === 'get');
@@ -256,6 +260,7 @@ describe('orders.routes', () => {
       '../../src/utils/api-error.js': () => ({ sendApiError: jest.fn() }),
       '../../src/repositories/order.repository.js': () => ({ orderRepository }),
       '../../src/lib/critical-dependencies.js': () => ({ assertDatabaseReady, isDependencyUnavailableError }),
+      '../../src/services/transactional-communication.service.js': () => ({ createPendingConfirmationCommunicationIntent: jest.fn().mockResolvedValue({ ok: true, outcome: 'created' }) }),
     });
 
     const mine = routes.find((r) => r.path === '/mine' && r.method === 'get');
@@ -297,6 +302,7 @@ describe('orders.routes', () => {
       '../../src/utils/api-error.js': () => ({ sendApiError: jest.fn() }),
       '../../src/repositories/order.repository.js': () => ({ orderRepository }),
       '../../src/lib/critical-dependencies.js': () => ({ assertDatabaseReady: jest.fn().mockResolvedValue(undefined), isDependencyUnavailableError: jest.fn(() => false) }),
+      '../../src/services/transactional-communication.service.js': () => ({ createPendingConfirmationCommunicationIntent: jest.fn().mockResolvedValue({ ok: true, outcome: 'created' }) }),
     });
 
     const detail = routes.find((r) => r.path === '/mine/:id' && r.method === 'get');
@@ -333,6 +339,7 @@ describe('orders.routes', () => {
       '../../src/utils/api-error.js': () => ({ sendApiError }),
       '../../src/repositories/order.repository.js': () => ({ orderRepository }),
       '../../src/lib/critical-dependencies.js': () => ({ assertDatabaseReady: jest.fn().mockResolvedValue(undefined), isDependencyUnavailableError: jest.fn(() => false) }),
+      '../../src/services/transactional-communication.service.js': () => ({ createPendingConfirmationCommunicationIntent: jest.fn().mockResolvedValue({ ok: true, outcome: 'created' }) }),
     });
 
     const detail = routes.find((r) => r.path === '/mine/:id' && r.method === 'get');
@@ -372,6 +379,7 @@ describe('orders.routes', () => {
       '../../src/utils/logger.js': () => ({ logger }),
       '../../src/repositories/order.repository.js': () => ({ orderRepository }),
       '../../src/lib/critical-dependencies.js': () => ({ assertDatabaseReady, isDependencyUnavailableError }),
+      '../../src/services/transactional-communication.service.js': () => ({ createPendingConfirmationCommunicationIntent: jest.fn().mockResolvedValue({ ok: true, outcome: 'created' }) }),
     });
 
     const detail = routes.find((r) => r.path === '/mine/:id' && r.method === 'get');
@@ -385,5 +393,161 @@ describe('orders.routes', () => {
 
     await detail.handlers.at(-1)(req, res, next);
     expect(next).toHaveBeenCalledWith(expect.objectContaining({ message: 'unexpected detail failure' }));
+  });
+
+  test('create endpoint logs bounded suppression outcome when communication intent is fail-closed', async () => {
+    const orderRepository = {
+      createIdempotentWithItemsAndUpdateStock: jest.fn().mockResolvedValue({ order: { id: 'ord-1' }, replayed: false }),
+      listCustomerOrderVisibility: jest.fn().mockResolvedValue([]),
+      processPaymentWebhookEvent: jest.fn().mockResolvedValue({ ok: true }),
+      markFulfillmentReady: jest.fn().mockResolvedValue({ id: 'o-ready' }),
+      markFulfillmentCompleted: jest.fn().mockResolvedValue({ id: 'o-complete' }),
+    };
+    const logger = { info: jest.fn(), error: jest.fn() };
+
+    const routes = await loadRoute('../../src/routes/orders.routes.js', {
+      '../../src/validation/schemas/index.js': () => ({ authSchemas: { register: {}, login: {}, forgot: {}, reset: {}, refresh: {}, logout: {} }, ordersSchemas: { create: {}, paymentWebhook: {}, byIdParams: {}, markReadiness: {}, markCompletion: {}, mineListQuery: {} }, paymentsSchemas: { createIntent: {} }, cartSchemas: { getCartQuery: {}, add: {}, updateItemParams: {}, updateItemBody: {}, removeItemParams: {}, removeItemBody: {} }, productsSchemas: { listQuery: {}, byIdParams: {}, create: {} }, leadsSchemas: { create: {}, listQuery: {} }, analyticsSchemas: { track: {}, listQuery: {} } }),
+      '../../src/validation/strict-validate.middleware.js': () => ({ strictValidate: jest.fn(() => pass) }),
+      '../../src/middlewares/authenticate.js': () => ({ default: (req, _res, n) => { req.auth = { sub: 'u1', isGuest: false }; n(); } }),
+      '../../src/middlewares/authorizeRole.js': () => ({ default: jest.fn(() => pass) }),
+      '../../src/middlewares/checkoutIdentity.js': () => ({ default: pass }),
+      '../../src/middlewares/checkoutCustomerAccess.js': () => ({ default: pass, enforceOrderOwnership: pass }),
+      '../../src/utils/api-error.js': () => ({ sendApiError: jest.fn((_req, res, status) => res.status(status).json({})) }),
+      '../../src/utils/logger.js': () => ({ logger }),
+      '../../src/repositories/order.repository.js': () => ({ orderRepository }),
+      '../../src/lib/critical-dependencies.js': () => ({ assertDatabaseReady: jest.fn().mockResolvedValue(undefined), isDependencyUnavailableError: jest.fn(() => false) }),
+      '../../src/services/transactional-communication.service.js': () => ({
+        createPendingConfirmationCommunicationIntent: jest.fn().mockResolvedValue({
+          ok: false,
+          outcome: 'suppressed',
+          reason: 'duplicate_semantic_intent',
+        }),
+      }),
+    });
+
+    const create = routes.find((r) => r.path === '/' && r.method === 'post');
+    const req = {
+      body: {
+        items: [{ id: 'p1', quantity: 1 }],
+        idempotencyKey: 'k-comm-1',
+        fulfillment: { mode: 'pickup_local' },
+        email: 'u1@test.dev',
+      },
+      auth: { sub: 'u1', isGuest: false },
+      get: jest.fn(() => 'req-comm-1'),
+      requestId: 'req-comm-1',
+    };
+    const res = { locals: {}, status: jest.fn(() => res), json: jest.fn() };
+
+    await create.handlers.at(-1)(req, res, jest.fn());
+
+    expect(logger.info).toHaveBeenCalledWith('transactional_comm_intent_suppressed', expect.objectContaining({
+      classKey: 'order_received_pending_confirmation',
+      orderId: 'ord-1',
+      reasonCode: 'duplicate_semantic_intent',
+      correlationId: 'req-comm-1',
+    }));
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  test('create endpoint suppression log falls back to null orderId and unknown correlation when unavailable', async () => {
+    const orderRepository = {
+      createIdempotentWithItemsAndUpdateStock: jest.fn().mockResolvedValue({ order: {}, replayed: false }),
+      listCustomerOrderVisibility: jest.fn().mockResolvedValue([]),
+      processPaymentWebhookEvent: jest.fn().mockResolvedValue({ ok: true }),
+      markFulfillmentReady: jest.fn().mockResolvedValue({ id: 'o-ready' }),
+      markFulfillmentCompleted: jest.fn().mockResolvedValue({ id: 'o-complete' }),
+    };
+    const logger = { info: jest.fn(), error: jest.fn() };
+
+    const routes = await loadRoute('../../src/routes/orders.routes.js', {
+      '../../src/validation/schemas/index.js': () => ({ authSchemas: { register: {}, login: {}, forgot: {}, reset: {}, refresh: {}, logout: {} }, ordersSchemas: { create: {}, paymentWebhook: {}, byIdParams: {}, markReadiness: {}, markCompletion: {}, mineListQuery: {} }, paymentsSchemas: { createIntent: {} }, cartSchemas: { getCartQuery: {}, add: {}, updateItemParams: {}, updateItemBody: {}, removeItemParams: {}, removeItemBody: {} }, productsSchemas: { listQuery: {}, byIdParams: {}, create: {} }, leadsSchemas: { create: {}, listQuery: {} }, analyticsSchemas: { track: {}, listQuery: {} } }),
+      '../../src/validation/strict-validate.middleware.js': () => ({ strictValidate: jest.fn(() => pass) }),
+      '../../src/middlewares/authenticate.js': () => ({ default: (req, _res, n) => { req.auth = { sub: 'u1', isGuest: false }; n(); } }),
+      '../../src/middlewares/authorizeRole.js': () => ({ default: jest.fn(() => pass) }),
+      '../../src/middlewares/checkoutIdentity.js': () => ({ default: pass }),
+      '../../src/middlewares/checkoutCustomerAccess.js': () => ({ default: pass, enforceOrderOwnership: pass }),
+      '../../src/utils/api-error.js': () => ({ sendApiError: jest.fn((_req, res, status) => res.status(status).json({})) }),
+      '../../src/utils/logger.js': () => ({ logger }),
+      '../../src/repositories/order.repository.js': () => ({ orderRepository }),
+      '../../src/lib/critical-dependencies.js': () => ({ assertDatabaseReady: jest.fn().mockResolvedValue(undefined), isDependencyUnavailableError: jest.fn(() => false) }),
+      '../../src/services/transactional-communication.service.js': () => ({
+        createPendingConfirmationCommunicationIntent: jest.fn().mockResolvedValue({
+          ok: false,
+          outcome: 'suppressed',
+          reason: 'missing_order_reference',
+        }),
+      }),
+    });
+
+    const create = routes.find((r) => r.path === '/' && r.method === 'post');
+    const req = {
+      body: {
+        items: [{ id: 'p1', quantity: 1 }],
+        idempotencyKey: 'k-comm-2',
+        fulfillment: { mode: 'pickup_local' },
+        email: 'u1@test.dev',
+      },
+      auth: { sub: 'u1', isGuest: false },
+    };
+    const res = { locals: {}, status: jest.fn(() => res), json: jest.fn() };
+
+    await create.handlers.at(-1)(req, res, jest.fn());
+
+    expect(logger.info).toHaveBeenCalledWith('transactional_comm_intent_suppressed', expect.objectContaining({
+      orderId: null,
+      correlationId: 'unknown',
+    }));
+  });
+
+  test('dependency-outage logging falls back to unknown correlation when request correlation is absent', async () => {
+    const outage = new Error('database unavailable');
+    const assertDatabaseReady = jest.fn().mockRejectedValue(outage);
+    const isDependencyUnavailableError = jest.fn(() => true);
+    const logger = { error: jest.fn() };
+    const sendApiError = jest.fn((_req, res, status) => res.status(status).json({}));
+    const orderRepository = {
+      createIdempotentWithItemsAndUpdateStock: jest.fn(),
+      listCustomerOrderVisibility: jest.fn(),
+      processPaymentWebhookEvent: jest.fn(),
+      markFulfillmentReady: jest.fn(),
+      markFulfillmentCompleted: jest.fn(),
+    };
+
+    const routes = await loadRoute('../../src/routes/orders.routes.js', {
+      '../../src/validation/schemas/index.js': () => ({ authSchemas: { register: {}, login: {}, forgot: {}, reset: {}, refresh: {}, logout: {} }, ordersSchemas: { create: {}, paymentWebhook: {}, byIdParams: {}, markReadiness: {}, markCompletion: {}, mineListQuery: {} }, paymentsSchemas: { createIntent: {} }, cartSchemas: { getCartQuery: {}, add: {}, updateItemParams: {}, updateItemBody: {}, removeItemParams: {}, removeItemBody: {} }, productsSchemas: { listQuery: {}, byIdParams: {}, create: {} }, leadsSchemas: { create: {}, listQuery: {} }, analyticsSchemas: { track: {}, listQuery: {} } }),
+      '../../src/validation/strict-validate.middleware.js': () => ({ strictValidate: jest.fn(() => pass) }),
+      '../../src/middlewares/authenticate.js': () => ({ default: pass }),
+      '../../src/middlewares/authorizeRole.js': () => ({ default: jest.fn(() => pass) }),
+      '../../src/middlewares/checkoutIdentity.js': () => ({ default: pass }),
+      '../../src/middlewares/checkoutCustomerAccess.js': () => ({ default: pass, enforceOrderOwnership: pass }),
+      '../../src/utils/api-error.js': () => ({ sendApiError }),
+      '../../src/utils/logger.js': () => ({ logger }),
+      '../../src/repositories/order.repository.js': () => ({ orderRepository }),
+      '../../src/lib/critical-dependencies.js': () => ({ assertDatabaseReady, isDependencyUnavailableError }),
+      '../../src/services/transactional-communication.service.js': () => ({ createPendingConfirmationCommunicationIntent: jest.fn().mockResolvedValue({ ok: true, outcome: 'created' }) }),
+    });
+
+    const create = routes.find((r) => r.path === '/' && r.method === 'post');
+    await create.handlers.at(-1)({ body: { items: [{ id: 'p1', quantity: 1 }], idempotencyKey: 'k-3' }, auth: { sub: 'u1', isGuest: false } }, { status: jest.fn(() => ({ json: jest.fn() })), json: jest.fn() }, jest.fn());
+
+    const mine = routes.find((r) => r.path === '/mine' && r.method === 'get');
+    await mine.handlers.at(-1)({ auth: { sub: 'u1' }, query: {} }, { status: jest.fn(() => ({ json: jest.fn() })), json: jest.fn() }, jest.fn());
+
+    const detail = routes.find((r) => r.path === '/mine/:id' && r.method === 'get');
+    await detail.handlers.at(-1)({ auth: { sub: 'u1' }, params: { id: 'ord-1' } }, { status: jest.fn(() => ({ json: jest.fn() })), json: jest.fn() }, jest.fn());
+
+    expect(logger.error).toHaveBeenCalledWith('critical_dependency_unavailable', expect.objectContaining({
+      endpoint: 'POST /api/orders',
+      correlationId: 'unknown',
+    }));
+    expect(logger.error).toHaveBeenCalledWith('critical_dependency_unavailable', expect.objectContaining({
+      endpoint: 'GET /api/orders/mine',
+      correlationId: 'unknown',
+    }));
+    expect(logger.error).toHaveBeenCalledWith('critical_dependency_unavailable', expect.objectContaining({
+      endpoint: 'GET /api/orders/mine/:id',
+      correlationId: 'unknown',
+    }));
   });
 });

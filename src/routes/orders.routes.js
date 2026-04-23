@@ -10,6 +10,7 @@ import { orderRepository } from '../repositories/order.repository.js';
 import { logger } from '../utils/logger.js';
 import { assertDatabaseReady, isDependencyUnavailableError } from '../lib/critical-dependencies.js';
 import { toCustomerOrderDetailEntry, toCustomerOrderListEntry } from './orders.customer-view.js';
+import { createPendingConfirmationCommunicationIntent } from '../services/transactional-communication.service.js';
 
 const router = express.Router();
 
@@ -50,6 +51,20 @@ router.post(
         response.meta.guestSessionToken = res.locals.implicitGuestToken;
       }
 
+      const communicationIntent = await createPendingConfirmationCommunicationIntent({
+        orderId: result?.order?.id,
+        correlationId: req.requestId || null,
+      });
+
+      if (!communicationIntent.ok) {
+        logger.info('transactional_comm_intent_suppressed', {
+          classKey: 'order_received_pending_confirmation',
+          orderId: result?.order?.id || null,
+          reasonCode: communicationIntent.reason,
+          correlationId: req.requestId || 'unknown',
+        });
+      }
+
       return res.status(result.replayed ? 200 : 201).json(response);
     } catch (error) {
       if (isDependencyUnavailableError(error)) {
@@ -57,7 +72,7 @@ router.post(
           endpoint: 'POST /api/orders',
           reasonCode: 'db_unavailable',
           reason: error?.code || error?.message,
-          correlationId: req.requestId || req.get('x-request-id') || 'unknown',
+          correlationId: req.requestId || req.get?.('x-request-id') || 'unknown',
         });
         return sendApiError(req, res, 503, 'SERVICE_UNAVAILABLE', 'Critical dependency unavailable');
       }
@@ -96,7 +111,7 @@ router.get(
           endpoint: 'GET /api/orders/mine',
           reasonCode: 'db_unavailable',
           reason: error?.code || error?.message,
-          correlationId: req.requestId || req.get('x-request-id') || 'unknown',
+          correlationId: req.requestId || req.get?.('x-request-id') || 'unknown',
         });
         return sendApiError(req, res, 503, 'SERVICE_UNAVAILABLE', 'Order history is temporarily unavailable');
       }
@@ -135,7 +150,7 @@ router.get(
           endpoint: 'GET /api/orders/mine/:id',
           reasonCode: 'db_unavailable',
           reason: error?.code || error?.message,
-          correlationId: req.requestId || req.get('x-request-id') || 'unknown',
+          correlationId: req.requestId || req.get?.('x-request-id') || 'unknown',
         });
         return sendApiError(req, res, 503, 'SERVICE_UNAVAILABLE', 'Order details are temporarily unavailable');
       }
