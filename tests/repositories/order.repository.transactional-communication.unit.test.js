@@ -300,6 +300,60 @@ describe('orderRepository transactional communication seam', () => {
     });
   });
 
+  test('records ready communication intent with deterministic payload', async () => {
+    const { orderRepository, prismaMock } = await loadOrderRepository();
+    const event = { id: 'evt-ready-1' };
+    prismaMock.orderEvent.create.mockResolvedValueOnce(event);
+
+    await expect(orderRepository.recordReadyCommunicationIntent({
+      orderId: 'ord-1',
+      sourceEventId: 'comm.ready.order:ord-1',
+      correlationId: 'cid-rd-1',
+      orderStatus: 'paid',
+    })).resolves.toEqual({ duplicate: false, event });
+
+    expect(prismaMock.orderEvent.create).toHaveBeenCalledWith({
+      data: {
+        orderId: 'ord-1',
+        type: 'customer_comm_ready_candidate',
+        fromStatus: 'paid',
+        toStatus: 'paid',
+        source: 'system',
+        sourceEventId: 'comm.ready.order:ord-1',
+        correlationId: 'cid-rd-1',
+      },
+    });
+  });
+
+  test('records pending/under-review/confirmed supersession markers by ready with deterministic payload', async () => {
+    const { orderRepository, prismaMock } = await loadOrderRepository();
+    prismaMock.orderEvent.create
+      .mockResolvedValueOnce({ id: 'evt-rd-pending-sup-1' })
+      .mockResolvedValueOnce({ id: 'evt-rd-under-review-sup-1' })
+      .mockResolvedValueOnce({ id: 'evt-rd-confirmed-sup-1' });
+
+    await expect(orderRepository.recordPendingConfirmationSupersessionByReady({
+      orderId: 'ord-1',
+      sourceEventId: 'comm.pending_confirmation.superseded_by_ready.order:ord-1',
+      correlationId: 'cid-rd-pending',
+      orderStatus: 'paid',
+    })).resolves.toEqual({ ok: true, duplicate: false });
+
+    await expect(orderRepository.recordUnderReviewSupersessionByReady({
+      orderId: 'ord-1',
+      sourceEventId: 'comm.under_review.superseded_by_ready.order:ord-1',
+      correlationId: 'cid-rd-under-review',
+      orderStatus: 'paid',
+    })).resolves.toEqual({ ok: true, duplicate: false });
+
+    await expect(orderRepository.recordConfirmedSupersessionByReady({
+      orderId: 'ord-1',
+      sourceEventId: 'comm.confirmed.superseded_by_ready.order:ord-1',
+      correlationId: 'cid-rd-confirmed',
+      orderStatus: 'paid',
+    })).resolves.toEqual({ ok: true, duplicate: false });
+  });
+
   test.each([
     [{ code: 'P2002', meta: { target: ['source_event_id'] } }],
     [{ code: 'P2002' }],
@@ -331,6 +385,18 @@ describe('orderRepository transactional communication seam', () => {
   });
 
   test.each([
+    ['recordReadyCommunicationIntent', { orderId: 'ord-1', sourceEventId: 'comm.ready.order:ord-1', orderStatus: 'paid' }, { duplicate: true, event: null }],
+    ['recordPendingConfirmationSupersessionByReady', { orderId: 'ord-1', sourceEventId: 'comm.pending_confirmation.superseded_by_ready.order:ord-1', orderStatus: 'paid' }, { ok: true, duplicate: true }],
+    ['recordUnderReviewSupersessionByReady', { orderId: 'ord-1', sourceEventId: 'comm.under_review.superseded_by_ready.order:ord-1', orderStatus: 'paid' }, { ok: true, duplicate: true }],
+    ['recordConfirmedSupersessionByReady', { orderId: 'ord-1', sourceEventId: 'comm.confirmed.superseded_by_ready.order:ord-1', orderStatus: 'paid' }, { ok: true, duplicate: true }],
+  ])('dedupes ready seam writes on unique conflicts: %s', async (methodName, input, expected) => {
+    const { orderRepository, prismaMock } = await loadOrderRepository();
+    const err = Object.assign(new Error('duplicate ready seam event'), { code: 'P2002', meta: { target: ['source_event_id'] } });
+    prismaMock.orderEvent.create.mockRejectedValueOnce(err);
+    await expect(orderRepository[methodName](input)).resolves.toEqual(expected);
+  });
+
+  test.each([
     [{}, 'orderId is required for communication intent', 'recordUnderReviewCommunicationIntent'],
     [{ orderId: 'ord-1' }, 'sourceEventId is required for communication intent', 'recordUnderReviewCommunicationIntent'],
     [{ orderId: 'ord-1', sourceEventId: 'comm.under_review.order:ord-1', orderStatus: 'pending' }, 'under-review communication requires under-review order truth', 'recordUnderReviewCommunicationIntent'],
@@ -346,6 +412,18 @@ describe('orderRepository transactional communication seam', () => {
     [{}, 'orderId is required for under-review supersession', 'recordUnderReviewSupersessionByConfirmed'],
     [{ orderId: 'ord-1' }, 'sourceEventId is required for under-review supersession', 'recordUnderReviewSupersessionByConfirmed'],
     [{ orderId: 'ord-1', sourceEventId: 'comm.under_review.superseded_by_confirmed.order:ord-1', orderStatus: 'pending' }, 'under-review supersession by confirmed requires confirmed order truth', 'recordUnderReviewSupersessionByConfirmed'],
+    [{}, 'orderId is required for communication intent', 'recordReadyCommunicationIntent'],
+    [{ orderId: 'ord-1' }, 'sourceEventId is required for communication intent', 'recordReadyCommunicationIntent'],
+    [{ orderId: 'ord-1', sourceEventId: 'comm.ready.order:ord-1', orderStatus: 'pending' }, 'ready communication requires ready order truth', 'recordReadyCommunicationIntent'],
+    [{}, 'orderId is required for pending supersession', 'recordPendingConfirmationSupersessionByReady'],
+    [{ orderId: 'ord-1' }, 'sourceEventId is required for pending supersession', 'recordPendingConfirmationSupersessionByReady'],
+    [{ orderId: 'ord-1', sourceEventId: 'comm.pending_confirmation.superseded_by_ready.order:ord-1', orderStatus: 'pending' }, 'pending supersession by ready requires ready order truth', 'recordPendingConfirmationSupersessionByReady'],
+    [{}, 'orderId is required for under-review supersession', 'recordUnderReviewSupersessionByReady'],
+    [{ orderId: 'ord-1' }, 'sourceEventId is required for under-review supersession', 'recordUnderReviewSupersessionByReady'],
+    [{ orderId: 'ord-1', sourceEventId: 'comm.under_review.superseded_by_ready.order:ord-1', orderStatus: 'pending' }, 'under-review supersession by ready requires ready order truth', 'recordUnderReviewSupersessionByReady'],
+    [{}, 'orderId is required for confirmed supersession', 'recordConfirmedSupersessionByReady'],
+    [{ orderId: 'ord-1' }, 'sourceEventId is required for confirmed supersession', 'recordConfirmedSupersessionByReady'],
+    [{ orderId: 'ord-1', sourceEventId: 'comm.confirmed.superseded_by_ready.order:ord-1', orderStatus: 'pending' }, 'confirmed supersession by ready requires ready order truth', 'recordConfirmedSupersessionByReady'],
   ])('rejects invalid under-review context: %j', async (input, expectedMessage, methodName) => {
     const { orderRepository } = await loadOrderRepository();
     await expect(orderRepository[methodName](input)).rejects.toThrow(expectedMessage);

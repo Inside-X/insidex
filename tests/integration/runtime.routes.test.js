@@ -191,6 +191,10 @@ describe('runtime business routes', () => {
   });
 
   test('orders readiness accepts admin and keeps readiness semantics bounded', async () => {
+    jest.spyOn(orderRepository, 'recordReadyCommunicationIntent').mockResolvedValue({ duplicate: false, event: { id: 'evt-ready-1' } });
+    jest.spyOn(orderRepository, 'recordPendingConfirmationSupersessionByReady').mockResolvedValue({ ok: true, duplicate: false });
+    jest.spyOn(orderRepository, 'recordUnderReviewSupersessionByReady').mockResolvedValue({ ok: true, duplicate: false });
+    jest.spyOn(orderRepository, 'recordConfirmedSupersessionByReady').mockResolvedValue({ ok: true, duplicate: false });
     jest.spyOn(orderRepository, 'markFulfillmentReady').mockResolvedValue({
       id: '00000000-0000-0000-0000-000000000555',
       status: 'paid',
@@ -219,6 +223,10 @@ describe('runtime business routes', () => {
   });
 
   test('orders readiness rejects non-admin and invalid readiness payload', async () => {
+    jest.spyOn(orderRepository, 'recordReadyCommunicationIntent').mockResolvedValue({ duplicate: false, event: { id: 'evt-ready-2' } });
+    jest.spyOn(orderRepository, 'recordPendingConfirmationSupersessionByReady').mockResolvedValue({ ok: true, duplicate: false });
+    jest.spyOn(orderRepository, 'recordUnderReviewSupersessionByReady').mockResolvedValue({ ok: true, duplicate: false });
+    jest.spyOn(orderRepository, 'recordConfirmedSupersessionByReady').mockResolvedValue({ ok: true, duplicate: false });
     const nonAdmin = await request(app)
       .post('/api/orders/00000000-0000-0000-0000-000000000555/readiness')
       .set('Authorization', `Bearer ${token('customer')}`)

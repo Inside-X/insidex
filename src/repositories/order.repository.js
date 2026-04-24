@@ -491,6 +491,150 @@ export const orderRepository = {
       normalizeDbError(error, { repository: 'order', operation: 'recordUnderReviewSupersessionByConfirmed' });
     }
   },
+  async recordReadyCommunicationIntent({
+    orderId,
+    sourceEventId,
+    correlationId = null,
+    orderStatus = null,
+  } = {}) {
+    if (!orderId || typeof orderId !== 'string') {
+      throw badRequest('orderId is required for communication intent');
+    }
+    if (!sourceEventId || typeof sourceEventId !== 'string') {
+      throw badRequest('sourceEventId is required for communication intent');
+    }
+    if (orderStatus !== 'paid') {
+      throw badRequest('ready communication requires ready order truth');
+    }
+
+    try {
+      const event = await prisma.orderEvent.create({
+        data: {
+          orderId,
+          type: 'customer_comm_ready_candidate',
+          fromStatus: 'paid',
+          toStatus: 'paid',
+          source: 'system',
+          sourceEventId,
+          correlationId: correlationId || null,
+        },
+      });
+      return { duplicate: false, event };
+    } catch (error) {
+      if (isUniqueConstraintOnTarget(error, 'source_event_id') || error?.code === 'P2002') {
+        return { duplicate: true, event: null };
+      }
+      normalizeDbError(error, { repository: 'order', operation: 'recordReadyCommunicationIntent' });
+    }
+  },
+  async recordPendingConfirmationSupersessionByReady({
+    orderId,
+    sourceEventId,
+    correlationId = null,
+    orderStatus = null,
+  } = {}) {
+    if (!orderId || typeof orderId !== 'string') {
+      throw badRequest('orderId is required for pending supersession');
+    }
+    if (!sourceEventId || typeof sourceEventId !== 'string') {
+      throw badRequest('sourceEventId is required for pending supersession');
+    }
+    if (orderStatus !== 'paid') {
+      throw badRequest('pending supersession by ready requires ready order truth');
+    }
+
+    try {
+      await prisma.orderEvent.create({
+        data: {
+          orderId,
+          type: 'customer_comm_pending_confirmation_superseded',
+          fromStatus: 'pending',
+          toStatus: 'paid',
+          source: 'system',
+          sourceEventId,
+          correlationId: correlationId || null,
+        },
+      });
+      return { ok: true, duplicate: false };
+    } catch (error) {
+      if (isUniqueConstraintOnTarget(error, 'source_event_id') || error?.code === 'P2002') {
+        return { ok: true, duplicate: true };
+      }
+      normalizeDbError(error, { repository: 'order', operation: 'recordPendingConfirmationSupersessionByReady' });
+    }
+  },
+  async recordUnderReviewSupersessionByReady({
+    orderId,
+    sourceEventId,
+    correlationId = null,
+    orderStatus = null,
+  } = {}) {
+    if (!orderId || typeof orderId !== 'string') {
+      throw badRequest('orderId is required for under-review supersession');
+    }
+    if (!sourceEventId || typeof sourceEventId !== 'string') {
+      throw badRequest('sourceEventId is required for under-review supersession');
+    }
+    if (orderStatus !== 'paid') {
+      throw badRequest('under-review supersession by ready requires ready order truth');
+    }
+
+    try {
+      await prisma.orderEvent.create({
+        data: {
+          orderId,
+          type: 'customer_comm_under_review_superseded',
+          fromStatus: 'under_review',
+          toStatus: 'paid',
+          source: 'system',
+          sourceEventId,
+          correlationId: correlationId || null,
+        },
+      });
+      return { ok: true, duplicate: false };
+    } catch (error) {
+      if (isUniqueConstraintOnTarget(error, 'source_event_id') || error?.code === 'P2002') {
+        return { ok: true, duplicate: true };
+      }
+      normalizeDbError(error, { repository: 'order', operation: 'recordUnderReviewSupersessionByReady' });
+    }
+  },
+  async recordConfirmedSupersessionByReady({
+    orderId,
+    sourceEventId,
+    correlationId = null,
+    orderStatus = null,
+  } = {}) {
+    if (!orderId || typeof orderId !== 'string') {
+      throw badRequest('orderId is required for confirmed supersession');
+    }
+    if (!sourceEventId || typeof sourceEventId !== 'string') {
+      throw badRequest('sourceEventId is required for confirmed supersession');
+    }
+    if (orderStatus !== 'paid') {
+      throw badRequest('confirmed supersession by ready requires ready order truth');
+    }
+
+    try {
+      await prisma.orderEvent.create({
+        data: {
+          orderId,
+          type: 'customer_comm_confirmed_superseded',
+          fromStatus: 'paid',
+          toStatus: 'paid',
+          source: 'system',
+          sourceEventId,
+          correlationId: correlationId || null,
+        },
+      });
+      return { ok: true, duplicate: false };
+    } catch (error) {
+      if (isUniqueConstraintOnTarget(error, 'source_event_id') || error?.code === 'P2002') {
+        return { ok: true, duplicate: true };
+      }
+      normalizeDbError(error, { repository: 'order', operation: 'recordConfirmedSupersessionByReady' });
+    }
+  },
   async update(id, data) {
     try { return await prisma.order.update({ where: { id }, data }); } catch (error) { normalizeDbError(error, { repository: 'order', operation: 'update' }); }
   },

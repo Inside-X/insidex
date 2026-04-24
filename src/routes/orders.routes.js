@@ -10,7 +10,10 @@ import { orderRepository } from '../repositories/order.repository.js';
 import { logger } from '../utils/logger.js';
 import { assertDatabaseReady, isDependencyUnavailableError } from '../lib/critical-dependencies.js';
 import { toCustomerOrderDetailEntry, toCustomerOrderListEntry } from './orders.customer-view.js';
-import { createPendingConfirmationCommunicationIntent } from '../services/transactional-communication.service.js';
+import {
+  createPendingConfirmationCommunicationIntent,
+  createReadyCommunicationIntent,
+} from '../services/transactional-communication.service.js';
 
 const router = express.Router();
 
@@ -189,6 +192,21 @@ router.post(
         actorType: 'admin',
         note: req.body.note,
       });
+
+      const communicationIntent = await createReadyCommunicationIntent({
+        orderId: order?.id || req.params.id,
+        correlationId: req.requestId || null,
+        authoritativeOrder: order,
+      });
+
+      if (!communicationIntent.ok) {
+        logger.info('transactional_comm_intent_suppressed', {
+          classKey: 'ready',
+          orderId: order?.id || req.params.id || null,
+          reasonCode: communicationIntent.reason,
+          correlationId: req.requestId || 'unknown',
+        });
+      }
 
       return res.status(200).json({ data: order });
     } catch (error) {
