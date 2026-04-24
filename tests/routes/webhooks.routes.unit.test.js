@@ -10,6 +10,8 @@ describe('webhooks.routes', () => {
     const sendApiError = jest.fn((_req, res, status) => res.status(status).json({}));
     const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
     const orderRepository = { findById: jest.fn(), markPaidFromWebhook: jest.fn(), processPaymentWebhookEvent: jest.fn() };
+    const createConfirmedCommunicationIntent = jest.fn().mockResolvedValue({ ok: true, outcome: 'created', sourceEventId: 'comm.confirmed.order:o1' });
+    const createUnderReviewCommunicationIntent = jest.fn().mockResolvedValue({ ok: false, outcome: 'suppressed', reason: 'stronger_or_missing_truth' });
     const claim = jest.fn();
     const realMinorUnits = await import('../../src/utils/minor-units.js');
     const toMinorUnits = jest.fn(realMinorUnits.toMinorUnits);
@@ -26,6 +28,10 @@ describe('webhooks.routes', () => {
       '../../src/utils/logger.js': () => ({ logger }),
       '../../src/lib/webhook-idempotency-store.js': () => ({ createWebhookIdempotencyStore: () => ({ claim }) }),
       '../../src/utils/minor-units.js': () => ({ ...realMinorUnits, toMinorUnits }),
+      '../../src/services/transactional-communication.service.js': () => ({
+        createConfirmedCommunicationIntent,
+        createUnderReviewCommunicationIntent,
+      }),
     });
 
     process.env.PAYMENT_WEBHOOK_SECRET = 'sec';
@@ -39,6 +45,7 @@ describe('webhooks.routes', () => {
     constructEvent.mockReturnValueOnce({ id: 'e1', type: 'other', data: { object: {} } });
     await stripe(req, res, next);
     expect(res.status).toHaveBeenCalledWith(200);
+    expect(createConfirmedCommunicationIntent).toHaveBeenCalledTimes(0);
 
     constructEvent.mockReturnValueOnce({
       id: 'e2',
@@ -47,12 +54,13 @@ describe('webhooks.routes', () => {
     });
     claim.mockResolvedValueOnce({ accepted: true });
     orderRepository.findById.mockResolvedValueOnce({ id: 'o1', status: 'pending', totalAmount: '10.00', currency: 'EUR' });
-    orderRepository.markPaidFromWebhook.mockResolvedValueOnce({ ok: true });
+    orderRepository.markPaidFromWebhook.mockResolvedValueOnce({ replayed: false, orderMarkedPaid: true });
 
     req = { ...req, app: { locals: {} } };
     res = { status: jest.fn(() => res), json: jest.fn() };
     await stripe(req, res, next);
     expect(res.status).toHaveBeenCalledWith(200);
+    expect(createConfirmedCommunicationIntent).toHaveBeenCalledTimes(1);
 
     req = {
       get: (h) => (h === 'content-length' ? '10' : null),
@@ -63,12 +71,13 @@ describe('webhooks.routes', () => {
     claim.mockResolvedValueOnce({ accepted: true });
     verifyWebhookSignature.mockResolvedValueOnce({ verified: true, verificationStatus: 'SUCCESS' });
     orderRepository.findById.mockResolvedValueOnce({ id: 'o1', status: 'pending', totalAmount: '10.00', currency: 'EUR' });
-    orderRepository.processPaymentWebhookEvent.mockResolvedValueOnce({ ok: true });
+    orderRepository.processPaymentWebhookEvent.mockResolvedValueOnce({ replayed: false, orderMarkedPaid: true });
 
     res = { status: jest.fn(() => res), json: jest.fn() };
     await paypal(req, res, next);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(toMinorUnits).toHaveBeenCalled();
+    expect(createConfirmedCommunicationIntent).toHaveBeenCalledTimes(2);
   });
 
   test('paypal rejects numeric monetary value right after JSON parse', async () => {

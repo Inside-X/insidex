@@ -1,5 +1,6 @@
 import { jest } from '@jest/globals';
 import {
+  createConfirmedCommunicationIntent,
   createPendingConfirmationCommunicationIntent,
   createUnderReviewCommunicationIntent,
 } from '../../src/services/transactional-communication.service.js';
@@ -49,6 +50,26 @@ describe('transactional-communication.service', () => {
       correlationId: 'cid-1',
       orderStatus: 'pending',
     }));
+  });
+
+  test('pending-confirmation proceeds when under-review marker hook returns false', async () => {
+    const repository = {
+      findById: jest.fn().mockResolvedValue(buildPendingOrder()),
+      hasUnderReviewCommunicationIntent: jest.fn().mockResolvedValue(false),
+      recordPendingConfirmationCommunicationIntent: jest.fn().mockResolvedValue({ duplicate: false, event: { id: 'evt-1' } }),
+    };
+
+    const result = await createPendingConfirmationCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      outcome: 'created',
+      sourceEventId: 'comm.pending_confirmation.order:ord-comm-1',
+    });
+    expect(repository.hasUnderReviewCommunicationIntent).toHaveBeenCalledWith({ orderId: 'ord-comm-1' });
   });
 
   test('blocks duplicate semantic intent deterministically', async () => {
@@ -383,6 +404,15 @@ describe('transactional-communication.service', () => {
     });
   });
 
+  test('fails closed when under-review is called with no arguments', async () => {
+    const result = await createUnderReviewCommunicationIntent();
+    expect(result).toEqual({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'missing_order_reference',
+    });
+  });
+
   test('fails closed when under-review truth lookup returns null order', async () => {
     const repository = {
       findById: jest.fn().mockResolvedValue(null),
@@ -465,6 +495,268 @@ describe('transactional-communication.service', () => {
       outcome: 'suppressed',
       reason: 'intent_recording_failed',
       sourceEventId: 'comm.under_review.order:ord-comm-1',
+    });
+  });
+
+  test('creates confirmed communication intent only from authoritative confirmed truth', async () => {
+    const repository = {
+      findById: jest.fn().mockResolvedValue(buildPendingOrder({
+        status: 'paid',
+      })),
+      recordConfirmedCommunicationIntent: jest.fn().mockResolvedValue({ duplicate: false, event: { id: 'evt-cf-1' } }),
+      recordPendingConfirmationSupersessionByConfirmed: jest.fn().mockResolvedValue({ ok: true, duplicate: false }),
+      recordUnderReviewSupersessionByConfirmed: jest.fn().mockResolvedValue({ ok: true, duplicate: false }),
+    };
+
+    const result = await createConfirmedCommunicationIntent({
+      orderId: 'ord-comm-1',
+      correlationId: 'cid-cf-1',
+      repository,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      outcome: 'created',
+      sourceEventId: 'comm.confirmed.order:ord-comm-1',
+      pendingSupersessionEventId: 'comm.pending_confirmation.superseded_by_confirmed.order:ord-comm-1',
+      underReviewSupersessionEventId: 'comm.under_review.superseded_by_confirmed.order:ord-comm-1',
+      representation: {
+        classKey: 'confirmed',
+        orderId: 'ord-comm-1',
+      },
+    });
+    expect(result.representation.subject).toBe('Order ord-comm-1 confirmed');
+    expect(result.representation.summary).toBe('Your order is confirmed.');
+    expect(repository.recordConfirmedCommunicationIntent).toHaveBeenCalledWith(expect.objectContaining({
+      orderId: 'ord-comm-1',
+      sourceEventId: 'comm.confirmed.order:ord-comm-1',
+      correlationId: 'cid-cf-1',
+      orderStatus: 'paid',
+    }));
+  });
+
+  test('suppresses confirmed candidate on stronger truth (ready/completed/cancelled)', async () => {
+    const repository = {
+      findById: jest.fn().mockResolvedValue(buildPendingOrder({
+        status: 'paid',
+        fulfillmentSnapshot: {
+          mode: 'pickup_local',
+          readiness: { state: 'ready_for_pickup' },
+        },
+      })),
+      recordConfirmedCommunicationIntent: jest.fn(),
+    };
+
+    const result = await createConfirmedCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'stronger_or_missing_truth',
+    });
+    expect(repository.recordConfirmedCommunicationIntent).not.toHaveBeenCalled();
+  });
+
+  test('dedupes confirmed semantic intent deterministically', async () => {
+    const repository = {
+      findById: jest.fn().mockResolvedValue(buildPendingOrder({ status: 'paid' })),
+      recordConfirmedCommunicationIntent: jest.fn().mockResolvedValue({ duplicate: true }),
+    };
+
+    const result = await createConfirmedCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'duplicate_semantic_intent',
+      sourceEventId: 'comm.confirmed.order:ord-comm-1',
+    });
+  });
+
+  test('fails closed when pending supersession cannot be established for confirmed', async () => {
+    const repository = {
+      findById: jest.fn().mockResolvedValue(buildPendingOrder({ status: 'paid' })),
+      recordConfirmedCommunicationIntent: jest.fn().mockResolvedValue({ duplicate: false, event: { id: 'evt-cf-1' } }),
+      recordPendingConfirmationSupersessionByConfirmed: jest.fn().mockResolvedValue({ ok: false }),
+      recordUnderReviewSupersessionByConfirmed: jest.fn(),
+    };
+
+    const result = await createConfirmedCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'pending_supersession_uncertain',
+      sourceEventId: 'comm.confirmed.order:ord-comm-1',
+      pendingSupersessionEventId: 'comm.pending_confirmation.superseded_by_confirmed.order:ord-comm-1',
+      underReviewSupersessionEventId: 'comm.under_review.superseded_by_confirmed.order:ord-comm-1',
+    });
+  });
+
+  test('fails closed when under-review supersession cannot be established for confirmed', async () => {
+    const repository = {
+      findById: jest.fn().mockResolvedValue(buildPendingOrder({ status: 'paid' })),
+      recordConfirmedCommunicationIntent: jest.fn().mockResolvedValue({ duplicate: false, event: { id: 'evt-cf-1' } }),
+      recordPendingConfirmationSupersessionByConfirmed: jest.fn().mockResolvedValue({ ok: true }),
+      recordUnderReviewSupersessionByConfirmed: jest.fn().mockResolvedValue({ ok: false }),
+    };
+
+    const result = await createConfirmedCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'under_review_supersession_uncertain',
+      sourceEventId: 'comm.confirmed.order:ord-comm-1',
+      pendingSupersessionEventId: 'comm.pending_confirmation.superseded_by_confirmed.order:ord-comm-1',
+      underReviewSupersessionEventId: 'comm.under_review.superseded_by_confirmed.order:ord-comm-1',
+    });
+  });
+
+  test('confirmed representation never leaks raw internal/operator wording and no over-claim', async () => {
+    const repository = {
+      findById: jest.fn().mockResolvedValue(buildPendingOrder({ status: 'paid' })),
+      recordConfirmedCommunicationIntent: jest.fn().mockResolvedValue({ duplicate: false, event: { id: 'evt-cf-1' } }),
+      recordPendingConfirmationSupersessionByConfirmed: jest.fn().mockResolvedValue({ ok: true }),
+      recordUnderReviewSupersessionByConfirmed: jest.fn().mockResolvedValue({ ok: true }),
+    };
+
+    const result = await createConfirmedCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+
+    const rendered = JSON.stringify(result.representation).toLowerCase();
+    expect(rendered).not.toContain('remediation');
+    expect(rendered).not.toContain('operator');
+    expect(rendered).not.toContain('audit');
+    expect(rendered).not.toContain('ready');
+    expect(rendered).not.toContain('completed');
+    expect(rendered).not.toContain('dispatch');
+    expect(rendered).not.toContain('shipped');
+  });
+
+  test('fails closed on dependency-unavailable confirmed truth lookup', async () => {
+    const err = new Error('db unavailable');
+    err.code = 'DB_OPERATION_FAILED';
+    const repository = {
+      findById: jest.fn().mockRejectedValue(err),
+    };
+
+    const result = await createConfirmedCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'dependency_unavailable',
+    });
+  });
+
+  test('fails closed when confirmed order reference is missing', async () => {
+    const result = await createConfirmedCommunicationIntent({});
+    expect(result).toEqual({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'missing_order_reference',
+    });
+  });
+
+  test('fails closed when confirmed is called with no arguments', async () => {
+    const result = await createConfirmedCommunicationIntent();
+    expect(result).toEqual({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'missing_order_reference',
+    });
+  });
+
+  test('fails closed with truth_unavailable on non-dependency confirmed lookup failure', async () => {
+    const repository = {
+      findById: jest.fn().mockRejectedValue(new Error('lookup failed')),
+    };
+    const result = await createConfirmedCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+    expect(result).toEqual({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'truth_unavailable',
+    });
+  });
+
+  test('fails closed with dependency_unavailable on confirmed intent recording dependency failure', async () => {
+    const error = new Error('db unavailable');
+    error.code = 'DB_OPERATION_FAILED';
+    const repository = {
+      findById: jest.fn().mockResolvedValue(buildPendingOrder({ status: 'paid' })),
+      recordConfirmedCommunicationIntent: jest.fn().mockRejectedValue(error),
+    };
+
+    const result = await createConfirmedCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'dependency_unavailable',
+      sourceEventId: 'comm.confirmed.order:ord-comm-1',
+    });
+  });
+
+  test('fails closed with intent_recording_failed on non-dependency confirmed write failure', async () => {
+    const repository = {
+      findById: jest.fn().mockResolvedValue(buildPendingOrder({ status: 'paid' })),
+      recordConfirmedCommunicationIntent: jest.fn().mockRejectedValue(new Error('insert failed')),
+    };
+
+    const result = await createConfirmedCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      outcome: 'suppressed',
+      reason: 'intent_recording_failed',
+      sourceEventId: 'comm.confirmed.order:ord-comm-1',
+    });
+  });
+
+  test('creates confirmed intent when supersession hooks are unavailable', async () => {
+    const repository = {
+      findById: jest.fn().mockResolvedValue(buildPendingOrder({ status: 'paid' })),
+      recordConfirmedCommunicationIntent: jest.fn().mockResolvedValue({ duplicate: false, event: { id: 'evt-cf-2' } }),
+    };
+
+    const result = await createConfirmedCommunicationIntent({
+      orderId: 'ord-comm-1',
+      repository,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      outcome: 'created',
+      sourceEventId: 'comm.confirmed.order:ord-comm-1',
+      pendingSupersessionEventId: 'comm.pending_confirmation.superseded_by_confirmed.order:ord-comm-1',
+      underReviewSupersessionEventId: 'comm.under_review.superseded_by_confirmed.order:ord-comm-1',
     });
   });
 });

@@ -383,6 +383,114 @@ export const orderRepository = {
       normalizeDbError(error, { repository: 'order', operation: 'recordPendingConfirmationSupersession' });
     }
   },
+  async recordConfirmedCommunicationIntent({
+    orderId,
+    sourceEventId,
+    correlationId = null,
+    orderStatus = null,
+  } = {}) {
+    if (!orderId || typeof orderId !== 'string') {
+      throw badRequest('orderId is required for communication intent');
+    }
+    if (!sourceEventId || typeof sourceEventId !== 'string') {
+      throw badRequest('sourceEventId is required for communication intent');
+    }
+    if (orderStatus !== 'paid') {
+      throw badRequest('confirmed communication requires confirmed order truth');
+    }
+
+    try {
+      const event = await prisma.orderEvent.create({
+        data: {
+          orderId,
+          type: 'customer_comm_confirmed_candidate',
+          fromStatus: 'paid',
+          toStatus: 'paid',
+          source: 'system',
+          sourceEventId,
+          correlationId: correlationId || null,
+        },
+      });
+      return { duplicate: false, event };
+    } catch (error) {
+      if (isUniqueConstraintOnTarget(error, 'source_event_id') || error?.code === 'P2002') {
+        return { duplicate: true, event: null };
+      }
+      normalizeDbError(error, { repository: 'order', operation: 'recordConfirmedCommunicationIntent' });
+    }
+  },
+  async recordPendingConfirmationSupersessionByConfirmed({
+    orderId,
+    sourceEventId,
+    correlationId = null,
+    orderStatus = null,
+  } = {}) {
+    if (!orderId || typeof orderId !== 'string') {
+      throw badRequest('orderId is required for pending supersession');
+    }
+    if (!sourceEventId || typeof sourceEventId !== 'string') {
+      throw badRequest('sourceEventId is required for pending supersession');
+    }
+    if (orderStatus !== 'paid') {
+      throw badRequest('pending supersession by confirmed requires confirmed order truth');
+    }
+
+    try {
+      await prisma.orderEvent.create({
+        data: {
+          orderId,
+          type: 'customer_comm_pending_confirmation_superseded',
+          fromStatus: 'pending',
+          toStatus: 'paid',
+          source: 'system',
+          sourceEventId,
+          correlationId: correlationId || null,
+        },
+      });
+      return { ok: true, duplicate: false };
+    } catch (error) {
+      if (isUniqueConstraintOnTarget(error, 'source_event_id') || error?.code === 'P2002') {
+        return { ok: true, duplicate: true };
+      }
+      normalizeDbError(error, { repository: 'order', operation: 'recordPendingConfirmationSupersessionByConfirmed' });
+    }
+  },
+  async recordUnderReviewSupersessionByConfirmed({
+    orderId,
+    sourceEventId,
+    correlationId = null,
+    orderStatus = null,
+  } = {}) {
+    if (!orderId || typeof orderId !== 'string') {
+      throw badRequest('orderId is required for under-review supersession');
+    }
+    if (!sourceEventId || typeof sourceEventId !== 'string') {
+      throw badRequest('sourceEventId is required for under-review supersession');
+    }
+    if (orderStatus !== 'paid') {
+      throw badRequest('under-review supersession by confirmed requires confirmed order truth');
+    }
+
+    try {
+      await prisma.orderEvent.create({
+        data: {
+          orderId,
+          type: 'customer_comm_under_review_superseded',
+          fromStatus: 'under_review',
+          toStatus: 'paid',
+          source: 'system',
+          sourceEventId,
+          correlationId: correlationId || null,
+        },
+      });
+      return { ok: true, duplicate: false };
+    } catch (error) {
+      if (isUniqueConstraintOnTarget(error, 'source_event_id') || error?.code === 'P2002') {
+        return { ok: true, duplicate: true };
+      }
+      normalizeDbError(error, { repository: 'order', operation: 'recordUnderReviewSupersessionByConfirmed' });
+    }
+  },
   async update(id, data) {
     try { return await prisma.order.update({ where: { id }, data }); } catch (error) { normalizeDbError(error, { repository: 'order', operation: 'update' }); }
   },

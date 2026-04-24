@@ -40,6 +40,7 @@ describe('I1 stripe success emission boundary wiring', () => {
     stripeEvent = baseEvent,
     markPaidResult = { replayed: false, orderMarkedPaid: true },
     communicationIntentResult = { ok: false, outcome: 'suppressed', reason: 'stronger_or_missing_truth' },
+    confirmedIntentResult = { ok: true, outcome: 'created', sourceEventId: 'comm.confirmed.order:ord_1' },
   }) {
     const claim = jest.fn().mockResolvedValue({ accepted: true });
     const constructEvent = jest.fn(() => stripeEvent);
@@ -49,6 +50,7 @@ describe('I1 stripe success emission boundary wiring', () => {
       processPaymentWebhookEvent: jest.fn(),
     };
     const createUnderReviewCommunicationIntent = jest.fn().mockResolvedValue(communicationIntentResult);
+    const createConfirmedCommunicationIntent = jest.fn().mockResolvedValue(confirmedIntentResult);
 
     const routes = await loadRoute('../../src/routes/webhooks.routes.js', {
       zod: () => ({ ZodError: class ZodError extends Error {} }),
@@ -74,6 +76,7 @@ describe('I1 stripe success emission boundary wiring', () => {
         signalReconciliationRemediationBoundary: signalBoundary,
       }),
       '../../src/services/transactional-communication.service.js': () => ({
+        createConfirmedCommunicationIntent,
         createUnderReviewCommunicationIntent,
       }),
     });
@@ -84,6 +87,7 @@ describe('I1 stripe success emission boundary wiring', () => {
       stripe,
       orderRepository,
       createUnderReviewCommunicationIntent,
+      createConfirmedCommunicationIntent,
       claim,
       constructEvent,
       ...buildReqRes(claim),
@@ -102,7 +106,7 @@ describe('I1 stripe success emission boundary wiring', () => {
       signalingReasonCodes: [],
     }));
 
-    const { stripe, req, res, orderRepository, createUnderReviewCommunicationIntent } = await loadStripeHandler({
+    const { stripe, req, res, orderRepository, createUnderReviewCommunicationIntent, createConfirmedCommunicationIntent } = await loadStripeHandler({
       order: {
         id: 'ord_1',
         status: 'pending',
@@ -118,8 +122,80 @@ describe('I1 stripe success emission boundary wiring', () => {
     await stripe(req, res, jest.fn());
 
     expect(orderRepository.markPaidFromWebhook).toHaveBeenCalledTimes(1);
+    expect(createConfirmedCommunicationIntent).toHaveBeenCalledTimes(1);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ data: { replayed: false, orderMarkedPaid: true } });
+  });
+
+  test('confirmed seam dedupes deterministic retries after success', async () => {
+    const enforceBoundary = jest.fn(async () => ({
+      mayFinalizeAsSuccess: true,
+      boundaryDecision: 'allow_success',
+      blockingReasonCodes: [],
+    }));
+    const signalBoundary = jest.fn(async () => ({
+      isInRemediationBoundary: false,
+      boundaryStatus: 'normal_non_success',
+      signalingReasonCodes: [],
+    }));
+
+    const { stripe, req, res, createConfirmedCommunicationIntent } = await loadStripeHandler({
+      order: {
+        id: 'ord_1',
+        status: 'pending',
+        totalAmount: '10.00',
+        currency: 'EUR',
+        idempotencyKey: 'idem_1',
+        items: [{ productId: 'prod_1', quantity: 1 }],
+      },
+      enforceBoundary,
+      signalBoundary,
+      confirmedIntentResult: {
+        ok: false,
+        outcome: 'suppressed',
+        reason: 'duplicate_semantic_intent',
+        sourceEventId: 'comm.confirmed.order:ord_1',
+      },
+    });
+
+    await stripe(req, res, jest.fn());
+    expect(createConfirmedCommunicationIntent).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  test('confirmed seam suppresses stale/uncertain confirmed truth fail-closed after success mutation', async () => {
+    const enforceBoundary = jest.fn(async () => ({
+      mayFinalizeAsSuccess: true,
+      boundaryDecision: 'allow_success',
+      blockingReasonCodes: [],
+    }));
+    const signalBoundary = jest.fn(async () => ({
+      isInRemediationBoundary: false,
+      boundaryStatus: 'normal_non_success',
+      signalingReasonCodes: [],
+    }));
+
+    const { stripe, req, res, createConfirmedCommunicationIntent } = await loadStripeHandler({
+      order: {
+        id: 'ord_1',
+        status: 'pending',
+        totalAmount: '10.00',
+        currency: 'EUR',
+        idempotencyKey: 'idem_1',
+        items: [{ productId: 'prod_1', quantity: 1 }],
+      },
+      enforceBoundary,
+      signalBoundary,
+      confirmedIntentResult: {
+        ok: false,
+        outcome: 'suppressed',
+        reason: 'stronger_or_missing_truth',
+      },
+    });
+
+    await stripe(req, res, jest.fn());
+    expect(createConfirmedCommunicationIntent).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(200);
   });
 
   test('blocked/contradictory upstream state prevents success emission', async () => {
@@ -397,7 +473,7 @@ describe('I1 stripe success emission boundary wiring', () => {
       '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
       '../../src/domain/finalization-boundary-enforcer.js': () => ({ enforceFinalizationBoundary: jest.fn() }),
       '../../src/domain/reconciliation-remediation-boundary-signaler.js': () => ({ signalReconciliationRemediationBoundary: jest.fn() }),
-      '../../src/services/transactional-communication.service.js': () => ({ createUnderReviewCommunicationIntent: jest.fn() }),
+      '../../src/services/transactional-communication.service.js': () => ({ createUnderReviewCommunicationIntent: jest.fn(), createConfirmedCommunicationIntent: jest.fn() }),
       '../../src/lib/webhook-idempotency-store.js': () => ({ createWebhookIdempotencyStore: () => ({ claim }) }),
     });
 
@@ -439,6 +515,11 @@ describe('I1 stripe success emission boundary wiring', () => {
         reason: 'duplicate_semantic_intent',
         sourceEventId: 'comm.under_review.order:ord_1',
       });
+    const createConfirmedCommunicationIntent = jest.fn().mockResolvedValue({
+      ok: true,
+      outcome: 'created',
+      sourceEventId: 'comm.confirmed.order:ord_1',
+    });
 
     const routes = await loadRoute('../../src/routes/webhooks.routes.js', {
       zod: () => ({ ZodError: class ZodError extends Error {} }),
@@ -474,6 +555,7 @@ describe('I1 stripe success emission boundary wiring', () => {
         })),
       }),
       '../../src/services/transactional-communication.service.js': () => ({
+        createConfirmedCommunicationIntent,
         createUnderReviewCommunicationIntent,
       }),
     });

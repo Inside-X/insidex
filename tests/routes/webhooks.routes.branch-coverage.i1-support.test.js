@@ -60,7 +60,7 @@ describe('webhooks route branch support coverage for I1 gate stability', () => {
       '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
       '../../src/domain/finalization-boundary-enforcer.js': () => ({ enforceFinalizationBoundary: jest.fn(async () => null) }),
       '../../src/domain/reconciliation-remediation-boundary-signaler.js': () => ({ signalReconciliationRemediationBoundary: jest.fn(async () => null) }),
-      '../../src/services/transactional-communication.service.js': () => ({ createUnderReviewCommunicationIntent }),
+      '../../src/services/transactional-communication.service.js': () => ({ createUnderReviewCommunicationIntent, createConfirmedCommunicationIntent: jest.fn() }),
     });
 
     process.env.PAYMENT_WEBHOOK_SECRET = 'sec';
@@ -144,7 +144,7 @@ describe('webhooks route branch support coverage for I1 gate stability', () => {
       '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
       '../../src/domain/finalization-boundary-enforcer.js': () => ({ enforceFinalizationBoundary: jest.fn(async () => null) }),
       '../../src/domain/reconciliation-remediation-boundary-signaler.js': () => ({ signalReconciliationRemediationBoundary: jest.fn(async () => null) }),
-      '../../src/services/transactional-communication.service.js': () => ({ createUnderReviewCommunicationIntent }),
+      '../../src/services/transactional-communication.service.js': () => ({ createUnderReviewCommunicationIntent, createConfirmedCommunicationIntent: jest.fn() }),
     });
 
     process.env.PAYMENT_WEBHOOK_SECRET = 'sec';
@@ -230,7 +230,7 @@ describe('webhooks route branch support coverage for I1 gate stability', () => {
       '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
       '../../src/domain/finalization-boundary-enforcer.js': () => ({ enforceFinalizationBoundary: jest.fn(async () => null) }),
       '../../src/domain/reconciliation-remediation-boundary-signaler.js': () => ({ signalReconciliationRemediationBoundary: jest.fn(async () => null) }),
-      '../../src/services/transactional-communication.service.js': () => ({ createUnderReviewCommunicationIntent }),
+      '../../src/services/transactional-communication.service.js': () => ({ createUnderReviewCommunicationIntent, createConfirmedCommunicationIntent: jest.fn() }),
     });
 
     process.env.PAYMENT_WEBHOOK_SECRET = 'sec';
@@ -311,7 +311,7 @@ describe('webhooks route branch support coverage for I1 gate stability', () => {
       '../../src/utils/minor-units.js': () => ({ toMinorUnits: jest.fn(() => 1000) }),
       '../../src/domain/finalization-boundary-enforcer.js': () => ({ enforceFinalizationBoundary: jest.fn(async () => null) }),
       '../../src/domain/reconciliation-remediation-boundary-signaler.js': () => ({ signalReconciliationRemediationBoundary: jest.fn(async () => null) }),
-      '../../src/services/transactional-communication.service.js': () => ({ createUnderReviewCommunicationIntent: jest.fn() }),
+      '../../src/services/transactional-communication.service.js': () => ({ createUnderReviewCommunicationIntent: jest.fn(), createConfirmedCommunicationIntent: jest.fn() }),
     });
 
     process.env.PAYMENT_WEBHOOK_SECRET = 'sec';

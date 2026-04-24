@@ -13,6 +13,13 @@ const UNDER_REVIEW_CLASS = Object.freeze({
   pendingSupersessionPrefix: 'comm.pending_confirmation.superseded_by_under_review.order',
 });
 
+const CONFIRMED_CLASS = Object.freeze({
+  key: 'confirmed',
+  sourceEventPrefix: 'comm.confirmed.order',
+  pendingSupersessionPrefix: 'comm.pending_confirmation.superseded_by_confirmed.order',
+  underReviewSupersessionPrefix: 'comm.under_review.superseded_by_confirmed.order',
+});
+
 function buildUnitId(prefix, orderId) {
   return `${prefix}:${orderId}`;
 }
@@ -33,6 +40,16 @@ function buildUnderReviewCustomerSafeRepresentation(order) {
     orderId: order.id,
     subject: `Order ${order.id} is under review`,
     summary: 'Your order is under review right now.',
+    nextStep: 'No action is needed right now. Check your account order detail for the latest update.',
+  };
+}
+
+function buildConfirmedCustomerSafeRepresentation(order) {
+  return {
+    classKey: CONFIRMED_CLASS.key,
+    orderId: order.id,
+    subject: `Order ${order.id} confirmed`,
+    summary: 'Your order is confirmed.',
     nextStep: 'No action is needed right now. Check your account order detail for the latest update.',
   };
 }
@@ -184,6 +201,106 @@ export async function createUnderReviewCommunicationIntent({
       sourceEventId,
       pendingSupersessionEventId,
       representation: buildUnderReviewCustomerSafeRepresentation(order),
+    };
+  } catch (error) {
+    if (isDependencyUnavailableError(error)) {
+      return classifySuppression('dependency_unavailable', {
+        sourceEventId,
+      });
+    }
+    return classifySuppression('intent_recording_failed', {
+      sourceEventId,
+    });
+  }
+}
+
+export async function createConfirmedCommunicationIntent({
+  orderId,
+  correlationId = null,
+  repository = orderRepository,
+} = {}) {
+  if (!orderId || typeof orderId !== 'string') {
+    return classifySuppression('missing_order_reference');
+  }
+
+  let order;
+  try {
+    order = await repository.findById(orderId);
+  } catch (error) {
+    if (isDependencyUnavailableError(error)) {
+      return classifySuppression('dependency_unavailable');
+    }
+    return classifySuppression('truth_unavailable');
+  }
+
+  if (!order || order.status !== 'paid') {
+    return classifySuppression('stronger_or_missing_truth');
+  }
+
+  const customerView = toCustomerOrderDetailEntry(order);
+  if (customerView?.status?.code !== 'confirmed') {
+    return classifySuppression('stronger_or_missing_truth');
+  }
+
+  const sourceEventId = buildUnitId(CONFIRMED_CLASS.sourceEventPrefix, order.id);
+  const pendingSupersessionEventId = buildUnitId(CONFIRMED_CLASS.pendingSupersessionPrefix, order.id);
+  const underReviewSupersessionEventId = buildUnitId(CONFIRMED_CLASS.underReviewSupersessionPrefix, order.id);
+
+  try {
+    const recorded = await repository.recordConfirmedCommunicationIntent({
+      orderId: order.id,
+      sourceEventId,
+      correlationId,
+      orderStatus: order.status,
+    });
+
+    if (recorded.duplicate === true) {
+      return classifySuppression('duplicate_semantic_intent', {
+        sourceEventId,
+      });
+    }
+
+    if (typeof repository.recordPendingConfirmationSupersessionByConfirmed === 'function') {
+      const pendingSupersession = await repository.recordPendingConfirmationSupersessionByConfirmed({
+        orderId: order.id,
+        sourceEventId: pendingSupersessionEventId,
+        correlationId,
+        orderStatus: order.status,
+      });
+
+      if (pendingSupersession?.ok !== true) {
+        return classifySuppression('pending_supersession_uncertain', {
+          sourceEventId,
+          pendingSupersessionEventId,
+          underReviewSupersessionEventId,
+        });
+      }
+    }
+
+    if (typeof repository.recordUnderReviewSupersessionByConfirmed === 'function') {
+      const underReviewSupersession = await repository.recordUnderReviewSupersessionByConfirmed({
+        orderId: order.id,
+        sourceEventId: underReviewSupersessionEventId,
+        correlationId,
+        orderStatus: order.status,
+      });
+
+      if (underReviewSupersession?.ok !== true) {
+        return classifySuppression('under_review_supersession_uncertain', {
+          sourceEventId,
+          pendingSupersessionEventId,
+          underReviewSupersessionEventId,
+        });
+      }
+    }
+
+    return {
+      ok: true,
+      outcome: 'created',
+      sourceEventId,
+      pendingSupersessionEventId,
+      underReviewSupersessionEventId,
+      representation: buildConfirmedCustomerSafeRepresentation(order),
     };
   } catch (error) {
     if (isDependencyUnavailableError(error)) {

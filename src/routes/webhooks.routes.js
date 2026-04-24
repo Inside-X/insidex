@@ -15,7 +15,10 @@ import { sendDependencyUnavailable } from '../middlewares/webhookStrictDependenc
 import { assertValidTransition, nextStatusForEvent, OrderInvalidTransitionError } from '../domain/order-state-machine.js';
 import { enforceFinalizationBoundary } from '../domain/finalization-boundary-enforcer.js';
 import { signalReconciliationRemediationBoundary } from '../domain/reconciliation-remediation-boundary-signaler.js';
-import { createUnderReviewCommunicationIntent } from '../services/transactional-communication.service.js';
+import {
+  createConfirmedCommunicationIntent,
+  createUnderReviewCommunicationIntent,
+} from '../services/transactional-communication.service.js';
 
 const router = express.Router();
 const MAX_WEBHOOK_BODY_SIZE_BYTES = 1024 * 1024;
@@ -420,6 +423,42 @@ router.post('/stripe', async (req, res, next) => {
       correlationId,
     });
 
+    if (result?.orderMarkedPaid === true) {
+      const communicationIntent = await createConfirmedCommunicationIntent({
+        orderId: order.id,
+        correlationId,
+      });
+
+      if (communicationIntent?.ok === true) {
+        logger.info('stripe_webhook_confirmed_communication_intent_created', {
+          orderId: order.id,
+          eventId: validatedPayload.id,
+          sourceEventId: communicationIntent.sourceEventId,
+          semanticClass: 'confirmed',
+          seam: 'b7_6a_confirmed_runtime_seam',
+          correlationId,
+        });
+      } else if (communicationIntent?.reason === 'duplicate_semantic_intent') {
+        logger.info('stripe_webhook_confirmed_communication_intent_deduped', {
+          orderId: order.id,
+          eventId: validatedPayload.id,
+          sourceEventId: communicationIntent?.sourceEventId || null,
+          semanticClass: 'confirmed',
+          seam: 'b7_6a_confirmed_runtime_seam',
+          correlationId,
+        });
+      } else {
+        logger.warn('stripe_webhook_confirmed_communication_intent_suppressed', {
+          orderId: order.id,
+          eventId: validatedPayload.id,
+          reasonCode: communicationIntent?.reason || 'truth_unavailable',
+          semanticClass: 'confirmed',
+          seam: 'b7_6a_confirmed_runtime_seam',
+          correlationId,
+        });
+      }
+    }
+
     return res.status(200).json({ data: result });
   } catch (error) {
     if (error instanceof ZodError || error instanceof SyntaxError) {
@@ -596,6 +635,42 @@ router.post('/paypal', async (req, res, next) => {
       },
       correlationId,
     });
+
+    if (result?.orderMarkedPaid === true) {
+      const communicationIntent = await createConfirmedCommunicationIntent({
+        orderId: order.id,
+        correlationId,
+      });
+
+      if (communicationIntent?.ok === true) {
+        logger.info('paypal_webhook_confirmed_communication_intent_created', {
+          orderId: order.id,
+          eventId: payload.eventId,
+          sourceEventId: communicationIntent.sourceEventId,
+          semanticClass: 'confirmed',
+          seam: 'b7_6a_confirmed_runtime_seam',
+          correlationId,
+        });
+      } else if (communicationIntent?.reason === 'duplicate_semantic_intent') {
+        logger.info('paypal_webhook_confirmed_communication_intent_deduped', {
+          orderId: order.id,
+          eventId: payload.eventId,
+          sourceEventId: communicationIntent?.sourceEventId || null,
+          semanticClass: 'confirmed',
+          seam: 'b7_6a_confirmed_runtime_seam',
+          correlationId,
+        });
+      } else {
+        logger.warn('paypal_webhook_confirmed_communication_intent_suppressed', {
+          orderId: order.id,
+          eventId: payload.eventId,
+          reasonCode: communicationIntent?.reason || 'truth_unavailable',
+          semanticClass: 'confirmed',
+          seam: 'b7_6a_confirmed_runtime_seam',
+          correlationId,
+        });
+      }
+    }
 
     return res.status(200).json({ data: result });
   } catch (error) {
